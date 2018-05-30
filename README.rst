@@ -1,0 +1,40 @@
+BuildGrid
+=========
+
+BuildGrid is a python remote execution service which implements the `Remote Execution API <https://docs.google.com/document/d/1s_AzRRD2mdyktKUj2HWBn99rMg_3tcPvdjx3MPbFidU/edit?usp=sharing/>`_ and the `Remote Workers API <https://docs.google.com/document/d/1s_AzRRD2mdyktKUj2HWBn99rMg_3tcPvdjx3MPbFidU/edit?usp=sharing/>`_.
+
+The goal is to be able to execute build jobs remotely on a grid of computers to massively speed up build times. Workers on the system will also be able to run with different environments. It is designed to work with but not exclusively with `BuildStream <https://wiki.gnome.org/Projects/BuildStream/>`_. 
+
+Install
+-------
+
+To install::
+
+   git clone https://gitlab.com/BuildGrid/buildgrid.git
+   cd buildgrid
+   git checkout finn/bg_phase_1
+   pip3 install --user -e .
+
+Temporary Instructions
+----------------------
+
+In one terminal, start a server::
+
+  bgd server start
+
+In another terminal, send a request for work::
+
+  bgd execute request
+
+The stage should show as `QUEUED` as it awaits a bot to pick up the work::
+
+  bgd execute list
+
+Create a bot session::
+
+  bgd bot create
+
+Show the work as completed::
+
+  bgd execute list
+
