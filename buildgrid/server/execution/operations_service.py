@@ -21,23 +21,23 @@ OperationsService
 
 """
 
-
 import grpc
-from google.longrunning import operations_pb2_grpc
+from google.longrunning import operations_pb2_grpc, operations_pb2
+
+from ._exceptions import InvalidArgumentError
 
 class OperationsService(operations_pb2_grpc.OperationsServicer):
 
     def __init__(self, instance):
-        if instance is None:
-            raise TypeError
-        else:
-            self._instance = instance
+        self._instance = instance
 
     def GetOperation(self, request, context):
         try:
             return self._instance.get_operation(request.name)
-        except Exception as e:
-            print("Exception: {}".format(e))
+        except InvalidArgumentError as e:
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            return operations_pb2.Operation()
 
     def ListOperations(self, request, context):
         try:
@@ -46,16 +46,20 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
                                                   request.page_size,
                                                   request.page_token)
         except Exception as e:
-            print("Exception: {}".format(e))
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INTERNAL)
+            return operations_pb2.ListOperationsResponse()
 
     def DeleteOperation(self, request, context):
         try:
             return self._instance.delete_operation(request.name)
-        except Exception as e:
-            print("Exception: {}".format(e))
+        except InvalidArgumentError as e:
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
     def CancelOperation(self, request, context):
         try:
             return self._instance.delete_operation(request.name)
-        except Exception as e:
-            print("Exception: {}".format(e))
+        except NotImplementedError as e:
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.UNIMPLEMENTED)

@@ -61,8 +61,11 @@ def request(context, instance_name):
     request = remote_execution_pb2.ExecuteRequest(instance_name = instance_name,
                                                   action = action,
                                                   skip_cache_lookup = True)
+    try:
+        response = stub.Execute(request)
 
-    response = stub.Execute(request)
+    except Exception as e:
+        context.log(e)
 
     context.log("Response name: {}".format(response.name))
 
@@ -75,9 +78,12 @@ def operation_status(context, operation_name):
 
     request = operations_pb2.GetOperationRequest(name=operation_name)
 
-    response = stub.GetOperation(request)
+    try:
+        response = stub.GetOperation(request)
+        _log_operation(context, response)
 
-    _log_operation(context, response)
+    except Exception as e:
+        context.log(e)
 
 @cli.command('list', short_help='List operations')
 @pass_context
@@ -87,7 +93,11 @@ def list_operations(context):
 
     request = operations_pb2.ListOperationsRequest()
 
-    response = stub.ListOperations(request)
+    try:
+        response = stub.ListOperations(request)
+
+    except Exception as e:
+        context.log(e)
 
     for op in response.operations:
         _log_operation(context, op)

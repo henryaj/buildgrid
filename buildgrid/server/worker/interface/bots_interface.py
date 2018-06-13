@@ -34,6 +34,8 @@ from queue import Queue, PriorityQueue
 from google.devtools.remoteworkers.v1test2 import bots_pb2, worker_pb2
 from google.protobuf import any_pb2
 
+from .._exceptions import InvalidArgumentError, OutofSyncError
+
 class BotsInterface(object):
 
     def __init__(self):
@@ -52,8 +54,7 @@ class BotsInterface(object):
         bot_id = bot_session.bot_id
 
         if bot_id == None:
-            msg = "bot_id needs to be set by client."
-            raise Exception(msg)
+            raise InvalidArgumentError("bot_id needs to be set by client")
 
         for _name, _bot in list(self._bots.items()):
             if _bot.bot_id == bot_id:
@@ -67,17 +68,18 @@ class BotsInterface(object):
         """ Client updates the server. Any changes in state to the Lease should be
         registered server side. Assigns available leases with work.
         """
-        if name not in self._bots:
-            msg = "Name: {}, not a valid bot session, please create one.".format(name)
-            raise Exception(msg)
+        try:
+            leases_server = self._bots[name].leases
+        except KeyError:
+            raise InvalidArgumentError("Bot name does not exist: {}".format(name))
 
         leases_client = bot_session.leases
-        leases_server = self._bots[name].leases
 
         if len(leases_client) != len(leases_server):
-            msg = "Leases of client and server are not the same length.\n"
-            msg += "Client: {0}\nServer: {1}".format(len(leases_client), len(leases_server))
-            raise Exception(msg)
+            self._close_bot_session(name)
+            raise OutofSyncError("Number of leases in server and client not same."+\
+                                 "Closing bot session: {}".format(name)+\
+                                 "Client: {}\nServer: {}".format(len(leases_client), len(leases_server)))
 
         leases_client = [self._check_lease(lease) for lease in leases_client]
 
@@ -122,7 +124,8 @@ class BotsInterface(object):
         elif state == state_enum.Value('CANCELLED'):
             raise NotImplementedError
 
-        raise Exception("Unknown state: {}".format(state))
+        else:
+            raise InvalidArgumentError("Unknown state: {}".format(state))
 
     def _get_pending_action(self, lease):
         """ If actions are available, populates the lease and
@@ -143,12 +146,15 @@ class BotsInterface(object):
         requeue with high priority.
         """
         state_enum = bots_pb2.LeaseState
-        for lease in self._bots[name].leases:
-            state = lease.state
-            if state == state_enum.Value('PENDING') or \
-               state == state_enum.Value('ACTIVE'):
-                item = namedtuple('ActionQueue', 'operation_name action')
-                operation_name = lease.assignment
-                action = lease.inline_assignment
-                self._action_queue.put((1, item(operation_name, action)))
-        self._bots.pop(name)
+        try:
+            for lease in self._bots[name].leases:
+                state = lease.state
+                if state == state_enum.Value('PENDING') or \
+                   state == state_enum.Value('ACTIVE'):
+                    item = namedtuple('ActionQueue', 'operation_name action')
+                    operation_name = lease.assignment
+                    action = lease.inline_assignment
+                    self._action_queue.put((1, item(operation_name, action)))
+            self._bots.pop(name)
+        except KeyError:
+            raise InvalidArgumentError("Bot name does not exist: {}".format(name))

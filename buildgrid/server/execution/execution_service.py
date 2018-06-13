@@ -18,15 +18,15 @@
 """
 ExecutionService
 ===============
-
-
-
+Serves remote execution requests.
 """
 
 import grpc
 
 from google.devtools.remoteexecution.v1test import remote_execution_pb2, remote_execution_pb2_grpc
-from google.longrunning import operations_pb2_grpc, operations_pb2    
+from google.longrunning import operations_pb2_grpc, operations_pb2
+
+from ._exceptions import InvalidArgumentError
 
 class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
@@ -42,5 +42,7 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
         try:
             return self._instance.execute(request.action,
                                           request.skip_cache_lookup)
-        except Exception as e:
-            print("Exception: {}".format(e))
+        except (NotImplementedError, InvalidArgumentError) as e:
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            return operations_pb2.Operation()

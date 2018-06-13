@@ -29,6 +29,8 @@ from google.devtools.remoteexecution.v1test.remote_execution_pb2 import ExecuteO
 from google.longrunning import operations_pb2_grpc, operations_pb2
 from google.protobuf import any_pb2
 
+from .._exceptions import InvalidArgumentError
+
 class ExecutionInstance(object):
 
     def __init__(self, bots_interface):
@@ -44,11 +46,11 @@ class ExecutionInstance(object):
         operation_name = str(uuid.uuid4())
 
         if not skip_cache_lookup:
-            raise NotImplementedError
+            raise NotImplementedError("ActionCache not implemented")
         else:
             self._enqueue_action(operation_name, action)
             operation_meta.stage = ExecuteOperationMetadata.Stage.Value('QUEUED')
-
+            
         operation = operations_pb2.Operation(name = operation_name,
                                              done = False)
         operation_any = any_pb2.Any()
@@ -60,7 +62,10 @@ class ExecutionInstance(object):
 
     def get_operation(self, name):
         self._update_operations()
-        return self._operations[name]
+        try:
+            return self._operations[name]
+        except KeyError:
+            raise InvalidArgumentError("Operation name does not exist: {}".format(name))
 
     def list_operations(self, name, list_filter, page_size, page_token):
         # TODO: Pages
@@ -72,6 +77,8 @@ class ExecutionInstance(object):
         return response
 
     def delete_operation(self, name):
+        if name not in self._operations:
+            raise InvalidArgumentError("Operation name does not exist: {}".format(name))
         del self._operations[name]
 
     def cancel_operation(self, name):
