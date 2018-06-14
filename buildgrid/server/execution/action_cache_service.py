@@ -28,8 +28,18 @@ from gdev.devtools.remoteexecution.v1test import remote_execution_pb2, remote_ex
 
 class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
 
+    def __init__(self, instance):
+        self._instance = instance
+        self.logger = logging.getLogger(__name__)
+
     def GetActionResult(self, request, context):
-        raise NotImplementedError
+        self.logger.error(e)
+        context.set_details(str(e))
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        return remote_execution_pb2.ActionResult()
 
     def UpdateActionResult(self, request, context):
-        raise NotImplementedError
+        self.logger.error(e)
+        context.set_details(str(e))
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        return remote_execution_pb2.ActionResult()

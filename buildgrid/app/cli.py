@@ -26,10 +26,11 @@ will be attempted to be imported.
 import os
 import sys
 import click
+import logging
 
+from . import _logging
 
 CONTEXT_SETTINGS = dict(auto_envvar_prefix='BUILDGRID')
-
 
 class Context(object):
 
@@ -37,26 +38,13 @@ class Context(object):
         self.verbose = False
         self.home = os.getcwd()
 
-    def log(self, msg, *args):
-        """Logs a message to stderr."""
-        if args:
-            msg %= args
-        click.echo(msg, file=sys.stderr)
-
-    def vlog(self, msg, *args):
-        """Logs a message to stderr only if verbose is enabled."""
-        if self.verbose:
-            self.log(msg, *args)
-
-
 pass_context = click.make_pass_decorator(Context, ensure=True)
 cmd_folder = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                           'commands'))
 
-
 class BuildGridCLI(click.MultiCommand):
 
-    def list_commands(self, ctx):
+    def list_commands(self, context):
         commands = []
         for filename in os.listdir(cmd_folder):
             if filename.endswith('.py') and \
@@ -65,7 +53,7 @@ class BuildGridCLI(click.MultiCommand):
         commands.sort()
         return commands
 
-    def get_command(self, ctx, name):
+    def get_command(self, context, name):
         try:
             mod = __import__(name='buildgrid.app.commands.cmd_{}'.format(name),
                              fromlist=['cli'])
@@ -73,11 +61,14 @@ class BuildGridCLI(click.MultiCommand):
             return
         return mod.cli
 
-
 @click.command(cls=BuildGridCLI, context_settings=CONTEXT_SETTINGS)
 @click.option('-v', '--verbose', is_flag=True,
               help='Enables verbose mode.')
 @pass_context
-def cli(ctx, verbose):
+def cli(context, verbose):
     """BuildGrid App"""
-    ctx.verbose = verbose
+    logger = _logging.bgd_logger()
+    context.verbose = verbose
+    if verbose:
+        logger.setLevel(logging.DEBUG)
+    

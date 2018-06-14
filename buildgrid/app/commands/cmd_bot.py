@@ -25,6 +25,7 @@ Create a bot interface and request work
 import asyncio
 import click
 import grpc
+import logging
 import platform
 import random
 import time
@@ -39,8 +40,8 @@ from google.devtools.remoteworkers.v1test2 import bots_pb2, bots_pb2_grpc, worke
 @click.option('--port', default='50051')
 @pass_context
 def cli(context, port):
-    context.vlog("Verbose mode!")
-    context.log("Starting on port {}".format(port))
+    context.logger = logging.getLogger(__name__)
+    context.logger.info("Starting on port {}".format(port))
 
     context.channel = grpc.insecure_channel('localhost:{}'.format(port))
     context.port = port
@@ -55,20 +56,26 @@ def create(context, parent, continuous):
     updates the server. Can run this in continious mode.
     """
 
-    context.log("Creating a bot session...\n")
+    context.logger.info("Creating a bot session")
 
     bot_interface = BotInterface(context)
-    bot = Bot(parent, bot_interface)
 
-    context.log("Bot id: {}".format(bot.bot_session.bot_id))
+    try:
+        bot = Bot(parent, bot_interface)
+
+    except Exception as e:
+        context.logger.error(e)
+        return
+
     bot.update_bot_session()
-    context.log("Name:   {}".format(bot.bot_session.name))
+
+    context.logger.info("Name: {}, Id: {}".format(bot.bot_session.name,
+                                              bot.bot_session.bot_id))
     
     try:
         while True:
             futures = [_do_work(context, lease) for lease in bot.get_work()]
             if futures:
-                context.log("Work found...")
                 loop = asyncio.get_event_loop()
                 leases_complete, _ = loop.run_until_complete(asyncio.wait(futures))
                 work_complete = [(lease.result().assignment, lease.result(),) for lease in leases_complete]
@@ -82,8 +89,9 @@ def create(context, parent, continuous):
         return
 
 async def _do_work(context, lease):
+    context.logger.info("Work found: {}".format(lease.assignment))
     await asyncio.sleep(random.randint(1,5))
-    context.log("Work complete")
+    context.logger.info("Lease complete: {}".format(lease.assignment))
     lease.state = bots_pb2.LeaseState.Value('COMPLETED')
     return lease
 
@@ -96,13 +104,11 @@ class BotInterface(object):
         self._stub = bots_pb2_grpc.BotsStub(context.channel)
 
     def create_bot_session(self, bot_session, parent):
-        self.context.log("Creating bot session")
         request = bots_pb2.CreateBotSessionRequest(parent = parent,
                                                    bot_session = bot_session)
         return self._stub.CreateBotSession(request)
 
     def update_bot_session(self, bot_session):
-        self.context.log("Updating server")
         request = bots_pb2.UpdateBotSessionRequest(name = bot_session.name,
                                                    bot_session = bot_session,
                                                    update_mask = None) ## TODO: add mask

@@ -22,6 +22,7 @@ BotsService
 """
 
 import grpc
+import logging
 
 from .interface.bots_interface import BotsInterface
 from ._exceptions import InvalidArgumentError, OutofSyncError
@@ -32,30 +33,48 @@ class BotsService(bots_pb2_grpc.BotsServicer):
     
     def __init__(self, instance):
         self._instance = instance
+        self.logger = logging.getLogger(__name__)
 
     def CreateBotSession(self, request, context):
         try:
             return self._instance.create_bot_session(request.parent,
                                                      request.bot_session)
         except InvalidArgumentError as e:
+            self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
             return bots_pb2.BotSession()
 
+        except Exception as e:
+            self.logger.error(e)
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.UNKNOWN)
+            return bots_pb2.BotSession()
+            
     def UpdateBotSession(self, request, context):
         try:
             return self._instance.update_bot_session(request.name,
                                                      request.bot_session)
         except InvalidArgumentError as e:
+            self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
             return bots_pb2.BotSession()
         
         except OutofSyncError as e:
+            self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.DATA_LOSS)
             return bots_pb2.BotSession()
 
+        except Exception as e:
+            self.logger.error(e)
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.UNKNOWN)
+            return bots_pb2.BotSession()
+
+
     def PostBotEventTemp(self, request, context):
+        self.logger.error(e)
+        context.set_details(str(e))
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        raise NotImplementedError

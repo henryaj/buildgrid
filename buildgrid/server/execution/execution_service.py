@@ -18,10 +18,12 @@
 """
 ExecutionService
 ===============
+
 Serves remote execution requests.
 """
 
 import grpc
+import logging
 
 from google.devtools.remoteexecution.v1test import remote_execution_pb2, remote_execution_pb2_grpc
 from google.longrunning import operations_pb2_grpc, operations_pb2
@@ -31,10 +33,8 @@ from ._exceptions import InvalidArgumentError
 class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
     def __init__(self, instance):
-        if instance is None:
-            raise TypeError
-        else:
-            self._instance = instance
+        self._instance = instance
+        self.logger = logging.getLogger(__name__)
 
     def Execute(self, request, context):        
         # Ignore request.instance_name for now
@@ -42,7 +42,22 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
         try:
             return self._instance.execute(request.action,
                                           request.skip_cache_lookup)
-        except (NotImplementedError, InvalidArgumentError) as e:
+
+        except InvalidArgumentError as e:
+            self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
             return operations_pb2.Operation()
+
+        except NotImplementedError as e:
+            self.logger.error(e)
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+            return operations_pb2.Operation()
+
+        except Exception as e:
+            self.logger.error(e)
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.UNKOWN)
+            return operations_pb2.Operation()
+

@@ -24,6 +24,7 @@ Instance of the Remote Workers interface.
 
 
 import grpc
+import logging
 import uuid
 import os
 import queue
@@ -42,6 +43,7 @@ class BotsInterface(object):
         self.operation_queue = Queue(maxsize = 0)
         self._action_queue = PriorityQueue(maxsize = 0)
         self._bots = {}
+        self.logger = logging.getLogger(__name__)
         
     def create_bot_session(self, parent, bot_session):
         """ Creates a new bot session. Server should assign a unique
@@ -49,6 +51,8 @@ class BotsInterface(object):
         register with the service, the old one should be closed along
         with all its jobs.
         """
+        self.logger.debug("Creating bot session")
+
         # Bot session name, selected by the server
         name = str(uuid.uuid4())
         bot_id = bot_session.bot_id
@@ -58,16 +62,19 @@ class BotsInterface(object):
 
         for _name, _bot in list(self._bots.items()):
             if _bot.bot_id == bot_id:
+                self.logger.warning("Bot id {} already exists, closing previous bot session".format(bot_id))
                 self._close_bot_session(_name)
 
         bot_session.name = name
         self._bots[name] = bot_session
+        self.logger.info("Created bot session name: {}, with id: {}".format(name, bot_id))
         return bot_session
 
     def update_bot_session(self, name, bot_session):
         """ Client updates the server. Any changes in state to the Lease should be
         registered server side. Assigns available leases with work.
         """
+        self.logger.debug("Updating bot session: {}".format(name))
         try:
             leases_server = self._bots[name].leases
         except KeyError:
@@ -146,9 +153,14 @@ class BotsInterface(object):
         """ Before removing the session, close any leases and
         requeue with high priority.
         """
+        try:
+            bot = self._bots[name]
+        except KeyError:
+            raise InvalidArgumentError("Bot name does not exist: {}".format(name))
+        self.logger.debug("Attempting to close {} with name: {}".format(bot.bot_id, name))
         state_enum = bots_pb2.LeaseState
         try:
-            for lease in self._bots[name].leases:
+            for lease in bot.leases:
                 state = lease.state
                 if state == state_enum.Value('PENDING') or \
                    state == state_enum.Value('ACTIVE'):
@@ -156,6 +168,8 @@ class BotsInterface(object):
                     operation_name = lease.assignment
                     action = lease.inline_assignment
                     self._action_queue.put((1, item(operation_name, action)))
+            self.logger.debug("Closing bot session: {}".format(name))
             self._bots.pop(name)
+            self.logger.info("Closed bot {} with name: {}".format(bot.bot_id, name))
         except KeyError:
             raise InvalidArgumentError("Bot name does not exist: {}".format(name))

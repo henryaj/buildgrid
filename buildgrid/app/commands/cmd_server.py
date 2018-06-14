@@ -25,20 +25,23 @@ Create a BuildGrid server.
 
 import asyncio
 import click
+import logging
+
 from ...server import build_grid_server
 from ..cli import pass_context
 
 @click.group(short_help = "Start local server")
 @pass_context
 def cli(context):
-    context.log("")
-    context.vlog("")
+    context.logger = logging.getLogger(__name__)
+    context.logger.info("BuildGrid server booting up")
 
 @cli.command('start', short_help='Starts server')
 @click.option('--port', default='50051')
 @pass_context
 def start(context, port):
-    context.log("Starting on port {}".format(port))
+    context.logger.info("Starting on port {}".format(port))
+
     loop = asyncio.get_event_loop()
     server = build_grid_server.BuildGridServer(port)
     try:
@@ -53,4 +56,4 @@ def start(context, port):
 @cli.command('stop', short_help='Stops server')
 @pass_context
 def stop(context):
-    context.log("Not implemented yet")
+    context.logger.error("Not implemented yet")

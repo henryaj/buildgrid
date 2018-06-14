@@ -22,6 +22,7 @@ An instance of the Remote Execution Server.
 """
 
 import uuid
+import logging
 
 import google.devtools.remoteexecution.v1test.remote_execution_pb2
 
@@ -36,12 +37,14 @@ class ExecutionInstance(object):
     def __init__(self, bots_interface):
         self._bots_interface = bots_interface
         self._operations = {}
+        self.logger = logging.getLogger(__name__)
 
     def execute(self, action, skip_cache_lookup):
         """ Sends a job for execution.
         Queues an action and creates an Operation instance to be associated with
         this action.
         """
+        self.logger.debug("Requesting an execution")
         operation_meta = ExecuteOperationMetadata()
         operation_name = str(uuid.uuid4())
 
@@ -57,10 +60,12 @@ class ExecutionInstance(object):
         operation_any.Pack(operation_meta)
         operation.metadata.CopyFrom(operation_any)
 
-        self._operations[operation_name] = operation        
+        self._operations[operation_name] = operation
+        self.logger.info("Operation executing: {}".format(operation_name))
         return operation
 
     def get_operation(self, name):
+        self.logger.debug("Getting operation: {}".format(name))
         self._update_operations()
         try:
             return self._operations[name]
@@ -69,7 +74,8 @@ class ExecutionInstance(object):
 
     def list_operations(self, name, list_filter, page_size, page_token):
         # TODO: Pages
-        # Spec says number of pages and length of a page are optional 
+        # Spec says number of pages and length of a page are optional
+        self.logger.debug("Listing operations")
         self._update_operations()
         response = operations_pb2.ListOperationsResponse()
         for key, value in self._operations.items():
@@ -77,6 +83,7 @@ class ExecutionInstance(object):
         return response
 
     def delete_operation(self, name):
+        self.logger.debug("Deleting operation {}".format(name))
         if name not in self._operations:
             raise InvalidArgumentError("Operation name does not exist: {}".format(name))
         del self._operations[name]
@@ -85,15 +92,17 @@ class ExecutionInstance(object):
         # TODO: Cancel leases
         # Interface currently does not have
         # an implementation for cancelling leases
-        raise NotImplementedError
+        raise NotImplementedError("Cancelled operations not supported")
 
     def _enqueue_action(self, operation_name, action):
+        self.logger.debug("Queuing: {}".format(operation_name))
         self._bots_interface.enqueue_action(operation_name, action)
 
     def _update_operations(self):
         """ Gets any actions from the bots_interface which have changed
         state and updates the Operations.
         """
+        self.logger.debug("Updating operations")
         while not self._bots_interface.operation_queue.empty():
             name, stage = self._bots_interface.operation_queue.get()
 
