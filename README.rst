@@ -12,8 +12,15 @@ To install::
 
    git clone https://gitlab.com/BuildGrid/buildgrid.git
    cd buildgrid
-   git checkout finn/bg_phase_1
    pip3 install --user -e .
+
+This will install BuildGrid's python dependencies into your user’s homedir in ~/.local
+and will run BuildGrid directly from the git checkout. It is recommended you asjust
+your path with::
+
+  export PATH="${PATH}:${HOME}/.local/bin"
+
+Which you can add to the end of your `~/.bashrc`.
 
 Temporary Instructions
 ----------------------

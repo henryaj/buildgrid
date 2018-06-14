@@ -27,7 +27,7 @@ if sys.version_info[0] != 3 or sys.version_info[1] < 5:
 try:
     from setuptools import setup
 except ImportError:
-    print("BuildStream requires setuptools in order to build. Install it using"
+    print("BuildGrid requires setuptools in order to build. Install it using"
           " your package manager (usually python3-setuptools) or via pip (pip3"
           " install setuptools).")
     sys.exit(1)
