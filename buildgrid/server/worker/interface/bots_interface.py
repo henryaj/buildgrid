@@ -91,8 +91,9 @@ class BotsInterface(object):
 
     def enqueue_action(self, operation_name, action, priority = 10):
         item = namedtuple('ActionQueue', 'operation_name action')
-        any = any_pb2.Any()
-        self._action_queue.put((priority, item(operation_name, any.Pack(action))))
+        action_any = any_pb2.Any()
+        action_any.Pack(action)
+        self._action_queue.put((priority, item(operation_name, action_any)))
 
     def enqueue_operation(self, operation_name, stage):
         item = namedtuple('OperationQueue', 'operation_name stage')
