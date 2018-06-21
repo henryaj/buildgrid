@@ -1,12 +1,12 @@
 Contributing to BuildGrid
 =========================
-Some guidlines for people wnating to contribute.
+Some guidlines for people wanting to contribute.
 
 Feature Additions
 -----------------
 
-There are currently no mailing lists for BuildGrid. Any major feature additions should be raised as an
-issue and it is recommended they are proposed in advance of commencing work.
+There are currently no mailing lists for BuildGrid - we are working on this, though. Any major feature additions should be raised as an
+issue here on gitlab and it is recommended they are proposed in advance of commencing work.
 
 The author of any feature should take ownership and is expected to support it for a reasonable
 timeframe. This means addressing any unforseen side effects and quirks the feature may have introduced.
@@ -14,8 +14,7 @@ timeframe. This means addressing any unforseen side effects and quirks the featu
 Patch Submissions
 -----------------
 
-We will be running `trunk based development <https://trunkbaseddevelopment.com/>`. The idea behind this is
-that merge requests to the trunk will be small and made often making the review process quicker. If possible,
+We will be running `trunk based development <https://trunkbaseddevelopment.com>`_. The idea behind this is that merge requests to the trunk will be small and made often making the review process quicker. If possible,
 it is preferred that merge requests address specific issues.
 
 Branches must be submitted as merge requests on gitlab and should be associated with an issue report on
@@ -49,7 +48,8 @@ If there is an associated issue, it **must** be mentioned somewhere in the commi
 
   
 For more tips, please see `this <https://chris.beams.io/posts/git-commit/#seven-rules/>`_ article.
- Coding style
+
+Coding style
 ------------
 Coding style details for BuildGrid.
 
