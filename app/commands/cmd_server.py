@@ -27,7 +27,8 @@ import asyncio
 import click
 import logging
 
-from ...server import build_grid_server
+from buildgrid.server import build_grid_server
+
 from ..cli import pass_context
 
 @click.group(short_help = "Start local server")

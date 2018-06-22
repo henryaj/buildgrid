@@ -38,15 +38,23 @@ class BgdError(Exception):
         self.reason = reason
 
 class ErrorDomain(Enum):
-    SERVER_EXECUTION = 1
-    SERVER_WORKER    = 2
-    WORKER           = 3
-    APP              = 4
+    SERVER    = 1
+    EXECUTION = 2
+    WORKER    = 3
+    BOT       = 4
 
 class ServerError(BgdError):
     def __init__(self, message, detail=None, reason=None):
         super().__init__(message, detail=detail, domain=ErrorDomain.SERVER, reason=reason)
-    
-class AppError(BgdError):
+
+class ExecutionError(BgdError):
     def __init__(self, message, detail=None, reason=None):
-        super().__init__(message, detail=detail, domain=ErrorDomain.APP, reason=reason)
+        super().__init__(message, detail=detail, domain=ErrorDomain.EXECUTION, reason=reason)
+
+class WorkerError(BgdError):
+    def __init__(self, message, detail=None, reason=None):
+        super().__init__(message, detail=detail, domain=ErrorDomain.WORKER, reason=reason)
+
+class BotError(BgdError):
+    def __init__(self, message, detail=None, reason=None):
+        super().__init__(message, detail=detail, domain=ErrorDomain.BOT, reason=reason)

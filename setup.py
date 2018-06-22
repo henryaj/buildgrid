@@ -46,6 +46,6 @@ setup(
         ],
     entry_points='''
     [console_scripts]
-    bgd=buildgrid.app:cli
+    bgd=app:cli
     ''',
 )
