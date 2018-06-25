@@ -5,10 +5,11 @@ Some guidlines for people wanting to contribute.
 Feature Additions
 -----------------
 
-There are currently no mailing lists for BuildGrid - we are working on this, though. Any major feature additions should be raised as an
-issue here on gitlab and it is recommended they are proposed in advance of commencing work.
+We welcome contributions in the form of bug fixes or feature additions / enhancements. Please discuss with us before submitting anything, as we may well have some important context which will could help guide your efforts.  
 
-The author of any feature should take ownership and is expected to support it for a reasonable
+Any major feature additions should be raised as a proposal on the `Mailing List <https://lists.buildgrid.build/cgi-bin/mailman/listinfo/buildgrid/>`_ to be discussed, and then eventually followed up with an issue here on gitlab. We recommend that you propose the feature in advance of commencing work. We are also on irc, but do not have our own dedicated channel - you can find us on #buildstream on GIMPNet and #bazel on freenode.
+
+The author of any patch is expected to take ownership of that code and is to support it for a reasonable
 timeframe. This means addressing any unforseen side effects and quirks the feature may have introduced.
 
 Patch Submissions
