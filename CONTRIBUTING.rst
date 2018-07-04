@@ -94,3 +94,64 @@ Any private symbol must start with a single leading underscore for two reasons:
 Remember that with python, the modules (python files) are also symbols
 within their containing *package*, as such; modules which are entirely
 private to BuildGrid are named as such, e.g. ``_roy.py``.
+
+
+BuildGrid policy for use of Gitlab features
+-------------------------------------------
+
+We intend to make use of some of gitlab's features in order to structure the activity of the BuildGrid project. In doing so we are trying to achieve the following goals:
+
+* Ensure that we keep it simple and easy to contribute to the project
+* Provide a view of all current and planned activity which is relatively easy for the viewer to digest
+
+We propose to make use of the following Gitlab features:
+
+* Milestones
+* Labels
+* Boards
+* Templates
+
+Milestones
+~~~~~~~~~~
+`Milestones <https://docs.gitlab.com/ee/user/project/milestones/>`_ are based on periods of time and what we want to achieve within those periods of time.
+
+We have seen them used in the same way as `Epics <https://docs.gitlab.com/ee/user/group/epics/index.html#doc-nav/>`_ in other projects (since the Epic feature is only available with GitLab Ultimate) and this does not work. Milestones must be timeline based.
+
+Milestones can overlap, and we can be working towards multiple milestones at any one time. They allow us to group together all sub tasks into an overall aim.
+
+Labels
+~~~~~~
+`Labels <https://docs.gitlab.com/ee/user/project/labels.html/>`_ allow us to filter tickets on gitlab in useful ways. They do complexity and effort as they grow in number and usage, though, so the general approach is to have the minimum possible.
+
+Type Labels
+'''''''''''
+We have:
+
+* Bug
+* Documentation
+* Enhancement
+* Tests
+
+This is useful for filtering different types of issues. We may expand this at some point.
+
+Priority Labels
+'''''''''''''''
+For now, we only have 'High Priority', which indicates an urgent task. We may add more granularity if we get more contributors. 
+
+Status
+'''''
+We have:
+
+* ToDo
+* Doing
+
+These labels are used when structuring tickets on a Board. GitLab issues start life in the 'Backlag' column by default, and we move them into 'ToDo' when they are coming up in the next few weeks. 'Doing' is only for when an item is currently being worked on. These labels don't have to be manually applied, they are applied by GitLab when moving the issue from column to column when using a Board - see below.
+
+Issue Boards
+~~~~~~~~~~~~
+`Boards <https://docs.gitlab.com/ee/user/project/issue_board.html#doc-nav/>`_ allow you to visualise and manage issues in a simple way, and we can create different types of board by filtering labels. For now, we are just utilising Boards in order to be able to see all of the currently in flight items at a glance.
+
+Templates
+~~~~~~~~~
+`Issue templates <https://docs.gitlab.com/ee/user/project/description_templates.html#doc-nav/>`_ help us to receive good quality information in issues.
+
