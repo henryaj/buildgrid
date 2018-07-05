@@ -1,6 +1,6 @@
 Contributing to BuildGrid
 =========================
-Some guidlines for people wanting to contribute.
+Some guidelines for people wanting to contribute. Also please always feel free to speak to us, we're very friendly :-)
 
 Feature Additions
 -----------------
@@ -10,20 +10,23 @@ We welcome contributions in the form of bug fixes or feature additions / enhance
 Any major feature additions should be raised as a proposal on the `Mailing List <https://lists.buildgrid.build/cgi-bin/mailman/listinfo/buildgrid/>`_ to be discussed, and then eventually followed up with an issue here on gitlab. We recommend that you propose the feature in advance of commencing work. We are also on irc, but do not have our own dedicated channel - you can find us on #buildstream on GIMPNet and #bazel on freenode.
 
 The author of any patch is expected to take ownership of that code and is to support it for a reasonable
-timeframe. This means addressing any unforseen side effects and quirks the feature may have introduced.
+time-frame. This means addressing any unforeseen side effects and quirks the feature may have introduced.
 
 Patch Submissions
 -----------------
 
-We will be running `trunk based development <https://trunkbaseddevelopment.com>`_. The idea behind this is that merge requests to the trunk will be small and made often making the review process quicker. If possible,
-it is preferred that merge requests address specific issues.
+We will be running `trunk based development <https://trunkbaseddevelopment.com>`_. The idea behind this is that merge requests to the trunk will be small and made often, thus making the review and merge process as fast as possible. We do not want to end up with a huge backlog of outstanding merge requests. If possible,
+it is preferred that merge requests address specific points and clearly outline what problem they are solving.
 
-Branches must be submitted as merge requests on gitlab and should be associated with an issue report on
-gitlab. Each commit should address a specific issue number in the commit message.
+Branches must be submitted as merge requests on gitlab and should be associated with an issue report on gitlab, whenever possible. If it's a tiny change, we'll accept an MR without it being associated to a gitlab issue, but generally we strongly prefer an issue to be raised in advance. This is so that we can track the work that is currently in progress on the project - please see our Gitlab policy below.
 
-Merge requests that are not yet ready for review must be prefixed with the `WIP:` identifier.
+Each commit should address a specific gitlab issue number in the commit message. This is really important for provenance reasons.
 
-Sbmitted branches should not contain a history of work done.
+Merge requests that are not yet ready for review must be prefixed with the `WIP:` identifier, but if we stick to trunk based development then the 'WIP:' identifier will not stay around for very long on a merge request.
+
+When a merge request is ready for review, please find someone willing to do the review (ideally a maintainer) and assign them the MR on gitlab, leaving a comment asking for their review. 
+
+Submitted branches should not contain a history of work done.
 
 Unit tests should be a separate commit.
 
@@ -101,8 +104,9 @@ BuildGrid policy for use of Gitlab features
 
 We intend to make use of some of gitlab's features in order to structure the activity of the BuildGrid project. In doing so we are trying to achieve the following goals:
 
-* Ensure that we keep it simple and easy to contribute to the project
+* Full transparency of the current WIP items 
 * Provide a view of all current and planned activity which is relatively easy for the viewer to digest
+* Ensure that we keep it simple and easy to contribute to the project
 
 We propose to make use of the following Gitlab features:
 
@@ -115,7 +119,7 @@ Milestones
 ~~~~~~~~~~
 `Milestones <https://docs.gitlab.com/ee/user/project/milestones/>`_ are based on periods of time and what we want to achieve within those periods of time.
 
-We have seen them used in the same way as `Epics <https://docs.gitlab.com/ee/user/group/epics/index.html#doc-nav/>`_ in other projects (since the Epic feature is only available with GitLab Ultimate) and this does not work. Milestones must be timeline based.
+We have seen them used in the same way as `Epics <https://docs.gitlab.com/ee/user/group/epics/index.html#doc-nav/>`_ in other projects (since the Epic feature is only available with GitLab Ultimate) and this does not work. Milestones must be time-line based.
 
 Milestones can overlap, and we can be working towards multiple milestones at any one time. They allow us to group together all sub tasks into an overall aim.
 
@@ -145,7 +149,7 @@ We have:
 * ToDo
 * Doing
 
-These labels are used when structuring tickets on a Board. GitLab issues start life in the 'Backlag' column by default, and we move them into 'ToDo' when they are coming up in the next few weeks. 'Doing' is only for when an item is currently being worked on. These labels don't have to be manually applied, they are applied by GitLab when moving the issue from column to column when using a Board - see below.
+These labels are used when structuring tickets on a Board. GitLab issues start life in the 'Backlog' column by default, and we move them into 'ToDo' when they are coming up in the next few weeks. 'Doing' is only for when an item is currently being worked on. These labels don't have to be manually applied, they are applied by GitLab when moving the issue from column to column when using a Board - see below.
 
 Issue Boards
 ~~~~~~~~~~~~
