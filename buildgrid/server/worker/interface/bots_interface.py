@@ -44,55 +44,70 @@ class BotsInterface(object):
         self._action_queue = PriorityQueue(maxsize = 0)
         self._bots = {}
         self.logger = logging.getLogger(__name__)
-        
+
     def create_bot_session(self, parent, bot_session):
         """ Creates a new bot session. Server should assign a unique
         name to the session. If a bot with the same bot id tries to
         register with the service, the old one should be closed along
         with all its jobs.
         """
-        self.logger.debug("Creating bot session")
 
         # Bot session name, selected by the server
         name = str(uuid.uuid4())
         bot_id = bot_session.bot_id
 
+        self.logger.debug("Creating bot session name={} bot_id={}".format(name, bot_id))
         if bot_id == None:
             raise InvalidArgumentError("bot_id needs to be set by client")
 
         for _name, _bot in list(self._bots.items()):
             if _bot.bot_id == bot_id:
-                self.logger.warning("Bot id {} already exists, closing previous bot session".format(bot_id))
+                self.logger.warning("Bot id {} with already exists (name={}), closing previous bot session ({}).".format(bot_id, name, _name))
                 self._close_bot_session(_name)
 
         bot_session.name = name
         self._bots[name] = bot_session
-        self.logger.info("Created bot session name: {}, with id: {}".format(name, bot_id))
+        self.logger.info("Created bot session name={} with bot_id={}".format(name, bot_id))
         return bot_session
 
     def update_bot_session(self, name, bot_session):
         """ Client updates the server. Any changes in state to the Lease should be
         registered server side. Assigns available leases with work.
         """
-        self.logger.debug("Updating bot session: {}".format(name))
-        try:
+        self.logger.debug("Updating bot session name={}".format(name))
+        if name not in self._bots:
+            self.logger.warn("Update received for {} but not found on server ({}).".format(name,
+                                                                                           bot_session.bot_id))
+            raise InvalidArgumentError("Bot with name={} is not registered on server.".format(name))
+        else:
             leases_server = self._bots[name].leases
-        except KeyError:
-            raise InvalidArgumentError("Bot name does not exist: {}".format(name))
+
+        # if this a zombie bot reporting to its old name then error.
+        if self._bots[name].bot_id != bot_session.bot_id:
+            raise InvalidArgumentError("Bot with name={} was not found with this id".format(name))
+
+        # Generate a list of all the bots that are reporting with this id but
+        # not this name. Per the spec, any bot that is reporting an ID that
+        # does not match the name we have file for them should not be given any
+        # work.
+        for _name, _bot in list(self._bots.items()):
+            if _bot.bot_id == bot_session.bot_id and _name != name:
+                self.logger.warn("Duplicate bot_id provided of {}: this is registered under names {} and {}. Closing session with {}."
+                                 .format(bot_session.bot_id, name, _name, _name))
+                self._close_bot_session(_name)
 
         leases_client = bot_session.leases
 
         if len(leases_client) != len(leases_server):
             self._close_bot_session(name)
             raise OutofSyncError("Number of leases in server and client not same."+\
-                                 "Closing bot session: {}".format(name)+\
+                                 "Closed bot session: {}".format(name)+\
                                  "Client: {}\nServer: {}".format(len(leases_client), len(leases_server)))
 
         leases_client = [self._check_lease(lease) for lease in leases_client]
 
         del bot_session.leases[:]
         bot_session.leases.extend(leases_client)
-
         self._bots[name] = bot_session
         return bot_session
 
@@ -115,7 +130,7 @@ class BotsInterface(object):
 
         if state   == state_enum.Value('LEASE_STATE_UNSPECIFIED'):
             return self._get_pending_action(lease)
-        
+
         elif state == state_enum.Value('PENDING'):
             # Pottentially raise a warning that lease
             # hasn't been accepted?
@@ -125,6 +140,7 @@ class BotsInterface(object):
             return lease
 
         elif state == state_enum.Value('COMPLETED'):
+            self.logger.debug("Got completed work.")
             operation_name = lease.assignment
             self.enqueue_operation(operation_name, 'COMPLETED')
             return self._get_pending_action(lease)
@@ -149,6 +165,16 @@ class BotsInterface(object):
             return lease
         return bots_pb2.Lease()
 
+    def _requeue_lease_if_applicable(self, lease):
+        state = lease.state
+        state_enum = bots_pb2.LeaseState
+        if state == state_enum.Value('PENDING') or \
+           state == state_enum.Value('ACTIVE'):
+            item = namedtuple('ActionQueue', 'operation_name action')
+            operation_name = lease.assignment
+            action = lease.inline_assignment
+            self._action_queue.put((1, item(operation_name, action)))
+
     def _close_bot_session(self, name):
         """ Before removing the session, close any leases and
         requeue with high priority.
@@ -158,16 +184,9 @@ class BotsInterface(object):
         except KeyError:
             raise InvalidArgumentError("Bot name does not exist: {}".format(name))
         self.logger.debug("Attempting to close {} with name: {}".format(bot.bot_id, name))
-        state_enum = bots_pb2.LeaseState
         try:
             for lease in bot.leases:
-                state = lease.state
-                if state == state_enum.Value('PENDING') or \
-                   state == state_enum.Value('ACTIVE'):
-                    item = namedtuple('ActionQueue', 'operation_name action')
-                    operation_name = lease.assignment
-                    action = lease.inline_assignment
-                    self._action_queue.put((1, item(operation_name, action)))
+                self._requeue_lease_if_applicable(lease)
             self.logger.debug("Closing bot session: {}".format(name))
             self._bots.pop(name)
             self.logger.info("Closed bot {} with name: {}".format(bot.bot_id, name))
