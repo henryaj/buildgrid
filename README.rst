@@ -15,7 +15,7 @@ To install::
    pip3 install --user -e .
 
 This will install BuildGrid's python dependencies into your user’s homedir in ~/.local
-and will run BuildGrid directly from the git checkout. It is recommended you asjust
+and will run BuildGrid directly from the git checkout. It is recommended you adjust
 your path with::
 
   export PATH="${PATH}:${HOME}/.local/bin"
