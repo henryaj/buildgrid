@@ -60,10 +60,7 @@ class BotsInterface(object):
         if bot_id == None:
             raise InvalidArgumentError("bot_id needs to be set by client")
 
-        for _name, _bot in list(self._bots.items()):
-            if _bot.bot_id == bot_id:
-                self.logger.warning("Bot id {} with already exists (name={}), closing previous bot session ({}).".format(bot_id, name, _name))
-                self._close_bot_session(_name)
+#        self._check_bot_ids(name, bot_session)
 
         bot_session.name = name
         self._bots[name] = bot_session
@@ -85,16 +82,8 @@ class BotsInterface(object):
         # if this a zombie bot reporting to its old name then error.
         if self._bots[name].bot_id != bot_session.bot_id:
             raise InvalidArgumentError("Bot with name={} was not found with this id".format(name))
-
-        # Generate a list of all the bots that are reporting with this id but
-        # not this name. Per the spec, any bot that is reporting an ID that
-        # does not match the name we have file for them should not be given any
-        # work.
-        for _name, _bot in list(self._bots.items()):
-            if _bot.bot_id == bot_session.bot_id and _name != name:
-                self.logger.warn("Duplicate bot_id provided of {}: this is registered under names {} and {}. Closing session with {}."
-                                 .format(bot_session.bot_id, name, _name, _name))
-                self._close_bot_session(_name)
+        # Close any zombies
+        self._check_bot_ids(name, bot_session)
 
         leases_client = bot_session.leases
 
@@ -120,6 +109,17 @@ class BotsInterface(object):
     def enqueue_operation(self, operation_name, stage):
         item = namedtuple('OperationQueue', 'operation_name stage')
         self.operation_queue.put(item(operation_name, stage))
+
+    def _check_bot_ids(self, name, bot_session):
+        ''' Generate a list of all the bots that are reporting with this id but
+        not this name. Per the spec, any bot that is reporting an ID that
+        does not match the name we have file for them should not be given any
+        work. '''
+        for _name, _bot in list(self._bots.items()):
+            if _bot.bot_id == bot_session.bot_id and _name != name:
+                self.logger.warn("Duplicate bot_id provided of {}: this is registered under names {} and {}. Closing session with {}."
+                                 .format(bot_session.bot_id, name, _name, _name))
+                self._close_bot_session(_name)
 
     def _check_lease(self, lease):
         """ Assigns work to available leases. Any completed leases should notify
