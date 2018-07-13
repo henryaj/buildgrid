@@ -59,6 +59,8 @@ def request(context, number, instance_name):
                                          timeout = None,
                                          do_not_cache = True)
 
+    action.command_digest.hash = 'foo'
+
     request = remote_execution_pb2.ExecuteRequest(instance_name = instance_name,
                                                   action = action,
                                                   skip_cache_lookup = True)
@@ -119,3 +121,4 @@ def _log_operation(context, operation):
     context.logger.info("Name  : {}".format(operation.name))
     context.logger.info("Done  : {}".format(operation.done))
     context.logger.info("Stage : {}\n".format(ExecuteOperationMetadata.Stage.Name(op_meta.stage)))
+    context.logger.info("Key   : {}\n".format(operation.response))

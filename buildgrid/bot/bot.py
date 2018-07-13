@@ -39,7 +39,7 @@ class Bot(object):
     Creates a local BotSession.
     """
 
-    def __init__(self, work, channel, parent, number_of_leases = 3):
+    def __init__(self, work, context, channel, parent, number_of_leases):
         if not inspect.iscoroutinefunction(work):
             raise BotError("work function must be async")
 
@@ -54,7 +54,7 @@ class Bot(object):
                 ## TODO: Leases independently finish
                 ## Allow leases to queue finished work independently instead
                 ## of waiting for all to finish
-                futures = [self._do_work(work, lease) for lease in self._get_work()]
+                futures = [self._do_work(work, context, lease) for lease in self._get_work()]
                 if futures:
                     loop = asyncio.new_event_loop()
                     leases_complete, _ = loop.run_until_complete(asyncio.wait(futures))
@@ -76,11 +76,11 @@ class Bot(object):
     def close_session(self):
         self.logger.warning("Session closing not yet implemented")
 
-    async def _do_work(self, work, lease):
+    async def _do_work(self, work, context, lease):
         """ Work is done here, work function should be asynchronous
         """
         self.logger.info("Work found: {}".format(lease.assignment))
-        lease = await work(lease)
+        lease = await work(context=context, lease=lease)
         lease.state = bots_pb2.LeaseState.Value('COMPLETED')
         self.logger.info("Work complete: {}".format(lease.assignment))
         return lease

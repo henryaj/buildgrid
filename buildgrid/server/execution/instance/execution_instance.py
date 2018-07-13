@@ -26,7 +26,7 @@ import logging
 
 import google.devtools.remoteexecution.v1test.remote_execution_pb2
 
-from google.devtools.remoteexecution.v1test.remote_execution_pb2 import ExecuteOperationMetadata
+from google.devtools.remoteexecution.v1test.remote_execution_pb2 import ExecuteOperationMetadata, ExecuteResponse
 from google.longrunning import operations_pb2_grpc, operations_pb2
 from google.protobuf import any_pb2
 
@@ -104,7 +104,7 @@ class ExecutionInstance(object):
         """
         self.logger.debug("Updating operations")
         while not self._bots_interface.operation_queue.empty():
-            name, stage = self._bots_interface.operation_queue.get()
+            name, stage, result = self._bots_interface.operation_queue.get()
 
             op_any = any_pb2.Any()
             op_meta = ExecuteOperationMetadata()
@@ -116,5 +116,6 @@ class ExecutionInstance(object):
 
             if op_meta.stage == ExecuteOperationMetadata.Stage.Value('COMPLETED'):
                 self._operations[name].done = True
+                self._operations[name].response.CopyFrom(result)
 
             self._operations[name].metadata.CopyFrom(op_any)

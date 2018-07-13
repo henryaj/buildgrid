@@ -106,9 +106,9 @@ class BotsInterface(object):
         action_any.Pack(action)
         self._action_queue.put((priority, item(operation_name, action_any)))
 
-    def enqueue_operation(self, operation_name, stage):
-        item = namedtuple('OperationQueue', 'operation_name stage')
-        self.operation_queue.put(item(operation_name, stage))
+    def enqueue_operation(self, operation_name, stage, result = None):
+        item = namedtuple('OperationQueue', 'operation_name stage result')
+        self.operation_queue.put(item(operation_name, stage, result))
 
     def _check_bot_ids(self, name, bot_session):
         ''' Generate a list of all the bots that are reporting with this id but
@@ -142,10 +142,12 @@ class BotsInterface(object):
         elif state == state_enum.Value('COMPLETED'):
             self.logger.debug("Got completed work.")
             operation_name = lease.assignment
-            self.enqueue_operation(operation_name, 'COMPLETED')
+            operation_result = lease.inline_assignment
+            self.enqueue_operation(operation_name, 'COMPLETED', operation_result)
             return self._get_pending_action(lease)
 
         elif state == state_enum.Value('CANCELLED'):
+            # TODO: Add cancelled message to result
             raise NotImplementedError
 
         else:
@@ -153,11 +155,12 @@ class BotsInterface(object):
 
     def _get_pending_action(self, lease):
         """ If actions are available, populates the lease and
-        informats the execution service, else it returns an
+        informs the execution service, else it returns an
         empty lease.
         """
         if not self._action_queue.empty():
             operation_name, action = self._action_queue.get()[1]
+
             self.enqueue_operation(operation_name, 'EXECUTING')
             lease = bots_pb2.Lease(assignment = operation_name,
                                    inline_assignment = action,

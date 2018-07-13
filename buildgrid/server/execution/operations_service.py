@@ -22,6 +22,8 @@ OperationsService
 """
 
 import grpc
+import logging
+
 from google.longrunning import operations_pb2_grpc, operations_pb2
 
 from ._exceptions import InvalidArgumentError
@@ -30,6 +32,7 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
 
     def __init__(self, instance):
         self._instance = instance
+        self.logger = logging.getLogger(__name__)
 
     def GetOperation(self, request, context):
         try:
