@@ -69,8 +69,7 @@ class Bot(object):
 
     @property
     def bot_session(self):
-        ## Read only
-        ## Shouldn't have to set any of the variables in here
+        ## Read only, shouldn't have to set any of the variables in here
         return self._bot_session
 
     def close_session(self):

@@ -24,7 +24,7 @@ BotsService
 import grpc
 import logging
 
-from .interface.bots_interface import BotsInterface
+from .bots_interface import BotsInterface
 from ._exceptions import InvalidArgumentError, OutofSyncError
 
 from google.devtools.remoteworkers.v1test2 import bots_pb2, bots_pb2_grpc
@@ -44,12 +44,6 @@ class BotsService(bots_pb2_grpc.BotsServicer):
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
             return bots_pb2.BotSession()
-
-        except Exception as e:
-            self.logger.error(e)
-            context.set_details(str(e))
-            context.set_code(grpc.StatusCode.UNKNOWN)
-            return bots_pb2.BotSession()
             
     def UpdateBotSession(self, request, context):
         try:
@@ -66,13 +60,6 @@ class BotsService(bots_pb2_grpc.BotsServicer):
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.DATA_LOSS)
             return bots_pb2.BotSession()
-
-        except Exception as e:
-            self.logger.error(e)
-            context.set_details(str(e))
-            context.set_code(grpc.StatusCode.UNKNOWN)
-            return bots_pb2.BotSession()
-
 
     def PostBotEventTemp(self, request, context):
         self.logger.error(e)

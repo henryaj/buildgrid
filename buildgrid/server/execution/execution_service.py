@@ -36,7 +36,7 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
         self._instance = instance
         self.logger = logging.getLogger(__name__)
 
-    def Execute(self, request, context):        
+    def Execute(self, request, context):
         # Ignore request.instance_name for now
         # Have only one instance
         try:
@@ -54,10 +54,3 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
             return operations_pb2.Operation()
-
-        except Exception as e:
-            self.logger.error(e)
-            context.set_details(str(e))
-            context.set_code(grpc.StatusCode.UNKOWN)
-            return operations_pb2.Operation()
-

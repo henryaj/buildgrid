@@ -4,4 +4,4 @@ from ..._exceptions import BgdError, ErrorDomain
 """
 class InvalidArgumentError(BgdError):
     def __init__(self, message, detail=None, reason=None):
-        super().__init__(message, detail=detail, domain=ErrorDomain.SERVER_EXECUTION, reason=reason)
+        super().__init__(message, detail=detail, domain=ErrorDomain.SERVER, reason=reason)

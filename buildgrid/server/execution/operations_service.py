@@ -44,16 +44,10 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
             return operations_pb2.Operation()
 
     def ListOperations(self, request, context):
-        try:
-            return self._instance.list_operations(request.name,
-                                                  request.filter,
-                                                  request.page_size,
-                                                  request.page_token)
-        except Exception as e:
-            self.logger.error(e)
-            context.set_details(str(e))
-            context.set_code(grpc.StatusCode.UNKNOWN)
-            return operations_pb2.ListOperationsResponse()
+        return self._instance.list_operations(request.name,
+                                              request.filter,
+                                              request.page_size,
+                                              request.page_token)
 
     def DeleteOperation(self, request, context):
         try:
@@ -63,14 +57,9 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
-        except Exception as e:
-            self.logger.error(e)
-            context.set_details(str(e))
-            context.set_code(grpc.StatusCode.UNKNOWN)
-
     def CancelOperation(self, request, context):
         try:
-            return self._instance.delete_operation(request.name)
+            return self._instance.cancel_operation(request.name)
         except NotImplementedError as e:
             self.logger.error(e)
             context.set_details(str(e))

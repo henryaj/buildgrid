@@ -22,9 +22,10 @@ ActionCacheService
 Action Cache currently not implemented.
 """
 
+import logging
 import grpc
 
-from gdev.devtools.remoteexecution.v1test import remote_execution_pb2, remote_execution_pb2_grpc
+from google.devtools.remoteexecution.v1test import remote_execution_pb2, remote_execution_pb2_grpc
 
 class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
 
@@ -33,13 +34,9 @@ class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
         self.logger = logging.getLogger(__name__)
 
     def GetActionResult(self, request, context):
-        self.logger.error(e)
-        context.set_details(str(e))
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         return remote_execution_pb2.ActionResult()
 
     def UpdateActionResult(self, request, context):
-        self.logger.error(e)
-        context.set_details(str(e))
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         return remote_execution_pb2.ActionResult()

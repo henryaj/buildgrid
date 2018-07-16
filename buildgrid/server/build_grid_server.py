@@ -30,33 +30,33 @@ from google.devtools.remoteexecution.v1test import remote_execution_pb2_grpc
 from google.devtools.remoteworkers.v1test2 import bots_pb2_grpc
 from google.longrunning import operations_pb2_grpc
 
-from .. import server
 from .execution.execution_service import ExecutionService
 from .execution.operations_service import OperationsService
-from .execution.instance.execution_instance import ExecutionInstance
+from .execution.execution_instance import ExecutionInstance
+from .scheduler import Scheduler
 from .worker.bots_service import BotsService
-from .worker.interface.bots_interface import BotsInterface
+from .worker.bots_interface import BotsInterface
 
 class BuildGridServer(object):
 
     def __init__(self, port = '50051', max_workers = 10):
         port = '[::]:{0}'.format(port)
-        bots_interface = BotsInterface()
-        server_instance = ExecutionInstance(bots_interface)
+        scheduler = Scheduler()
+        bots_interface = BotsInterface(scheduler)
+        execution_instance = ExecutionInstance(scheduler)
 
         self._server = grpc.server(futures.ThreadPoolExecutor(max_workers))
         self._server.add_insecure_port(port)
 
         bots_pb2_grpc.add_BotsServicer_to_server(BotsService(bots_interface),
                                                  self._server)
-        remote_execution_pb2_grpc.add_ExecutionServicer_to_server(ExecutionService(server_instance),
+        remote_execution_pb2_grpc.add_ExecutionServicer_to_server(ExecutionService(execution_instance),
                                                                   self._server)
-        operations_pb2_grpc.add_OperationsServicer_to_server(OperationsService(server_instance),
-                                                        self._server)
+        operations_pb2_grpc.add_OperationsServicer_to_server(OperationsService(execution_instance),
+                                                             self._server)
 
     async def start(self):
         self._server.start()
 
     async def stop(self):
         self._server.stop(0)
-

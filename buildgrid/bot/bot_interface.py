@@ -48,11 +48,11 @@ class BotInterface(object):
             self.logger.error(e)
             raise BotError(e)
 
-    def update_bot_session(self, bot_session):
+    def update_bot_session(self, bot_session, update_mask = None):
         try:
             request = bots_pb2.UpdateBotSessionRequest(name = bot_session.name,
                                                        bot_session = bot_session,
-                                                       update_mask = None) ## TODO: add mask
+                                                       update_mask = update_mask)
             return self._stub.UpdateBotSession(request)
 
         except Exception as e:
