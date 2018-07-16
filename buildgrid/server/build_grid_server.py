@@ -26,10 +26,14 @@ import time
 import grpc
 from concurrent import futures
 
+from google.bytestream import bytestream_pb2_grpc
 from google.devtools.remoteexecution.v1test import remote_execution_pb2_grpc
 from google.devtools.remoteworkers.v1test2 import bots_pb2_grpc
 from google.longrunning import operations_pb2_grpc
 
+from .cas.bytestream_service import ByteStreamService
+from .cas.content_addressable_storage_service import ContentAddressableStorageService
+from .cas.storage.lru_memory_cache import LRUMemoryCache
 from .execution.execution_service import ExecutionService
 from .execution.operations_service import OperationsService
 from .execution.execution_instance import ExecutionInstance
@@ -39,11 +43,13 @@ from .worker.bots_interface import BotsInterface
 
 class BuildGridServer(object):
 
-    def __init__(self, port = '50051', max_workers = 10):
+    def __init__(self, port = '50051', max_workers = 10, cas_storage = None):
         port = '[::]:{0}'.format(port)
         scheduler = Scheduler()
         bots_interface = BotsInterface(scheduler)
         execution_instance = ExecutionInstance(scheduler)
+        if cas_storage is None:
+            cas_storage = LRUMemoryCache(512 * 1024 * 1024) # 512 MB
 
         self._server = grpc.server(futures.ThreadPoolExecutor(max_workers))
         self._server.add_insecure_port(port)
@@ -52,7 +58,11 @@ class BuildGridServer(object):
                                                  self._server)
         remote_execution_pb2_grpc.add_ExecutionServicer_to_server(ExecutionService(execution_instance),
                                                                   self._server)
-        operations_pb2_grpc.add_OperationsServicer_to_server(OperationsService(execution_instance),
+        operations_pb2_grpc.add_OperationsServicer_to_server(OperationsService(excecution_instance),
+                                                             self._server)
+        remote_execution_pb2_grpc.add_ContentAddressableStorageServicer_to_server(ContentAddressableStorageService(cas_storage),
+                                                                                  self._server)
+        bytestream_pb2_grpc.add_ByteStreamServicer_to_server(ByteStreamService(cas_storage),
                                                              self._server)
 
     async def start(self):

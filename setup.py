@@ -44,6 +44,15 @@ setup(
         'grpcio',
         'Click',
         ],
+    extras_require={
+        'cas-s3': ['boto3', 'botocore'],
+        ],
+    tests_require=[
+        'pytest',
+        'boto3',
+        'botocore',
+        'moto',
+        ],
     entry_points='''
     [console_scripts]
     bgd=app:cli
