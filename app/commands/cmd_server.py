@@ -28,6 +28,7 @@ import click
 import logging
 
 from buildgrid.server import build_grid_server
+from buildgrid.server.cas.storage.lru_memory_cache import LRUMemoryCache
 
 from ..cli import pass_context
 
@@ -44,7 +45,10 @@ def start(context, port):
     context.logger.info("Starting on port {}".format(port))
 
     loop = asyncio.get_event_loop()
-    server = build_grid_server.BuildGridServer(port)
+
+    # TODO Allow user to configure this with command-line arguments
+    cas_storage = LRUMemoryCache(512 * 1024 * 1024)
+    server = build_grid_server.BuildGridServer(port, cas_storage=cas_storage)
     try:
         asyncio.ensure_future(server.start())
         loop.run_forever()
