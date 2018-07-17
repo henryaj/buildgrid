@@ -70,7 +70,7 @@ def raise_mock_exception(*args, **kwargs):
     raise MockException()
 
 
-test_strings = [b"", b"hij"] #, b"testing!" * 1000000]
+test_strings = [b"", b"hij", b"testing!" * 1000000]
 instances = ["", "test_inst"]
 
 
