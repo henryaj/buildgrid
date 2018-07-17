@@ -3,15 +3,11 @@ Temp Demo Instructions
 
 A quick guide to getting remote execution working with BuildStream. Please change URL and certifcates / keys to your own.
 
-Downloaded and built::
+Downloaded and build::
 
   https://gitlab.com/BuildStream/buildbox
 
 Copy build to bin/.
-
-Checkout branch::
-
-  https://gitlab.com/BuildGrid/buildgrid/tree/finn/fuse
 
 Checkout branch::
 
