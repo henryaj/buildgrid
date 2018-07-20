@@ -46,7 +46,7 @@ class BotsInterface():
 
         bot_id = bot_session.bot_id
 
-        if bot_id is None:
+        if bot_id == "":
             raise InvalidArgumentError("bot_id needs to be set by client")
 
         self._check_bot_ids(bot_id)
@@ -74,10 +74,11 @@ class BotsInterface():
             leases_server = bot.leases
 
         # Close any zombies
-        if not self._check_bot_ids(name, bot_session): return bot_session
+        if not self._check_bot_ids(name, bot_session):
+            raise InvalidArgumentError("Bot with name={} has incorrect bot_id={}.".format(name,
+                                                                                          bot_session.bot_id))
 
         leases_client = bot_session.leases
-
         if len(leases_client) != len(leases_server):
             self._close_bot_session(name)
             raise OutofSyncError("Number of leases in server and client not same."+\

@@ -136,13 +136,13 @@ class Bot(object):
         may be put in quarantine.
         """
         bot_id = '{}.{}'.format(parent, platform.node())
-        
+
         leases = [bots_pb2.Lease() for x in range(number_of_leases)]
-        
+
         bot_session = bots_pb2.BotSession(worker = worker,
-                                   status = bots_pb2.BotStatus.Value('OK'),
-                                   leases = leases,
-                                   bot_id = bot_id)
+                                          status = bots_pb2.BotStatus.Value('OK'),
+                                          leases = leases,
+                                          bot_id = bot_id)
         self._bot_session = self.interface.create_bot_session(parent, bot_session)
         self.logger.info("Name: {}, Id: {}".format(self._bot_session.name,
                                                       self._bot_session.bot_id))

@@ -30,7 +30,7 @@ from ._exceptions import InvalidArgumentError, OutofSyncError
 from google.devtools.remoteworkers.v1test2 import bots_pb2, bots_pb2_grpc
 
 class BotsService(bots_pb2_grpc.BotsServicer):
-    
+
     def __init__(self, instance):
         self._instance = instance
         self.logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ class BotsService(bots_pb2_grpc.BotsServicer):
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
             return bots_pb2.BotSession()
-            
+
     def UpdateBotSession(self, request, context):
         try:
             return self._instance.update_bot_session(request.name,
@@ -54,7 +54,7 @@ class BotsService(bots_pb2_grpc.BotsServicer):
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
             return bots_pb2.BotSession()
-        
+
         except OutofSyncError as e:
             self.logger.error(e)
             context.set_details(str(e))
@@ -62,6 +62,4 @@ class BotsService(bots_pb2_grpc.BotsServicer):
             return bots_pb2.BotSession()
 
     def PostBotEventTemp(self, request, context):
-        self.logger.error(e)
-        context.set_details(str(e))
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
