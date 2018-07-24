@@ -66,20 +66,19 @@ def test_retry_job_fail(instance):
 
     assert mock_job.execute_stage is ExecuteStage.COMPLETED
     assert mock_job.n_tries is n_tries
-    mock_job.cancel.assert_called_once()
     instance.jobs.__setitem__.assert_called_once_with(name, mock_job)
 
-def test_get_job(instance):
+def test_create_job(instance):
     name = 'eldon'
 
     mock_job =  mock.MagicMock()
     mock_job.name = name
     instance.queue.popleft.return_value = mock_job
+    instance.queue.__len__.return_value = 1
 
-    assert instance.get_job() is mock_job
+    assert instance.create_job() is mock_job
 
     assert mock_job.execute_stage is ExecuteStage.EXECUTING
-    assert mock_job.lease_state is LeaseState.PENDING
     instance.jobs.__setitem__.assert_called_once_with(name, mock_job)
 
 def test_job_complete(instance):
@@ -97,6 +96,72 @@ def test_job_complete(instance):
     instance.jobs.__getitem__.assert_called_once_with(name)
     instance.jobs.__setitem__.assert_called_once_with(name, mock_job)
 
+@pytest.mark.parametrize("state", [LeaseState.LEASE_STATE_UNSPECIFIED,
+                                   LeaseState.PENDING,
+                                   LeaseState.ACTIVE,
+                                   LeaseState.COMPLETED,
+                                   mock.Mock(value = 100)
+                                   ])
+@mock.patch.object(scheduler.Scheduler,'job_complete', autospec = True)
+@mock.patch.object(scheduler.Scheduler,'create_job', autospec = True)
+def test_update_lease_state_with_work(mock_create_job, mock_job_complete, state, instance):
+    name = 'orion'
+
+    mock_lease = mock.Mock()
+    mock_lease.assignment = name
+    mock_lease.state = state.value
+
+    if state == LeaseState.LEASE_STATE_UNSPECIFIED or \
+       state == LeaseState.COMPLETED:
+        assert instance.update_lease(mock_lease) is mock_create_job.return_value.lease
+        mock_create_job.assert_called_once_with(instance)
+        mock_create_job.return_value.create_lease.assert_called_once_with()
+        instance.jobs.__setitem__.assert_called_once_with(name, mock_create_job.return_value)
+
+    elif state == LeaseState.PENDING or \
+         state == LeaseState.ACTIVE or \
+         state == LeaseState.CANCELLED:
+        assert instance.update_lease(mock_lease) is mock_lease
+
+    else:
+        with pytest.raises(Exception):
+            instance.update_lease(mock_lease)
+
+    instance.jobs.get.assert_called_once_with(name)
+
+@pytest.mark.parametrize("state", [LeaseState.LEASE_STATE_UNSPECIFIED,
+                                   LeaseState.PENDING,
+                                   LeaseState.ACTIVE,
+                                   LeaseState.COMPLETED,
+                                   mock.Mock(value = 100)
+                                   ])
+@mock.patch.object(scheduler.Scheduler,'job_complete', autospec = True)
+@mock.patch.object(scheduler.Scheduler,'create_job', autospec = True)
+def test_update_lease_state_without_work(mock_create_job, mock_job_complete, state, instance):
+    name = 'orion'
+
+    mock_lease = mock.Mock()
+    mock_lease.assignment = name
+    mock_lease.state = state.value
+
+    mock_create_job.return_value = None
+
+    if state == LeaseState.LEASE_STATE_UNSPECIFIED or \
+       state == LeaseState.COMPLETED:
+        assert instance.update_lease(mock_lease) is mock_lease
+        mock_create_job.assert_called_once_with(instance)
+
+    elif state == LeaseState.PENDING or \
+         state == LeaseState.ACTIVE or \
+         state == LeaseState.CANCELLED:
+        assert instance.update_lease(mock_lease) is mock_lease
+
+    else:
+        with pytest.raises(Exception):
+            instance.update_lease(mock_lease)
+
+    instance.jobs.get.assert_called_once_with(name)
+
 @mock.patch.object(scheduler, 'operations_pb2', autospec = True)
 def test_get_operations(mock_pb2, instance):
     value = 'eldon'
@@ -112,4 +177,4 @@ def test_get_operations(mock_pb2, instance):
     assert instance.get_operations() is response.return_value
     response_value.get_operation.assert_called_once()
     response.return_value.operations.extend.assert_called_once_with([value])
-    response.assert_called_once()
+    response.assert_called_once_with()

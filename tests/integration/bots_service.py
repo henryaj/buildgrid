@@ -131,24 +131,6 @@ def test_update_leases(number_of_leases, bot_session, context, instance):
     assert len(response.leases) == len(bot.leases)
     assert bot == response
 
-@pytest.mark.parametrize("number_of_leases", [3])
-def test_update_leases_out_of_sync(number_of_leases, bot_session, context, instance):
-    leases = [bots_pb2.Lease() for x in range(number_of_leases)]
-    bot_session.leases.extend(leases)
-    request = bots_pb2.CreateBotSessionRequest(parent='',
-                                               bot_session=bot_session)
-    # Simulated the severed binding between client and server
-    bot = copy.deepcopy(instance.CreateBotSession(request, context))
-    bot.leases.extend(leases)
-
-    request = bots_pb2.UpdateBotSessionRequest(name=bot.name,
-                                               bot_session=bot)
-
-    response = instance.UpdateBotSession(request, context)
-
-    assert isinstance(response, bots_pb2.BotSession)
-    context.set_code.assert_called_once_with(grpc.StatusCode.DATA_LOSS)
-
 def test_update_leases_with_work(bot_session, context, instance):
     leases = [bots_pb2.Lease() for x in range(2)]
     bot_session.leases.extend(leases)

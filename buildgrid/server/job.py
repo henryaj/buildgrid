@@ -55,7 +55,7 @@ class Job():
         self.action = action
         self.bot_status = BotStatus.BOT_STATUS_UNSPECIFIED
         self.execute_stage = ExecuteStage.UNKNOWN
-        self.lease_state = LeaseState.LEASE_STATE_UNSPECIFIED
+        self.lease = None
         self.logger = logging.getLogger(__name__)
         self.name = str(uuid.uuid4())
         self.result = None
@@ -78,17 +78,14 @@ class Job():
 
         return meta
 
-    def get_lease(self):
+    def create_lease(self):
         action = self._pack_any(self.action)
 
         lease = bots_pb2.Lease(assignment = self.name,
                                inline_assignment = action,
-                               state = self.lease_state.value)
+                               state = LeaseState.PENDING.value)
+        self.lease = lease
         return lease
-
-    def cancel(self):
-        # TODO: Handle cancelled jobs
-        pass
 
     def get_operations(self):
         return operations_pb2.ListOperationsResponse(operations = [self.get_operation()])

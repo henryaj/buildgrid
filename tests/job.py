@@ -65,24 +65,20 @@ def test_get_operation_meta(mock_meta, instance):
 
 @mock.patch.object(job.bots_pb2, 'Lease', autospec = True)
 @mock.patch.object(job.Job,'_pack_any', autospec = True)
-def test_get_lease(mock_pack, mock_lease, instance):
+def test_create_lease(mock_pack, mock_lease, instance):
     action='harry'
     name = 'bryant'
-    lease_state = LeaseState.COMPLETED
+    lease_state = LeaseState.PENDING
 
     instance.action = action
     instance.name = name
     instance.lease_state = lease_state
 
-    assert instance.get_lease() is mock_lease.return_value
+    assert instance.create_lease() is mock_lease.return_value
     mock_pack.assert_called_once_with(instance, action)
     mock_lease.assert_called_once_with(assignment=name,
                                        inline_assignment=mock_pack.return_value,
                                        state=lease_state.value)
-
-def test_cancel():
-    # TODO: Implement cancel
-    pass
 
 @mock.patch.object(job.Job, 'get_operation', autospec = True)
 @mock.patch.object(job.operations_pb2,'ListOperationsResponse', autospec = True)
