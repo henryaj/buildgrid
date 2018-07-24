@@ -1,0 +1,20 @@
+[run]
+concurrency = multiprocessing
+include =
+  */buildgrid/*
+
+omit =
+  # Omit profiling helper module
+  # Omit generated code
+  */buildgrid/google/*
+  */.eggs/*
+
+[report]
+show_missing = True
+precision = 2
+
+[paths]
+source =
+    buildgrid/
+    */site-packages/buildgrid/
+    */buildgrid/buildgrid/

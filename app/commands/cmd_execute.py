@@ -25,6 +25,8 @@ Request work to be executed and monitor status of jobs.
 import click
 import grpc
 import logging
+import sys
+import time
 
 from ..cli import pass_context
 
@@ -35,19 +37,21 @@ from google.protobuf import any_pb2
 
 @click.group(short_help = "Simple execute client")
 @click.option('--port', default='50051')
+@click.option('--host', default='localhost')
 @pass_context
-def cli(context, port):
+def cli(context, host, port):
     context.logger = logging.getLogger(__name__)
     context.logger.info("Starting on port {}".format(port))
 
-    context.channel = grpc.insecure_channel('localhost:{}'.format(port))
+    context.channel = grpc.insecure_channel('{}:{}'.format(host, port))
     context.port = port
 
 @cli.command('request', short_help='Send a dummy action')
 @click.option('--number', default=1)
 @click.option('--instance-name', default='testing')
+@click.option('--wait-for-completion', is_flag=True)
 @pass_context
-def request(context, number, instance_name):
+def request(context, number, instance_name, wait_for_completion):
     context.logger.info("Sending execution request...\n")
     stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
 
@@ -64,14 +68,23 @@ def request(context, number, instance_name):
     request = remote_execution_pb2.ExecuteRequest(instance_name = instance_name,
                                                   action = action,
                                                   skip_cache_lookup = True)
-    try:
-        for i in range(0, number):
-            response = stub.Execute(request)
-            context.logger.info("Response name: {}".format(response.name))
+    for i in range(0, number):
+        response = stub.Execute(request)
+        context.logger.info("Response name: {}".format(response.name))
 
-    except Exception as e:
-        context.logger.error(e)
-        return
+    try:
+        while wait_for_completion:
+            request = operations_pb2.ListOperationsRequest()
+            context.logger.debug('Querying to see if jobs are complete.')
+            stub = operations_pb2_grpc.OperationsStub(context.channel)
+            response = stub.ListOperations(request)
+            if all(operation.done for operation in response.operations):
+                context.logger.info('Jobs complete')
+                break
+            time.sleep(1)
+
+    except KeyboardInterrupt:
+        pass
 
 @cli.command('status', short_help='Get the status of an operation')
 @click.argument('operation-name')
@@ -82,13 +95,8 @@ def operation_status(context, operation_name):
 
     request = operations_pb2.GetOperationRequest(name=operation_name)
 
-    try:
-        response = stub.GetOperation(request)
-        _log_operation(context, response)
-
-    except Exception as e:
-        context.logger.error(e)
-        return
+    response = stub.GetOperation(request)
+    _log_operation(context, response)
 
 @cli.command('list', short_help='List operations')
 @pass_context
@@ -98,12 +106,7 @@ def list_operations(context):
 
     request = operations_pb2.ListOperationsRequest()
 
-    try:
-        response = stub.ListOperations(request)
-
-    except Exception as e:
-        context.logger.error(e)
-        return
+    response = stub.ListOperations(request)
 
     if len(response.operations) < 1:
         context.logger.warning("No operations to list")

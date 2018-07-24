@@ -76,10 +76,6 @@ def dummy(context):
     except KeyboardInterrupt:
         pass
 
-    except Exception as e:
-        context.logger.error(e)
-        return
-
 @cli.command('buildbox', short_help='Create a bot session with busybox')
 @click.option('--fuse-dir', show_default = True, default=str(PurePath(Path.home(), 'fuse')))
 @click.option('--local-cas', show_default = True, default=str(PurePath(Path.home(), 'cas')))
@@ -114,10 +110,6 @@ def _work_buildbox(context, remote, port, server_cert, client_key, client_cert, 
     except KeyboardInterrupt:
         pass
 
-    except Exception as e:
-        context.logger.error(e)
-        return
-
 async def _work_dummy(context, lease):
     await asyncio.sleep(random.randint(1,5))
     return lease
@@ -142,51 +134,46 @@ async def _work_buildbox(context, lease):
 
     stub = bytestream_pb2_grpc.ByteStreamStub(channel)
 
-    try:
-        remote_command = _fetch_command(context.local_cas, stub, action.command_digest)
-        environment = dict((x.name, x.value) for x in remote_command.environment_variables)
-        logger.debug("command hash: {}".format(action.command_digest.hash))
-        logger.debug("vdir hash: {}".format(action.input_root_digest.hash))
-        logger.debug("\n{}".format(' '.join(remote_command.arguments)))
+    remote_command = _fetch_command(context.local_cas, stub, action.command_digest)
+    environment = dict((x.name, x.value) for x in remote_command.environment_variables)
+    logger.debug("command hash: {}".format(action.command_digest.hash))
+    logger.debug("vdir hash: {}".format(action.input_root_digest.hash))
+    logger.debug("\n{}".format(' '.join(remote_command.arguments)))
 
-        command = ['buildbox',
-                   '--remote={}'.format('https://{}:{}'.format(context.remote, context.port)),
-                   '--server-cert={}'.format(context.server_cert),
-                   '--client-key={}'.format(context.client_key),
-                   '--client-cert={}'.format(context.client_cert),
-                   '--local={}'.format(context.local_cas),
-                   '--chdir={}'.format(environment['PWD']),
-                   context.fuse_dir,
-                   ]
+    command = ['buildbox',
+               '--remote={}'.format('https://{}:{}'.format(context.remote, context.port)),
+               '--server-cert={}'.format(context.server_cert),
+               '--client-key={}'.format(context.client_key),
+               '--client-cert={}'.format(context.client_cert),
+               '--local={}'.format(context.local_cas),
+               '--chdir={}'.format(environment['PWD']),
+               context.fuse_dir]
 
-        command.extend(remote_command.arguments)
+    command.extend(remote_command.arguments)
 
-        logger.debug(' '.join(command))
-        logger.debug("Input root digest:\n{}".format(action.input_root_digest))
-        logger.info("Launching process")
+    logger.debug(' '.join(command))
+    logger.debug("Input root digest:\n{}".format(action.input_root_digest))
+    logger.info("Launching process")
 
-        proc = subprocess.Popen(command,
-                                stdin=subprocess.PIPE,
-                                stdout=subprocess.PIPE)
-        std_send = action.input_root_digest.SerializeToString()
-        std_out, std_error = proc.communicate(std_send)
+    proc = subprocess.Popen(command,
+                            stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE)
+    std_send = action.input_root_digest.SerializeToString()
+    std_out, std_error = proc.communicate(std_send)
 
-        output_root_digest = remote_execution_pb2.Digest()
-        output_root_digest.ParseFromString(std_out)
-        logger.debug("Output root digest: {}".format(output_root_digest))
+    output_root_digest = remote_execution_pb2.Digest()
+    output_root_digest.ParseFromString(std_out)
+    logger.debug("Output root digest: {}".format(output_root_digest))
 
-        output_file = remote_execution_pb2.OutputDirectory(tree_digest = output_root_digest)
+    output_file = remote_execution_pb2.OutputDirectory(tree_digest = output_root_digest)
 
-        action_result = remote_execution_pb2.ActionResult()
-        action_result.output_directories.extend([output_file])
+    action_result = remote_execution_pb2.ActionResult()
+    action_result.output_directories.extend([output_file])
 
-        action_result_any = any_pb2.Any()
-        action_result_any.Pack(action_result)
+    action_result_any = any_pb2.Any()
+    action_result_any.Pack(action_result)
 
-        lease.inline_assignment.CopyFrom(action_result_any)
-
-    except Exception as e:
-        raise Exception(e)
+    lease.inline_assignment.CopyFrom(action_result_any)
 
     return lease
 
@@ -210,8 +197,5 @@ def _fetch_command(casdir, remote, digest):
         return remote_command
 
 def _file_read(file_path):
-    try:
-        with open(file_path, 'rb') as f:
-            return f.read()
-    except Exception as e:
-        raise Exception("Error reading: {}. Error: {}".format(file_path, e))
+    with open(file_path, 'rb') as f:
+        return f.read()

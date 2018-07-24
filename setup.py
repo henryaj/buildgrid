@@ -43,18 +43,22 @@ setup(
         'protobuf',
         'grpcio',
         'Click',
-        ],
-    extras_require={
-        'cas-s3': ['boto3', 'botocore'],
-        ],
-    tests_require=[
-        'pytest',
         'boto3',
         'botocore',
-        'moto',
-        ],
+    ],
     entry_points='''
     [console_scripts]
     bgd=app:cli
     ''',
+    setup_requires=['pytest-runner'],
+    tests_require=['pep8',
+                   'boto3',
+                   'botocore',
+                   'moto',
+                   'coverage == 4.4.0',
+                   'pytest-cov >= 2.5.0',
+                   'pytest-pep8',
+                   'pytest-pylint',
+                   'pytest >= 3.1.0',
+                   'pylint >= 1.8 , < 2'],
 )

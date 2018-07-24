@@ -1,0 +1,47 @@
+image: buildstream/buildstream-fedora:master-81-06ae434
+
+variables:
+  BGD: bgd --verbose
+
+stages:
+  - test
+  - post
+
+before_script:
+  - export PATH=~/.local/bin:${PATH}
+  - pip3 install --user -e .
+
+tests-fedora:
+  stage: test
+  variables:
+    PYTEST_ADDOPTS: "--color=yes"
+  script:
+    - yum -y install clang libffi-devel openssl-devel python3-devel
+    - python3 setup.py test
+    - mkdir -p coverage/
+    - cp .coverage.* coverage/coverage."${CI_JOB_NAME}"
+  artifacts:
+    paths:
+    - coverage/
+
+
+tests-dummy-job-fedora:
+  stage: test
+  script:
+    - ${BGD} server start &
+    - sleep 1 # Allow server to boot
+    - ${BGD} bot --host=0.0.0.0 dummy &
+    - ${BGD} execute --host=0.0.0.0 request --wait-for-completion
+
+coverage:
+  stage: post
+  coverage: '/TOTAL +\d+ +\d+ +(\d+\.\d+)%/'
+  script:
+    - mkdir report
+    - cd report
+    - cp ../coverage/coverage.* .
+    - ls coverage.*
+    - coverage combine --rcfile=../.coveragerc -a coverage.*
+    - coverage report --rcfile=../.coveragerc -m
+  dependencies:
+  - tests-fedora
