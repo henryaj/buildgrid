@@ -70,13 +70,31 @@ def raise_mock_exception(*args, **kwargs):
     raise MockException()
 
 
-test_strings = [b"", b"hij", b"testing!" * 1000000]
+test_strings = [b"", b"hij"]
 instances = ["", "test_inst"]
 
 
 @pytest.mark.parametrize("data_to_read", test_strings)
 @pytest.mark.parametrize("instance", instances)
 def test_bytestream_read(data_to_read, instance):
+    storage = SimpleStorage([b"abc", b"defg", data_to_read])
+    servicer = ByteStreamService(storage)
+
+    request = bytestream_pb2.ReadRequest()
+    if instance != "":
+        request.resource_name = instance + "/"
+    request.resource_name += f"blobs/{HASH(data_to_read).hexdigest()}/{len(data_to_read)}"
+
+    data = b""
+    for response in servicer.Read(request, None):
+        data += response.data
+    assert data == data_to_read
+
+
+@pytest.mark.parametrize("instance", instances)
+def test_bytestream_read_many(instance):
+    data_to_read = b"testing" * 10000
+
     storage = SimpleStorage([b"abc", b"defg", data_to_read])
     servicer = ByteStreamService(storage)
 
