@@ -66,9 +66,11 @@ class Job():
     def get_operation(self):
         self._operation.metadata.CopyFrom(self._pack_any(self.get_operation_meta()))
 
-        if self.execute_stage == ExecuteStage.COMPLETED:
+        if self.result is not None:
             self._operation.done = True
-            self._operation.response.CopyFrom(self._pack_any(self.result))
+            response = ExecuteResponse()
+            self.result.Unpack(response.result)
+            self._operation.response.CopyFrom(self._pack_any(response))
 
         return self._operation
 

@@ -64,13 +64,7 @@ def test_execute(skip_cache_lookup, instance, context):
         context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
     else:
         metadata = remote_execution_pb2.ExecuteOperationMetadata()
-        _unpack_any(result.metadata, metadata)
+        result.metadata.Unpack(metadata)
         assert metadata.stage == job.ExecuteStage.QUEUED.value
         assert uuid.UUID(result.name, version=4)
         assert result.done is False
-
-def _unpack_any(unpack_from, to):
-    any = any_pb2.Any()
-    any.CopyFrom(unpack_from)
-    any.Unpack(to)
-    return to

@@ -116,12 +116,10 @@ def list_operations(context):
         _log_operation(context, op)
 
 def _log_operation(context, operation):
-    op_any = any_pb2.Any()
     op_meta = ExecuteOperationMetadata()
-    op_any.CopyFrom(operation.metadata)
-    op_any.Unpack(op_meta)
+    operation.metadata.Unpack(op_meta)
 
     context.logger.info("Name  : {}".format(operation.name))
     context.logger.info("Done  : {}".format(operation.done))
-    context.logger.info("Stage : {}\n".format(ExecuteOperationMetadata.Stage.Name(op_meta.stage)))
-    context.logger.info("Key   : {}\n".format(operation.response))
+    context.logger.info("Stage : {}".format(ExecuteOperationMetadata.Stage.Name(op_meta.stage)))
+    context.logger.info("Key   : {}".format(operation.response))

@@ -24,9 +24,10 @@ from grpc._server import _Context
 from google.devtools.remoteexecution.v1test import remote_execution_pb2
 from google.longrunning import operations_pb2
 
-from buildgrid.server import scheduler
+from buildgrid.server import scheduler, job
 from buildgrid.server.execution._exceptions import InvalidArgumentError
 from buildgrid.server.execution import execution_instance, operations_service
+from google.protobuf import any_pb2
 
 # Can mock this
 @pytest.fixture
@@ -73,6 +74,39 @@ def test_get_operation_fail(instance, context):
 
     context.set_code.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT)
 
+def test_list_operations(instance, execute_request, context):
+    response_execute = instance._instance.execute(execute_request.action,
+                                                  execute_request.skip_cache_lookup)
+
+    request = operations_pb2.ListOperationsRequest()
+    response = instance.ListOperations(request, context)
+
+    assert response.operations[0].name == response_execute.name
+
+def test_list_operations_with_result(instance, execute_request, context):
+    response_execute = instance._instance.execute(execute_request.action,
+                                                  execute_request.skip_cache_lookup)
+
+    action_result = remote_execution_pb2.ActionResult()
+    output_file = remote_execution_pb2.OutputFile(path = 'unicorn')
+    action_result.output_files.extend([output_file])
+    instance._instance._scheduler.jobs[response_execute.name].result = _pack_any(action_result)
+
+    request = operations_pb2.ListOperationsRequest()
+    response = instance.ListOperations(request, context)
+
+    assert response.operations[0].name == response_execute.name
+    execute_response = remote_execution_pb2.ExecuteResponse()
+    response.operations[0].response.Unpack(execute_response)
+    assert execute_response.result == action_result
+
+def test_list_operations_empty(instance, context):
+    request = operations_pb2.ListOperationsRequest()
+
+    response = instance.ListOperations(request, context)
+
+    assert len(response.operations) is 0
+
 # Send execution off, delete, try to find operation should fail
 def test_delete_operation(instance, execute_request, context):
     response_execute = instance._instance.execute(execute_request.action,
@@ -97,3 +131,8 @@ def test_cancel_operation(instance, context):
     instance.CancelOperation(request, context)
 
     context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
+
+def _pack_any(pack):
+    any = any_pb2.Any()
+    any.Pack(pack)
+    return any
