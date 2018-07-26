@@ -83,7 +83,7 @@ def test_bytestream_read(data_to_read, instance):
     request = bytestream_pb2.ReadRequest()
     if instance != "":
         request.resource_name = instance + "/"
-    request.resource_name += f"blobs/{HASH(data_to_read).hexdigest()}/{len(data_to_read)}"
+    request.resource_name += "blobs/{}/{}".format(HASH(data_to_read).hexdigest(), len(data_to_read))
 
     data = b""
     for response in servicer.Read(request, None):
@@ -101,7 +101,7 @@ def test_bytestream_read_many(instance):
     request = bytestream_pb2.ReadRequest()
     if instance != "":
         request.resource_name = instance + "/"
-    request.resource_name += f"blobs/{HASH(data_to_read).hexdigest()}/{len(data_to_read)}"
+    request.resource_name += "blobs/{}/{}".format(HASH(data_to_read).hexdigest(), len(data_to_read))
 
     data = b""
     for response in servicer.Read(request, None):
@@ -119,7 +119,7 @@ def test_bytestream_write(instance, extra_data):
     if instance != "":
         resource_name = instance + "/"
     hash_ = HASH(b'abcdef').hexdigest()
-    resource_name += f"uploads/UUID-HERE/blobs/{hash_}/6"
+    resource_name += "uploads/UUID-HERE/blobs/{}/6".format(hash_)
     resource_name += extra_data
     requests = [
         bytestream_pb2.WriteRequest(resource_name=resource_name, data=b'abc'),
@@ -139,7 +139,7 @@ def test_bytestream_write_rejects_wrong_hash():
 
     data = b'some data'
     wrong_hash = HASH(b'incorrect').hexdigest()
-    resource_name = f"uploads/UUID-HERE/blobs/{wrong_hash}/9"
+    resource_name = "uploads/UUID-HERE/blobs/{}/9".format(wrong_hash)
     requests = [
         bytestream_pb2.WriteRequest(resource_name=resource_name, data=data, finish_write=True)
     ]

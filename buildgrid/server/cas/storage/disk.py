@@ -32,14 +32,14 @@ class DiskStorage(StorageABC):
 
     def __init__(self, path):
         self._path = pathlib.Path(path)
-        os.makedirs(self._path / "temp", exist_ok=True)
+        os.makedirs(str(self._path / "temp"), exist_ok=True)
 
     def has_blob(self, digest):
         return (self._path / (digest.hash + "_" + str(digest.size_bytes))).exists()
 
     def get_blob(self, digest):
         try:
-            return open(self._path / (digest.hash + "_" + str(digest.size_bytes)), 'rb')
+            return (self._path / (digest.hash + "_" + str(digest.size_bytes))).open('rb')
         except FileNotFoundError:
             return None
 
@@ -49,7 +49,7 @@ class DiskStorage(StorageABC):
     def commit_write(self, digest, write_session):
         # Atomically move the temporary file into place.
         path = self._path / (digest.hash + "_" + str(digest.size_bytes))
-        os.replace(write_session.name, path)
+        os.replace(write_session.name, str(path))
         try:
             write_session.close()
         except FileNotFoundError:
