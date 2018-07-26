@@ -45,3 +45,17 @@ coverage:
     - coverage report --rcfile=../.coveragerc -m
   dependencies:
   - tests-fedora
+
+# Deploy, only for merges which land on master branch.
+#
+pages:
+  stage: post
+  dependencies:
+  - tests-fedora
+  script:
+  - mv coverage/ public/
+  artifacts:
+    paths:
+    - public/
+  only:
+  - master
