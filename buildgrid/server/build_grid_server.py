@@ -33,6 +33,7 @@ from buildgrid._protos.google.longrunning import operations_pb2_grpc
 
 from .cas.bytestream_service import ByteStreamService
 from .cas.content_addressable_storage_service import ContentAddressableStorageService
+from .execution.action_cache_service import ActionCacheService
 from .execution.execution_service import ExecutionService
 from .execution.operations_service import OperationsService
 from .execution.execution_instance import ExecutionInstance
@@ -42,11 +43,11 @@ from .worker.bots_interface import BotsInterface
 
 class BuildGridServer(object):
 
-    def __init__(self, port = '50051', max_workers = 10, cas_storage = None):
+    def __init__(self, port = '50051', max_workers = 10, cas_storage = None, action_cache = None, allow_update_action_result = True):
         port = '[::]:{0}'.format(port)
-        scheduler = Scheduler()
+        scheduler = Scheduler(action_cache)
         bots_interface = BotsInterface(scheduler)
-        execution_instance = ExecutionInstance(scheduler)
+        execution_instance = ExecutionInstance(scheduler, cas_storage)
 
         self._server = grpc.server(futures.ThreadPoolExecutor(max_workers))
         self._server.add_insecure_port(port)
@@ -63,6 +64,12 @@ class BuildGridServer(object):
                                                                                       self._server)
             bytestream_pb2_grpc.add_ByteStreamServicer_to_server(ByteStreamService(cas_storage),
                                                                  self._server)
+        if action_cache is not None:
+            action_cache_service = ActionCacheService(action_cache,
+                                                      allow_update_action_result)
+            remote_execution_pb2_grpc.add_ActionCacheServicer_to_server(action_cache_service,
+                                                                        self._server)
+
 
     async def start(self):
         self._server.start()

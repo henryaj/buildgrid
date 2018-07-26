@@ -24,6 +24,7 @@ The abstract base class for storage providers.
 
 import abc
 
+from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Digest
 from buildgrid._protos.google.rpc.status_pb2 import Status
 from buildgrid._protos.google.rpc import code_pb2
 
@@ -95,4 +96,24 @@ class StorageABC(abc.ABC):
                     result.append(Status(code=code_pb2.UNKNOWN, message=str(ex)))
                 else:
                     result.append(Status(code=code_pb2.OK))
+        return result
+
+    def put_message(self, message):
+        """Store the given Protobuf message in CAS, returning its digest."""
+        message_blob = message.SerializeToString()
+        digest = Digest(hash=HASH(message_blob).hexdigest(), size_bytes=len(message_blob))
+        session = self.begin_write(digest)
+        session.write(message_blob)
+        self.commit_write(digest, session)
+        return digest
+
+    def get_message(self, digest, message_type):
+        """Retrieve the Protobuf message with the given digest and type from
+        CAS. If the blob is not present, returns None.
+        """
+        message_blob = self.get_blob(digest)
+        if message_blob is None:
+            return None
+        result = message_type.FromString(message_blob.read())
+        message_blob.close()
         return result

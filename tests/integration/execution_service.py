@@ -26,7 +26,8 @@ from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_p
 from buildgrid._protos.google.longrunning import operations_pb2
 from google.protobuf import any_pb2
 
-from buildgrid.server import scheduler, job
+from buildgrid.server import action_cache, scheduler, job
+from buildgrid.server.cas.storage import lru_memory_cache
 from buildgrid.server.execution import execution_instance, execution_service
 
 @pytest.fixture
@@ -34,13 +35,14 @@ def context():
     cxt = mock.MagicMock(spec = _Context)
     yield cxt
 
-@pytest.fixture
-def schedule():
-    yield scheduler.Scheduler()
-
-@pytest.fixture
-def execution(schedule):
-    yield execution_instance.ExecutionInstance(schedule)
+@pytest.fixture(params=["action-cache", "no-action-cache"])
+def execution(request):
+    if request.param == "action-cache":
+        storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
+        cache = action_cache.ActionCache(storage, 50)
+        schedule = scheduler.Scheduler(cache)
+        return execution_instance.ExecutionInstance(schedule, storage)
+    return execution_instance.ExecutionInstance(scheduler.Scheduler())
 
 # Instance to test
 @pytest.fixture
@@ -56,17 +58,15 @@ def test_execute(skip_cache_lookup, instance, context):
                                                   action_digest = action_digest,
                                                   skip_cache_lookup = skip_cache_lookup)
     response = instance.Execute(request, context)
-    if skip_cache_lookup is False:
-        [r for r in response]
-        context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
-    else:
-        result = next(response)
-        assert isinstance(result, operations_pb2.Operation)
-        metadata = remote_execution_pb2.ExecuteOperationMetadata()
-        result.metadata.Unpack(metadata)
-        assert metadata.stage == job.ExecuteStage.QUEUED.value
-        assert uuid.UUID(result.name, version=4)
-        assert result.done is False
+
+    result = next(response)
+    assert isinstance(result, operations_pb2.Operation)
+    metadata = remote_execution_pb2.ExecuteOperationMetadata()
+    result.metadata.Unpack(metadata)
+    assert metadata.stage == job.ExecuteStage.QUEUED.value
+    assert uuid.UUID(result.name, version=4)
+    assert result.done is False
+
 """
 def test_wait_execution(instance, context):
     # TODO: Figure out why next(response) hangs on the .get()

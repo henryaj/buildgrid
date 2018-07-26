@@ -19,7 +19,7 @@
 ActionCacheService
 ==================
 
-Action Cache currently not implemented.
+Allows clients to manually query/update the action cache.
 """
 
 import logging
@@ -29,14 +29,21 @@ from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_p
 
 class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
 
-    def __init__(self, instance):
-        self._instance = instance
+    def __init__(self, action_cache, allow_updates=True):
+        self._action_cache = action_cache
+        self._allow_updates = allow_updates
         self.logger = logging.getLogger(__name__)
 
     def GetActionResult(self, request, context):
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        return remote_execution_pb2.ActionResult()
+        result = self._action_cache.get_action_result(request.action_digest)
+        if result is None:
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+            return remote_execution_pb2.ActionResult()
+        return result
 
     def UpdateActionResult(self, request, context):
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        return remote_execution_pb2.ActionResult()
+        if not self._allow_updates:
+            context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+            return remote_execution_pb2.ActionResult()
+        self._action_cache.put_action_result(request.action_digest, request.action_result)
+        return request.action_result

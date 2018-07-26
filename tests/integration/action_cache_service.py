@@ -23,45 +23,47 @@ from unittest import mock
 from grpc._server import _Context
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 
-from buildgrid.server import scheduler
-from buildgrid.server.execution import execution_instance, action_cache_service
+from buildgrid.server import action_cache
+from buildgrid.server.cas.storage import lru_memory_cache
+from buildgrid.server.execution import action_cache_service
 
 # Can mock this
 @pytest.fixture
 def context():
     yield mock.MagicMock(spec = _Context)
 
-# Requests to make
 @pytest.fixture
-def execute_request():
-    action = remote_execution_pb2.Action()
-    action.command_digest.hash = 'zhora'
-
-    yield remote_execution_pb2.ExecuteRequest(instance_name = '',
-                                              action = action,
-                                              skip_cache_lookup = True)
+def cas():
+    yield lru_memory_cache.LRUMemoryCache(1024 * 1024)
 
 @pytest.fixture
-def schedule():
-    yield scheduler.Scheduler()
+def cache(cas):
+    yield action_cache.ActionCache(cas, 50)
 
-@pytest.fixture
-def execution(schedule):
-    yield execution_instance.ExecutionInstance(schedule)
+def test_simple_action_result(cache, context):
+    service = action_cache_service.ActionCacheService(cache)
+    action_digest = remote_execution_pb2.Digest(hash='sample', size_bytes=4)
 
-# Instance to test
-@pytest.fixture
-def instance(execution):
-    yield action_cache_service.ActionCacheService(execution)
+    # Check that before adding the ActionResult, attempting to fetch it fails
+    request = remote_execution_pb2.GetActionResultRequest(action_digest=action_digest)
+    service.GetActionResult(request, context)
+    context.set_code.assert_called_once_with(grpc.StatusCode.NOT_FOUND)
 
-def test_get_action_result(instance, context):
-    request = remote_execution_pb2.GetActionResultRequest()
-    instance.GetActionResult(request, context)
+    # Add an ActionResult to the cache
+    action_result = remote_execution_pb2.ActionResult(stdout_raw=b'example output')
+    request = remote_execution_pb2.UpdateActionResultRequest(action_digest=action_digest,
+                                                             action_result=action_result)
+    service.UpdateActionResult(request, context)
 
-    context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
+    # Check that fetching it now works
+    request = remote_execution_pb2.GetActionResultRequest(action_digest=action_digest)
+    fetched_result = service.GetActionResult(request, context)
+    assert fetched_result.stdout_raw == action_result.stdout_raw
 
-def test_update_action_result(instance, context):
+def test_disabled_update_action_result(cache, context):
+    service = action_cache_service.ActionCacheService(cache, False)
+
     request = remote_execution_pb2.UpdateActionResultRequest()
-    instance.UpdateActionResult(request, context)
+    service.UpdateActionResult(request, context)
 
     context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)

@@ -28,6 +28,7 @@ import click
 import logging
 
 from buildgrid.server import build_grid_server
+from buildgrid.server.action_cache import ActionCache
 from buildgrid.server.cas.storage.disk import DiskStorage
 from buildgrid.server.cas.storage.lru_memory_cache import LRUMemoryCache
 from buildgrid.server.cas.storage.s3 import S3Storage
@@ -43,6 +44,11 @@ def cli(context):
 
 @cli.command('start', short_help='Starts server')
 @click.option('--port', default='50051')
+@click.option('--max-cached-actions', type=int, default=50,
+              help='Maximum number of actions to keep in the ActionCache.')
+@click.option('--allow-update-action-result/--forbid-update-action-result',
+              'allow_uar', default=True,
+              help='Whether or not to allow clients to manually edit the action cache.')
 @click.option('--cas',
               type=click.Choice(('lru', 's3', 'disk', 'with-cache')),
               help='CAS storage type to use.')
@@ -59,15 +65,22 @@ def cli(context):
               type=click.Path(file_okay=False, dir_okay=True, writable=True),
               help='For --cas=disk, the folder to store CAS blobs in.')
 @pass_context
-def start(context, port, cas, **cas_args):
+def start(context, port, max_cached_actions, allow_uar, cas, **cas_args):
     context.logger.info("Starting on port {}".format(port))
 
     loop = asyncio.get_event_loop()
 
     cas_storage = _make_cas_storage(context, cas, cas_args)
     if cas_storage is None:
-        context.logger.info("Running without CAS")
-    server = build_grid_server.BuildGridServer(port, cas_storage=cas_storage)
+        context.logger.info("Running without CAS - action cache will be unavailable")
+        action_cache = None
+    else:
+        action_cache = ActionCache(cas_storage, max_cached_actions)
+
+    server = build_grid_server.BuildGridServer(port,
+                                               cas_storage=cas_storage,
+                                               action_cache=action_cache,
+                                               allow_update_action_result=allow_uar)
 
     try:
         asyncio.ensure_future(server.start())

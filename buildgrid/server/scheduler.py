@@ -23,7 +23,9 @@ Schedules jobs.
 
 from collections import deque
 
+from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import ActionResult
 from buildgrid._protos.google.longrunning import operations_pb2
+from google.protobuf import any_pb2
 
 from .job import ExecuteStage, LeaseState
 
@@ -31,7 +33,8 @@ class Scheduler():
 
     MAX_N_TRIES = 5
 
-    def __init__(self):
+    def __init__(self, action_cache=None):
+        self.action_cache = action_cache
         self.jobs = {}
         self.queue = deque()
 
@@ -44,10 +47,19 @@ class Scheduler():
         if job.check_job_finished():
             del self.jobs[name]
 
-    def append_job(self, job):
-        job.update_execute_stage(ExecuteStage.QUEUED)
+    def append_job(self, job, skip_cache_lookup=False):
         self.jobs[job.name] = job
+        if self.action_cache is not None and not skip_cache_lookup:
+            cached_result = self.action_cache.get_action_result(job.action_digest)
+            if cached_result is not None:
+                cached_result_any = any_pb2.Any()
+                cached_result_any.Pack(cached_result)
+                job.result = cached_result_any
+                job.result_cached = True
+                job.update_execute_stage(ExecuteStage.COMPLETED)
+                return
         self.queue.append(job)
+        job.update_execute_stage(ExecuteStage.QUEUED)
 
     def retry_job(self, name):
         if job in self.jobs[name]:
@@ -67,6 +79,10 @@ class Scheduler():
         job.result = result
         job.update_execute_stage(ExecuteStage.COMPLETED)
         self.jobs[name] = job
+        if not job.do_not_cache and self.action_cache is not None:
+            action_result = ActionResult()
+            result.Unpack(action_result)
+            self.action_cache.put_action_result(job.action_digest, action_result)
 
     def get_operations(self):
         response = operations_pb2.ListOperationsResponse()

@@ -18,8 +18,6 @@
 import logging
 import uuid
 
-import buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2
-
 from enum import Enum
 
 from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import ExecuteOperationMetadata, ExecuteResponse
@@ -55,6 +53,7 @@ class Job():
         self.lease = None
         self.logger = logging.getLogger(__name__)
         self.result = None
+        self.result_cached = False
 
         self._action_digest = action_digest
         self._execute_stage = ExecuteStage.UNKNOWN
@@ -88,6 +87,7 @@ class Job():
             self._operation.done = True
             response = ExecuteResponse()
             self.result.Unpack(response.result)
+            response.cached_result = self.result_cached
             self._operation.response.CopyFrom(self._pack_any(response))
 
         return self._operation
@@ -95,6 +95,7 @@ class Job():
     def get_operation_meta(self):
         meta = ExecuteOperationMetadata()
         meta.stage = self._execute_stage.value
+        meta.action_digest.CopyFrom(self._action_digest)
 
         return meta
 

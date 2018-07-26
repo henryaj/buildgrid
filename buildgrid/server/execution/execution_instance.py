@@ -24,14 +24,17 @@ An instance of the Remote Execution Server.
 import uuid
 import logging
 
+from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Action
+
 from ._exceptions import InvalidArgumentError
 
 from ..job import Job, ExecuteStage
 
 class ExecutionInstance():
 
-    def __init__(self, scheduler):
+    def __init__(self, scheduler, storage = None):
         self.logger = logging.getLogger(__name__)
+        self._storage = storage
         self._scheduler = scheduler
 
     def execute(self, action_digest, skip_cache_lookup, message_queue=None):
@@ -42,10 +45,12 @@ class ExecutionInstance():
         job = Job(action_digest, message_queue)
         self.logger.info("Operation name: {}".format(job.name))
 
-        if not skip_cache_lookup:
-            raise NotImplementedError("ActionCache not implemented")
-        else:
-            self._scheduler.append_job(job)
+        if self._storage is not None:
+            action = self._storage.get_message(action_digest, Action)
+            if action is not None:
+                job.do_not_cache = action.do_not_cache
+
+        self._scheduler.append_job(job, skip_cache_lookup)
 
         return job.get_operation()
 
