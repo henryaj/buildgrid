@@ -41,7 +41,6 @@ setup(
     description="A remote execution service",
     packages=setuptools.find_packages(),
     install_requires=[
-        'setuptools',
         'protobuf',
         'grpcio',
         'Click',
@@ -54,13 +53,9 @@ setup(
     ''',
     setup_requires=['pytest-runner'],
     tests_require=['pep8',
-                   'boto3',
-                   'botocore',
                    'moto',
                    'coverage == 4.4.0',
                    'pytest-cov >= 2.5.0',
                    'pytest-pep8',
-                   'pytest-pylint',
-                   'pytest >= 3.1.0',
-                   'pylint >= 1.8 , < 2'],
+                   'pytest >= 3.1.0'],
 )
