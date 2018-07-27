@@ -74,7 +74,7 @@ class Scheduler():
         return response
 
     def update_lease(self, lease):
-        name = lease.assignment
+        name = lease.id
         job = self.jobs.get(name)
         state = lease.state
 
@@ -94,7 +94,7 @@ class Scheduler():
             job.lease = lease
 
         elif state == LeaseState.COMPLETED.value:
-            self.job_complete(job.name, lease.inline_assignment)
+            self.job_complete(job.name, lease.result)
 
             create_job = self.create_job()
             if create_job is None:

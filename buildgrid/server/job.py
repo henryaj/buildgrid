@@ -83,8 +83,8 @@ class Job():
     def create_lease(self):
         action = self._pack_any(self.action)
 
-        lease = bots_pb2.Lease(assignment = self.name,
-                               inline_assignment = action,
+        lease = bots_pb2.Lease(id = self.name,
+                               payload = action,
                                state = LeaseState.PENDING.value)
         self.lease = lease
         return lease

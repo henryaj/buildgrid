@@ -58,7 +58,7 @@ class Bot(object):
                 if futures:
                     loop = asyncio.new_event_loop()
                     leases_complete, _ = loop.run_until_complete(asyncio.wait(futures))
-                    work_complete = [(lease.result().assignment, lease.result(),) for lease in leases_complete]
+                    work_complete = [(lease.result().id, lease.result(),) for lease in leases_complete]
                     self._work_complete(work_complete)
                     loop.close()
                 self._update_bot_session()
@@ -78,10 +78,10 @@ class Bot(object):
     async def _do_work(self, work, context, lease):
         """ Work is done here, work function should be asynchronous
         """
-        self.logger.info("Work found: {}".format(lease.assignment))
+        self.logger.info("Work found: {}".format(lease.id))
         lease = await work(context=context, lease=lease)
         lease.state = bots_pb2.LeaseState.Value('COMPLETED')
-        self.logger.info("Work complete: {}".format(lease.assignment))
+        self.logger.info("Work complete: {}".format(lease.id))
         return lease
 
     def _update_bot_session(self):
@@ -109,7 +109,7 @@ class Bot(object):
         del self._bot_session.leases[:]
         for lease in leases_active:
             for lease_tuple in leases_complete:
-                if lease.assignment == lease_tuple[0]:
+                if lease.id == lease_tuple[0]:
                     leases_not_active.extend([lease_tuple[1]])
         self._bot_session.leases.extend(leases_not_active)
 

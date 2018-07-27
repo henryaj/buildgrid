@@ -150,12 +150,12 @@ def test_update_leases_with_work(bot_session, context, instance):
 
     response = instance.UpdateBotSession(request, context)
     response_action = remote_execution_pb2.Action()
-    _unpack_any(response.leases[0].inline_assignment, response_action)
+    _unpack_any(response.leases[0].payload, response_action)
 
     assert isinstance(response, bots_pb2.BotSession)
     assert response.leases[0].state == LeaseState.PENDING.value
     assert response.leases[1].state == LeaseState.LEASE_STATE_UNSPECIFIED.value
-    assert uuid.UUID(response.leases[0].assignment, version=4)
+    assert uuid.UUID(response.leases[0].id, version=4)
     assert response_action == action
 
 def test_update_leases_work_complete(bot_session, context, instance):
@@ -177,7 +177,7 @@ def test_update_leases_work_complete(bot_session, context, instance):
 
     response = copy.deepcopy(instance.UpdateBotSession(request, context))
 
-    operation_name = response.leases[0].assignment
+    operation_name = response.leases[0].id
 
     assert response.leases[0].state == LeaseState.PENDING.value
     response.leases[0].state = LeaseState.COMPLETED.value

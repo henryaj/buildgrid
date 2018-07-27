@@ -117,7 +117,7 @@ async def _work_dummy(context, lease):
 async def _work_buildbox(context, lease):
     logger = context.logger
 
-    action_any = lease.inline_assignment
+    action_any = lease.payload
     action = remote_execution_pb2.Action()
     action_any.Unpack(action)
 
@@ -173,7 +173,7 @@ async def _work_buildbox(context, lease):
     action_result_any = any_pb2.Any()
     action_result_any.Pack(action_result)
 
-    lease.inline_assignment.CopyFrom(action_result_any)
+    lease.result.CopyFrom(action_result_any)
 
     return lease
 
