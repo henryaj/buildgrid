@@ -11,12 +11,11 @@ before_script:
   - export PATH=~/.local/bin:${PATH}
   - pip3 install --user -e .
 
-tests-fedora:
+.tests-template: &linux-tests
   stage: test
   variables:
     PYTEST_ADDOPTS: "--color=yes"
   script:
-    - yum -y install clang libffi-devel openssl-devel python3-devel
     - python3 setup.py test
     - mkdir -p coverage/
     - cp .coverage.* coverage/coverage."${CI_JOB_NAME}"
@@ -24,14 +23,33 @@ tests-fedora:
     paths:
     - coverage/
 
-
-tests-dummy-job-fedora:
+.run-dummy-job-template: &dummy-job
   stage: test
   script:
     - ${BGD} server start &
     - sleep 1 # Allow server to boot
     - ${BGD} bot --host=0.0.0.0 dummy &
     - ${BGD} execute --host=0.0.0.0 request --wait-for-completion
+
+tests-debian:
+  image: buildstream/buildstream-debian
+  <<: *linux-tests
+
+# Need to yum install until we have our own image
+tests-fedora:
+  <<: *linux-tests
+  script:
+    - yum -y install clang libffi-devel openssl-devel python3-devel
+    - python3 setup.py test
+    - mkdir -p coverage/
+    - cp .coverage.* coverage/coverage."${CI_JOB_NAME}"
+
+run-dummy-job-debian:
+  image: buildstream/buildstream-debian
+  <<: *dummy-job
+
+run-dummy-job-fedora:
+  <<: *dummy-job
 
 coverage:
   stage: post
