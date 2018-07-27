@@ -45,6 +45,7 @@ coverage:
   stage: post
   coverage: '/TOTAL +\d+ +\d+ +(\d+\.\d+)%/'
   script:
+    - pip3 install coverage==4.4.0
     - mkdir report
     - cd report
     - cp ../coverage/coverage.* .
