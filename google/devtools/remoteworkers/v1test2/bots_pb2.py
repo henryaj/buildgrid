@@ -27,7 +27,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='google/devtools/remoteworkers/v1test2/bots.proto',
   package='google.devtools.remoteworkers.v1test2',
   syntax='proto3',
-  serialized_pb=_b('\n0google/devtools/remoteworkers/v1test2/bots.proto\x12%google.devtools.remoteworkers.v1test2\x1a\x1cgoogle/api/annotations.proto\x1a\x32google/devtools/remoteworkers/v1test2/worker.proto\x1a\x19google/protobuf/any.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17google/rpc/status.proto\"\xab\x02\n\nBotSession\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06\x62ot_id\x18\x02 \x01(\t\x12@\n\x06status\x18\x03 \x01(\x0e\x32\x30.google.devtools.remoteworkers.v1test2.BotStatus\x12=\n\x06worker\x18\x04 \x01(\x0b\x32-.google.devtools.remoteworkers.v1test2.Worker\x12<\n\x06leases\x18\x05 \x03(\x0b\x32,.google.devtools.remoteworkers.v1test2.Lease\x12/\n\x0b\x65xpire_time\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0f\n\x07version\x18\x07 \x01(\t\"\xa8\x02\n\x05Lease\x12\x12\n\nassignment\x18\x01 \x01(\t\x12@\n\x05state\x18\x02 \x01(\x0e\x32\x31.google.devtools.remoteworkers.v1test2.LeaseState\x12\"\n\x06status\x18\x03 \x01(\x0b\x32\x12.google.rpc.Status\x12\x43\n\x0crequirements\x18\x04 \x01(\x0b\x32-.google.devtools.remoteworkers.v1test2.Worker\x12/\n\x0b\x65xpire_time\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12/\n\x11inline_assignment\x18\x06 \x01(\x0b\x32\x14.google.protobuf.Any\"\xc5\x01\n\tAdminTemp\x12I\n\x07\x63ommand\x18\x01 \x01(\x0e\x32\x38.google.devtools.remoteworkers.v1test2.AdminTemp.Command\x12\x0b\n\x03\x61rg\x18\x02 \x01(\t\"`\n\x07\x43ommand\x12\x0f\n\x0bUNSPECIFIED\x10\x00\x12\x0e\n\nBOT_UPDATE\x10\x01\x12\x0f\n\x0b\x42OT_RESTART\x10\x02\x12\x11\n\rBOT_TERMINATE\x10\x03\x12\x10\n\x0cHOST_RESTART\x10\x04\"q\n\x17\x43reateBotSessionRequest\x12\x0e\n\x06parent\x18\x01 \x01(\t\x12\x46\n\x0b\x62ot_session\x18\x02 \x01(\x0b\x32\x31.google.devtools.remoteworkers.v1test2.BotSession\"\xa0\x01\n\x17UpdateBotSessionRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x46\n\x0b\x62ot_session\x18\x02 \x01(\x0b\x32\x31.google.devtools.remoteworkers.v1test2.BotSession\x12/\n\x0bupdate_mask\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.FieldMask\"\xb5\x01\n\x17PostBotEventTempRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12Q\n\x04type\x18\x02 \x01(\x0e\x32\x43.google.devtools.remoteworkers.v1test2.PostBotEventTempRequest.Type\x12\x0b\n\x03msg\x18\x03 \x01(\t\",\n\x04Type\x12\x0f\n\x0bUNSPECIFIED\x10\x00\x12\x08\n\x04INFO\x10\x01\x12\t\n\x05\x45RROR\x10\x02*g\n\tBotStatus\x12\x1a\n\x16\x42OT_STATUS_UNSPECIFIED\x10\x00\x12\x06\n\x02OK\x10\x01\x12\r\n\tUNHEALTHY\x10\x02\x12\x12\n\x0eHOST_REBOOTING\x10\x03\x12\x13\n\x0f\x42OT_TERMINATING\x10\x04*`\n\nLeaseState\x12\x1b\n\x17LEASE_STATE_UNSPECIFIED\x10\x00\x12\x0b\n\x07PENDING\x10\x01\x12\n\n\x06\x41\x43TIVE\x10\x02\x12\r\n\tCOMPLETED\x10\x04\x12\r\n\tCANCELLED\x10\x05\x32\xa8\x04\n\x04\x42ots\x12\xbc\x01\n\x10\x43reateBotSession\x12>.google.devtools.remoteworkers.v1test2.CreateBotSessionRequest\x1a\x31.google.devtools.remoteworkers.v1test2.BotSession\"5\x82\xd3\xe4\x93\x02/\" /v1test2/{parent=**}/botSessions:\x0b\x62ot_session\x12\xbc\x01\n\x10UpdateBotSession\x12>.google.devtools.remoteworkers.v1test2.UpdateBotSessionRequest\x1a\x31.google.devtools.remoteworkers.v1test2.BotSession\"5\x82\xd3\xe4\x93\x02/2 /v1test2/{name=**/botSessions/*}:\x0b\x62ot_session\x12\xa1\x01\n\x10PostBotEventTemp\x12>.google.devtools.remoteworkers.v1test2.PostBotEventTempRequest\x1a\x16.google.protobuf.Empty\"5\x82\xd3\xe4\x93\x02/\"*/v1test2/{name=**/botSessions/*}:postEvent:\x01*B\xc1\x01\n)com.google.devtools.remoteworkers.v1test2B\x11RemoteWorkersBotsP\x01ZRgoogle.golang.org/genproto/googleapis/devtools/remoteworkers/v1test2;remoteworkers\xa2\x02\x02RW\xaa\x02%Google.DevTools.RemoteWorkers.V1Test2b\x06proto3')
+  serialized_pb=_b('\n0google/devtools/remoteworkers/v1test2/bots.proto\x12%google.devtools.remoteworkers.v1test2\x1a\x1cgoogle/api/annotations.proto\x1a\x32google/devtools/remoteworkers/v1test2/worker.proto\x1a\x19google/protobuf/any.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x17google/rpc/status.proto\"\xab\x02\n\nBotSession\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06\x62ot_id\x18\x02 \x01(\t\x12@\n\x06status\x18\x03 \x01(\x0e\x32\x30.google.devtools.remoteworkers.v1test2.BotStatus\x12=\n\x06worker\x18\x04 \x01(\x0b\x32-.google.devtools.remoteworkers.v1test2.Worker\x12<\n\x06leases\x18\x05 \x03(\x0b\x32,.google.devtools.remoteworkers.v1test2.Lease\x12/\n\x0b\x65xpire_time\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0f\n\x07version\x18\x07 \x01(\t\"\x89\x03\n\x05Lease\x12\n\n\x02id\x18\x07 \x01(\t\x12%\n\x07payload\x18\x08 \x01(\x0b\x32\x14.google.protobuf.Any\x12$\n\x06result\x18\t \x01(\x0b\x32\x14.google.protobuf.Any\x12@\n\x05state\x18\x02 \x01(\x0e\x32\x31.google.devtools.remoteworkers.v1test2.LeaseState\x12\"\n\x06status\x18\x03 \x01(\x0b\x32\x12.google.rpc.Status\x12\x43\n\x0crequirements\x18\x04 \x01(\x0b\x32-.google.devtools.remoteworkers.v1test2.Worker\x12/\n\x0b\x65xpire_time\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x16\n\nassignment\x18\x01 \x01(\tB\x02\x18\x01\x12\x33\n\x11inline_assignment\x18\x06 \x01(\x0b\x32\x14.google.protobuf.AnyB\x02\x18\x01\"\xc5\x01\n\tAdminTemp\x12I\n\x07\x63ommand\x18\x01 \x01(\x0e\x32\x38.google.devtools.remoteworkers.v1test2.AdminTemp.Command\x12\x0b\n\x03\x61rg\x18\x02 \x01(\t\"`\n\x07\x43ommand\x12\x0f\n\x0bUNSPECIFIED\x10\x00\x12\x0e\n\nBOT_UPDATE\x10\x01\x12\x0f\n\x0b\x42OT_RESTART\x10\x02\x12\x11\n\rBOT_TERMINATE\x10\x03\x12\x10\n\x0cHOST_RESTART\x10\x04\"q\n\x17\x43reateBotSessionRequest\x12\x0e\n\x06parent\x18\x01 \x01(\t\x12\x46\n\x0b\x62ot_session\x18\x02 \x01(\x0b\x32\x31.google.devtools.remoteworkers.v1test2.BotSession\"\xa0\x01\n\x17UpdateBotSessionRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x46\n\x0b\x62ot_session\x18\x02 \x01(\x0b\x32\x31.google.devtools.remoteworkers.v1test2.BotSession\x12/\n\x0bupdate_mask\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.FieldMask\"\xb5\x01\n\x17PostBotEventTempRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12Q\n\x04type\x18\x02 \x01(\x0e\x32\x43.google.devtools.remoteworkers.v1test2.PostBotEventTempRequest.Type\x12\x0b\n\x03msg\x18\x03 \x01(\t\",\n\x04Type\x12\x0f\n\x0bUNSPECIFIED\x10\x00\x12\x08\n\x04INFO\x10\x01\x12\t\n\x05\x45RROR\x10\x02*g\n\tBotStatus\x12\x1a\n\x16\x42OT_STATUS_UNSPECIFIED\x10\x00\x12\x06\n\x02OK\x10\x01\x12\r\n\tUNHEALTHY\x10\x02\x12\x12\n\x0eHOST_REBOOTING\x10\x03\x12\x13\n\x0f\x42OT_TERMINATING\x10\x04*`\n\nLeaseState\x12\x1b\n\x17LEASE_STATE_UNSPECIFIED\x10\x00\x12\x0b\n\x07PENDING\x10\x01\x12\n\n\x06\x41\x43TIVE\x10\x02\x12\r\n\tCOMPLETED\x10\x04\x12\r\n\tCANCELLED\x10\x05\x32\xa8\x04\n\x04\x42ots\x12\xbc\x01\n\x10\x43reateBotSession\x12>.google.devtools.remoteworkers.v1test2.CreateBotSessionRequest\x1a\x31.google.devtools.remoteworkers.v1test2.BotSession\"5\x82\xd3\xe4\x93\x02/\" /v1test2/{parent=**}/botSessions:\x0b\x62ot_session\x12\xbc\x01\n\x10UpdateBotSession\x12>.google.devtools.remoteworkers.v1test2.UpdateBotSessionRequest\x1a\x31.google.devtools.remoteworkers.v1test2.BotSession\"5\x82\xd3\xe4\x93\x02/2 /v1test2/{name=**/botSessions/*}:\x0b\x62ot_session\x12\xa1\x01\n\x10PostBotEventTemp\x12>.google.devtools.remoteworkers.v1test2.PostBotEventTempRequest\x1a\x16.google.protobuf.Empty\"5\x82\xd3\xe4\x93\x02/\"*/v1test2/{name=**/botSessions/*}:postEvent:\x01*B\xc1\x01\n)com.google.devtools.remoteworkers.v1test2B\x11RemoteWorkersBotsP\x01ZRgoogle.golang.org/genproto/googleapis/devtools/remoteworkers/v1test2;remoteworkers\xa2\x02\x02RW\xaa\x02%Google.DevTools.RemoteWorkers.V1Test2b\x06proto3')
   ,
   dependencies=[google_dot_api_dot_annotations__pb2.DESCRIPTOR,google_dot_devtools_dot_remoteworkers_dot_v1test2_dot_worker__pb2.DESCRIPTOR,google_dot_protobuf_dot_any__pb2.DESCRIPTOR,google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,google_dot_protobuf_dot_field__mask__pb2.DESCRIPTOR,google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,google_dot_rpc_dot_status__pb2.DESCRIPTOR,])
 
@@ -60,8 +60,8 @@ _BOTSTATUS = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=1584,
-  serialized_end=1687,
+  serialized_start=1681,
+  serialized_end=1784,
 )
 _sym_db.RegisterEnumDescriptor(_BOTSTATUS)
 
@@ -95,8 +95,8 @@ _LEASESTATE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=1689,
-  serialized_end=1785,
+  serialized_start=1786,
+  serialized_end=1882,
 )
 _sym_db.RegisterEnumDescriptor(_LEASESTATE)
 
@@ -142,8 +142,8 @@ _ADMINTEMP_COMMAND = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=1024,
-  serialized_end=1120,
+  serialized_start=1121,
+  serialized_end=1217,
 )
 _sym_db.RegisterEnumDescriptor(_ADMINTEMP_COMMAND)
 
@@ -168,8 +168,8 @@ _POSTBOTEVENTTEMPREQUEST_TYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=1538,
-  serialized_end=1582,
+  serialized_start=1635,
+  serialized_end=1679,
 )
 _sym_db.RegisterEnumDescriptor(_POSTBOTEVENTTEMPREQUEST_TYPE)
 
@@ -255,47 +255,68 @@ _LEASE = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='assignment', full_name='google.devtools.remoteworkers.v1test2.Lease.assignment', index=0,
-      number=1, type=9, cpp_type=9, label=1,
+      name='id', full_name='google.devtools.remoteworkers.v1test2.Lease.id', index=0,
+      number=7, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='state', full_name='google.devtools.remoteworkers.v1test2.Lease.state', index=1,
+      name='payload', full_name='google.devtools.remoteworkers.v1test2.Lease.payload', index=1,
+      number=8, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='result', full_name='google.devtools.remoteworkers.v1test2.Lease.result', index=2,
+      number=9, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='state', full_name='google.devtools.remoteworkers.v1test2.Lease.state', index=3,
       number=2, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='status', full_name='google.devtools.remoteworkers.v1test2.Lease.status', index=2,
+      name='status', full_name='google.devtools.remoteworkers.v1test2.Lease.status', index=4,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='requirements', full_name='google.devtools.remoteworkers.v1test2.Lease.requirements', index=3,
+      name='requirements', full_name='google.devtools.remoteworkers.v1test2.Lease.requirements', index=5,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='expire_time', full_name='google.devtools.remoteworkers.v1test2.Lease.expire_time', index=4,
+      name='expire_time', full_name='google.devtools.remoteworkers.v1test2.Lease.expire_time', index=6,
       number=5, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='inline_assignment', full_name='google.devtools.remoteworkers.v1test2.Lease.inline_assignment', index=5,
+      name='assignment', full_name='google.devtools.remoteworkers.v1test2.Lease.assignment', index=7,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\030\001')), file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='inline_assignment', full_name='google.devtools.remoteworkers.v1test2.Lease.inline_assignment', index=8,
       number=6, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\030\001')), file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -309,7 +330,7 @@ _LEASE = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=624,
-  serialized_end=920,
+  serialized_end=1017,
 )
 
 
@@ -347,8 +368,8 @@ _ADMINTEMP = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=923,
-  serialized_end=1120,
+  serialized_start=1020,
+  serialized_end=1217,
 )
 
 
@@ -385,8 +406,8 @@ _CREATEBOTSESSIONREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1122,
-  serialized_end=1235,
+  serialized_start=1219,
+  serialized_end=1332,
 )
 
 
@@ -430,8 +451,8 @@ _UPDATEBOTSESSIONREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1238,
-  serialized_end=1398,
+  serialized_start=1335,
+  serialized_end=1495,
 )
 
 
@@ -476,14 +497,16 @@ _POSTBOTEVENTTEMPREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1401,
-  serialized_end=1582,
+  serialized_start=1498,
+  serialized_end=1679,
 )
 
 _BOTSESSION.fields_by_name['status'].enum_type = _BOTSTATUS
 _BOTSESSION.fields_by_name['worker'].message_type = google_dot_devtools_dot_remoteworkers_dot_v1test2_dot_worker__pb2._WORKER
 _BOTSESSION.fields_by_name['leases'].message_type = _LEASE
 _BOTSESSION.fields_by_name['expire_time'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_LEASE.fields_by_name['payload'].message_type = google_dot_protobuf_dot_any__pb2._ANY
+_LEASE.fields_by_name['result'].message_type = google_dot_protobuf_dot_any__pb2._ANY
 _LEASE.fields_by_name['state'].enum_type = _LEASESTATE
 _LEASE.fields_by_name['status'].message_type = google_dot_rpc_dot_status__pb2._STATUS
 _LEASE.fields_by_name['requirements'].message_type = google_dot_devtools_dot_remoteworkers_dot_v1test2_dot_worker__pb2._WORKER
@@ -551,6 +574,10 @@ _sym_db.RegisterMessage(PostBotEventTempRequest)
 
 DESCRIPTOR.has_options = True
 DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('\n)com.google.devtools.remoteworkers.v1test2B\021RemoteWorkersBotsP\001ZRgoogle.golang.org/genproto/googleapis/devtools/remoteworkers/v1test2;remoteworkers\242\002\002RW\252\002%Google.DevTools.RemoteWorkers.V1Test2'))
+_LEASE.fields_by_name['assignment'].has_options = True
+_LEASE.fields_by_name['assignment']._options = _descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\030\001'))
+_LEASE.fields_by_name['inline_assignment'].has_options = True
+_LEASE.fields_by_name['inline_assignment']._options = _descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\030\001'))
 
 _BOTS = _descriptor.ServiceDescriptor(
   name='Bots',
@@ -558,8 +585,8 @@ _BOTS = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   options=None,
-  serialized_start=1788,
-  serialized_end=2340,
+  serialized_start=1885,
+  serialized_end=2437,
   methods=[
   _descriptor.MethodDescriptor(
     name='CreateBotSession',

@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='google/devtools/remoteworkers/v1test2/worker.proto',
   package='google.devtools.remoteworkers.v1test2',
   syntax='proto3',
-  serialized_pb=_b('\n2google/devtools/remoteworkers/v1test2/worker.proto\x12%google.devtools.remoteworkers.v1test2\"\xbc\x01\n\x06Worker\x12>\n\x07\x64\x65vices\x18\x01 \x03(\x0b\x32-.google.devtools.remoteworkers.v1test2.Device\x12J\n\nproperties\x18\x02 \x03(\x0b\x32\x36.google.devtools.remoteworkers.v1test2.Worker.Property\x1a&\n\x08Property\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\"\x8c\x01\n\x06\x44\x65vice\x12\x0e\n\x06handle\x18\x01 \x01(\t\x12J\n\nproperties\x18\x02 \x03(\x0b\x32\x36.google.devtools.remoteworkers.v1test2.Device.Property\x1a&\n\x08Property\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\tB\xc3\x01\n)com.google.devtools.remoteworkers.v1test2B\x13RemoteWorkersWorkerP\x01ZRgoogle.golang.org/genproto/googleapis/devtools/remoteworkers/v1test2;remoteworkers\xa2\x02\x02RW\xaa\x02%Google.DevTools.RemoteWorkers.V1Test2b\x06proto3')
+  serialized_pb=_b('\n2google/devtools/remoteworkers/v1test2/worker.proto\x12%google.devtools.remoteworkers.v1test2\"\xa9\x02\n\x06Worker\x12>\n\x07\x64\x65vices\x18\x01 \x03(\x0b\x32-.google.devtools.remoteworkers.v1test2.Device\x12J\n\nproperties\x18\x02 \x03(\x0b\x32\x36.google.devtools.remoteworkers.v1test2.Worker.Property\x12\x45\n\x07\x63onfigs\x18\x03 \x03(\x0b\x32\x34.google.devtools.remoteworkers.v1test2.Worker.Config\x1a&\n\x08Property\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\x1a$\n\x06\x43onfig\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\"\x8c\x01\n\x06\x44\x65vice\x12\x0e\n\x06handle\x18\x01 \x01(\t\x12J\n\nproperties\x18\x02 \x03(\x0b\x32\x36.google.devtools.remoteworkers.v1test2.Device.Property\x1a&\n\x08Property\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\tB\xc3\x01\n)com.google.devtools.remoteworkers.v1test2B\x13RemoteWorkersWorkerP\x01ZRgoogle.golang.org/genproto/googleapis/devtools/remoteworkers/v1test2;remoteworkers\xa2\x02\x02RW\xaa\x02%Google.DevTools.RemoteWorkers.V1Test2b\x06proto3')
 )
 
 
@@ -58,8 +58,45 @@ _WORKER_PROPERTY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=244,
-  serialized_end=282,
+  serialized_start=315,
+  serialized_end=353,
+)
+
+_WORKER_CONFIG = _descriptor.Descriptor(
+  name='Config',
+  full_name='google.devtools.remoteworkers.v1test2.Worker.Config',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='google.devtools.remoteworkers.v1test2.Worker.Config.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='google.devtools.remoteworkers.v1test2.Worker.Config.value', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=355,
+  serialized_end=391,
 )
 
 _WORKER = _descriptor.Descriptor(
@@ -83,10 +120,17 @@ _WORKER = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='configs', full_name='google.devtools.remoteworkers.v1test2.Worker.configs', index=2,
+      number=3, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
-  nested_types=[_WORKER_PROPERTY, ],
+  nested_types=[_WORKER_PROPERTY, _WORKER_CONFIG, ],
   enum_types=[
   ],
   options=None,
@@ -96,7 +140,7 @@ _WORKER = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=94,
-  serialized_end=282,
+  serialized_end=391,
 )
 
 
@@ -133,8 +177,8 @@ _DEVICE_PROPERTY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=244,
-  serialized_end=282,
+  serialized_start=315,
+  serialized_end=353,
 )
 
 _DEVICE = _descriptor.Descriptor(
@@ -170,13 +214,15 @@ _DEVICE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=285,
-  serialized_end=425,
+  serialized_start=394,
+  serialized_end=534,
 )
 
 _WORKER_PROPERTY.containing_type = _WORKER
+_WORKER_CONFIG.containing_type = _WORKER
 _WORKER.fields_by_name['devices'].message_type = _DEVICE
 _WORKER.fields_by_name['properties'].message_type = _WORKER_PROPERTY
+_WORKER.fields_by_name['configs'].message_type = _WORKER_CONFIG
 _DEVICE_PROPERTY.containing_type = _DEVICE
 _DEVICE.fields_by_name['properties'].message_type = _DEVICE_PROPERTY
 DESCRIPTOR.message_types_by_name['Worker'] = _WORKER
@@ -191,12 +237,20 @@ Worker = _reflection.GeneratedProtocolMessageType('Worker', (_message.Message,),
     # @@protoc_insertion_point(class_scope:google.devtools.remoteworkers.v1test2.Worker.Property)
     ))
   ,
+
+  Config = _reflection.GeneratedProtocolMessageType('Config', (_message.Message,), dict(
+    DESCRIPTOR = _WORKER_CONFIG,
+    __module__ = 'google.devtools.remoteworkers.v1test2.worker_pb2'
+    # @@protoc_insertion_point(class_scope:google.devtools.remoteworkers.v1test2.Worker.Config)
+    ))
+  ,
   DESCRIPTOR = _WORKER,
   __module__ = 'google.devtools.remoteworkers.v1test2.worker_pb2'
   # @@protoc_insertion_point(class_scope:google.devtools.remoteworkers.v1test2.Worker)
   ))
 _sym_db.RegisterMessage(Worker)
 _sym_db.RegisterMessage(Worker.Property)
+_sym_db.RegisterMessage(Worker.Config)
 
 Device = _reflection.GeneratedProtocolMessageType('Device', (_message.Message,), dict(
 

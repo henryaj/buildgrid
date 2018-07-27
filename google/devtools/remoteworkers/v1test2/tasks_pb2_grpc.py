@@ -5,19 +5,9 @@ from google.devtools.remoteworkers.v1test2 import tasks_pb2 as google_dot_devtoo
 
 
 class TasksStub(object):
-  """Design doc: https://goo.gl/oojM5H
-
-  The Tasks interface defines tasks to execute and the results of these tasks.
-  It does not include the metadata surrounding tasks; that is, the Task message
-  represents *what* to be executed and *what* was the result of that execution,
-  but not *how* to execute that task. For example this interface does not
-  explain what platform the task should be run on, what priority it may have in
-  any queue, etc.
-
-  NB: we are not using google.rpc.batch since that's designed specifically for
-  batch execution of RPC methods, and so is semantically quite different from
-  our more general concept (though an RPC method could certainly be described
-  by a Task in this interface).
+  """DEPRECATED. GetTask should be replaced by Lease.payload, UpdateTaskResult by
+  Lease.result and logs should be precreated prior to sending to the bot (eg,
+  via CommandTask.expected_outputs.stdout_destination).
   """
 
   def __init__(self, channel):
@@ -44,23 +34,14 @@ class TasksStub(object):
 
 
 class TasksServicer(object):
-  """Design doc: https://goo.gl/oojM5H
-
-  The Tasks interface defines tasks to execute and the results of these tasks.
-  It does not include the metadata surrounding tasks; that is, the Task message
-  represents *what* to be executed and *what* was the result of that execution,
-  but not *how* to execute that task. For example this interface does not
-  explain what platform the task should be run on, what priority it may have in
-  any queue, etc.
-
-  NB: we are not using google.rpc.batch since that's designed specifically for
-  batch execution of RPC methods, and so is semantically quite different from
-  our more general concept (though an RPC method could certainly be described
-  by a Task in this interface).
+  """DEPRECATED. GetTask should be replaced by Lease.payload, UpdateTaskResult by
+  Lease.result and logs should be precreated prior to sending to the bot (eg,
+  via CommandTask.expected_outputs.stdout_destination).
   """
 
   def GetTask(self, request, context):
-    """GetTask reads the current state of the task. Tasks must be created through
+    """DEPRECATED - use Lease.payload instead.
+    GetTask reads the current state of the task. Tasks must be created through
     some other interface, and should be immutable once created and exposed to
     the bots.
     """
@@ -69,14 +50,16 @@ class TasksServicer(object):
     raise NotImplementedError('Method not implemented!')
 
   def UpdateTaskResult(self, request, context):
-    """UpdateTaskResult updates the result.
+    """DEPRECATED - use Lease.result instead.
+    UpdateTaskResult updates the result.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
   def AddTaskLog(self, request, context):
-    """AddTaskLog creates a new streaming log. The log is streamed and marked as
+    """DEPRECATED - precreate logs prior to sending to bot.
+    AddTaskLog creates a new streaming log. The log is streamed and marked as
     completed through other interfaces (i.e., ByteStream). This can be called
     by the bot if it wants to create a new log; the server can also predefine
     logs that do not need to be created (e.g. `stdout`).

@@ -13,16 +13,18 @@ from google.protobuf import descriptor_pb2
 _sym_db = _symbol_database.Default()
 
 
+from google.protobuf import any_pb2 as google_dot_protobuf_dot_any__pb2
 from google.protobuf import duration_pb2 as google_dot_protobuf_dot_duration__pb2
+from google.rpc import status_pb2 as google_dot_rpc_dot_status__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='google/devtools/remoteworkers/v1test2/command.proto',
   package='google.devtools.remoteworkers.v1test2',
   syntax='proto3',
-  serialized_pb=_b('\n3google/devtools/remoteworkers/v1test2/command.proto\x12%google.devtools.remoteworkers.v1test2\x1a\x1egoogle/protobuf/duration.proto\"\xbb\x05\n\x0b\x43ommandTask\x12I\n\x06inputs\x18\x01 \x01(\x0b\x32\x39.google.devtools.remoteworkers.v1test2.CommandTask.Inputs\x12T\n\x10\x65xpected_outputs\x18\x04 \x01(\x0b\x32:.google.devtools.remoteworkers.v1test2.CommandTask.Outputs\x12M\n\x08timeouts\x18\x05 \x01(\x0b\x32;.google.devtools.remoteworkers.v1test2.CommandTask.Timeouts\x1a\xfb\x01\n\x06Inputs\x12\x11\n\targuments\x18\x01 \x03(\t\x12<\n\x05\x66iles\x18\x02 \x03(\x0b\x32-.google.devtools.remoteworkers.v1test2.Digest\x12l\n\x15\x65nvironment_variables\x18\x03 \x03(\x0b\x32M.google.devtools.remoteworkers.v1test2.CommandTask.Inputs.EnvironmentVariable\x1a\x32\n\x13\x45nvironmentVariable\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\x1a-\n\x07Outputs\x12\r\n\x05\x66iles\x18\x01 \x03(\t\x12\x13\n\x0b\x64irectories\x18\x02 \x03(\t\x1a\x8e\x01\n\x08Timeouts\x12,\n\texecution\x18\x01 \x01(\x0b\x32\x19.google.protobuf.Duration\x12\'\n\x04idle\x18\x02 \x01(\x0b\x32\x19.google.protobuf.Duration\x12+\n\x08shutdown\x18\x03 \x01(\x0b\x32\x19.google.protobuf.Duration\"c\n\x0e\x43ommandOutputs\x12\x11\n\texit_code\x18\x01 \x01(\x05\x12>\n\x07outputs\x18\x02 \x01(\x0b\x32-.google.devtools.remoteworkers.v1test2.Digest\"k\n\x0f\x43ommandOverhead\x12+\n\x08\x64uration\x18\x01 \x01(\x0b\x32\x19.google.protobuf.Duration\x12+\n\x08overhead\x18\x02 \x01(\x0b\x32\x19.google.protobuf.Duration\"\x84\x01\n\x0c\x46ileMetadata\x12\x0c\n\x04path\x18\x01 \x01(\t\x12=\n\x06\x64igest\x18\x02 \x01(\x0b\x32-.google.devtools.remoteworkers.v1test2.Digest\x12\x10\n\x08\x63ontents\x18\x03 \x01(\x0c\x12\x15\n\ris_executable\x18\x04 \x01(\x08\"`\n\x11\x44irectoryMetadata\x12\x0c\n\x04path\x18\x01 \x01(\t\x12=\n\x06\x64igest\x18\x02 \x01(\x0b\x32-.google.devtools.remoteworkers.v1test2.Digest\"*\n\x06\x44igest\x12\x0c\n\x04hash\x18\x01 \x01(\t\x12\x12\n\nsize_bytes\x18\x02 \x01(\x03\"\x9e\x01\n\tDirectory\x12\x42\n\x05\x66iles\x18\x01 \x03(\x0b\x32\x33.google.devtools.remoteworkers.v1test2.FileMetadata\x12M\n\x0b\x64irectories\x18\x02 \x03(\x0b\x32\x38.google.devtools.remoteworkers.v1test2.DirectoryMetadataB\xc5\x01\n)com.google.devtools.remoteworkers.v1test2B\x15RemoteWorkersCommandsP\x01ZRgoogle.golang.org/genproto/googleapis/devtools/remoteworkers/v1test2;remoteworkers\xa2\x02\x02RW\xaa\x02%Google.DevTools.RemoteWorkers.V1Test2b\x06proto3')
+  serialized_pb=_b('\n3google/devtools/remoteworkers/v1test2/command.proto\x12%google.devtools.remoteworkers.v1test2\x1a\x19google/protobuf/any.proto\x1a\x1egoogle/protobuf/duration.proto\x1a\x17google/rpc/status.proto\"\xf3\x05\n\x0b\x43ommandTask\x12I\n\x06inputs\x18\x01 \x01(\x0b\x32\x39.google.devtools.remoteworkers.v1test2.CommandTask.Inputs\x12T\n\x10\x65xpected_outputs\x18\x04 \x01(\x0b\x32:.google.devtools.remoteworkers.v1test2.CommandTask.Outputs\x12M\n\x08timeouts\x18\x05 \x01(\x0b\x32;.google.devtools.remoteworkers.v1test2.CommandTask.Timeouts\x1a\xfb\x01\n\x06Inputs\x12\x11\n\targuments\x18\x01 \x03(\t\x12<\n\x05\x66iles\x18\x02 \x03(\x0b\x32-.google.devtools.remoteworkers.v1test2.Digest\x12l\n\x15\x65nvironment_variables\x18\x03 \x03(\x0b\x32M.google.devtools.remoteworkers.v1test2.CommandTask.Inputs.EnvironmentVariable\x1a\x32\n\x13\x45nvironmentVariable\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\x1a\x65\n\x07Outputs\x12\r\n\x05\x66iles\x18\x01 \x03(\t\x12\x13\n\x0b\x64irectories\x18\x02 \x03(\t\x12\x1a\n\x12stdout_destination\x18\x03 \x01(\t\x12\x1a\n\x12stderr_destination\x18\x04 \x01(\t\x1a\x8e\x01\n\x08Timeouts\x12,\n\texecution\x18\x01 \x01(\x0b\x32\x19.google.protobuf.Duration\x12\'\n\x04idle\x18\x02 \x01(\x0b\x32\x19.google.protobuf.Duration\x12+\n\x08shutdown\x18\x03 \x01(\x0b\x32\x19.google.protobuf.Duration\"c\n\x0e\x43ommandOutputs\x12\x11\n\texit_code\x18\x01 \x01(\x05\x12>\n\x07outputs\x18\x02 \x01(\x0b\x32-.google.devtools.remoteworkers.v1test2.Digest\"k\n\x0f\x43ommandOverhead\x12+\n\x08\x64uration\x18\x01 \x01(\x0b\x32\x19.google.protobuf.Duration\x12+\n\x08overhead\x18\x02 \x01(\x0b\x32\x19.google.protobuf.Duration\"\x92\x02\n\rCommandResult\x12\"\n\x06status\x18\x01 \x01(\x0b\x32\x12.google.rpc.Status\x12\x11\n\texit_code\x18\x02 \x01(\x05\x12>\n\x07outputs\x18\x03 \x01(\x0b\x32-.google.devtools.remoteworkers.v1test2.Digest\x12/\n\x08\x64uration\x18\x04 \x01(\x0b\x32\x19.google.protobuf.DurationB\x02\x18\x01\x12/\n\x08overhead\x18\x05 \x01(\x0b\x32\x19.google.protobuf.DurationB\x02\x18\x01\x12(\n\nstatistics\x18\x06 \x03(\x0b\x32\x14.google.protobuf.Any\"\x84\x01\n\x0c\x46ileMetadata\x12\x0c\n\x04path\x18\x01 \x01(\t\x12=\n\x06\x64igest\x18\x02 \x01(\x0b\x32-.google.devtools.remoteworkers.v1test2.Digest\x12\x10\n\x08\x63ontents\x18\x03 \x01(\x0c\x12\x15\n\ris_executable\x18\x04 \x01(\x08\"`\n\x11\x44irectoryMetadata\x12\x0c\n\x04path\x18\x01 \x01(\t\x12=\n\x06\x64igest\x18\x02 \x01(\x0b\x32-.google.devtools.remoteworkers.v1test2.Digest\"*\n\x06\x44igest\x12\x0c\n\x04hash\x18\x01 \x01(\t\x12\x12\n\nsize_bytes\x18\x02 \x01(\x03\"\x9e\x01\n\tDirectory\x12\x42\n\x05\x66iles\x18\x01 \x03(\x0b\x32\x33.google.devtools.remoteworkers.v1test2.FileMetadata\x12M\n\x0b\x64irectories\x18\x02 \x03(\x0b\x32\x38.google.devtools.remoteworkers.v1test2.DirectoryMetadataB\xc5\x01\n)com.google.devtools.remoteworkers.v1test2B\x15RemoteWorkersCommandsP\x01ZRgoogle.golang.org/genproto/googleapis/devtools/remoteworkers/v1test2;remoteworkers\xa2\x02\x02RW\xaa\x02%Google.DevTools.RemoteWorkers.V1Test2b\x06proto3')
   ,
-  dependencies=[google_dot_protobuf_dot_duration__pb2.DESCRIPTOR,])
+  dependencies=[google_dot_protobuf_dot_any__pb2.DESCRIPTOR,google_dot_protobuf_dot_duration__pb2.DESCRIPTOR,google_dot_rpc_dot_status__pb2.DESCRIPTOR,])
 
 
 
@@ -60,8 +62,8 @@ _COMMANDTASK_INPUTS_ENVIRONMENTVARIABLE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=584,
-  serialized_end=634,
+  serialized_start=636,
+  serialized_end=686,
 )
 
 _COMMANDTASK_INPUTS = _descriptor.Descriptor(
@@ -104,8 +106,8 @@ _COMMANDTASK_INPUTS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=383,
-  serialized_end=634,
+  serialized_start=435,
+  serialized_end=686,
 )
 
 _COMMANDTASK_OUTPUTS = _descriptor.Descriptor(
@@ -129,6 +131,20 @@ _COMMANDTASK_OUTPUTS = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='stdout_destination', full_name='google.devtools.remoteworkers.v1test2.CommandTask.Outputs.stdout_destination', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='stderr_destination', full_name='google.devtools.remoteworkers.v1test2.CommandTask.Outputs.stderr_destination', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -141,8 +157,8 @@ _COMMANDTASK_OUTPUTS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=636,
-  serialized_end=681,
+  serialized_start=688,
+  serialized_end=789,
 )
 
 _COMMANDTASK_TIMEOUTS = _descriptor.Descriptor(
@@ -185,8 +201,8 @@ _COMMANDTASK_TIMEOUTS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=684,
-  serialized_end=826,
+  serialized_start=792,
+  serialized_end=934,
 )
 
 _COMMANDTASK = _descriptor.Descriptor(
@@ -229,8 +245,8 @@ _COMMANDTASK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=127,
-  serialized_end=826,
+  serialized_start=179,
+  serialized_end=934,
 )
 
 
@@ -267,8 +283,8 @@ _COMMANDOUTPUTS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=828,
-  serialized_end=927,
+  serialized_start=936,
+  serialized_end=1035,
 )
 
 
@@ -305,8 +321,74 @@ _COMMANDOVERHEAD = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=929,
-  serialized_end=1036,
+  serialized_start=1037,
+  serialized_end=1144,
+)
+
+
+_COMMANDRESULT = _descriptor.Descriptor(
+  name='CommandResult',
+  full_name='google.devtools.remoteworkers.v1test2.CommandResult',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='status', full_name='google.devtools.remoteworkers.v1test2.CommandResult.status', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='exit_code', full_name='google.devtools.remoteworkers.v1test2.CommandResult.exit_code', index=1,
+      number=2, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='outputs', full_name='google.devtools.remoteworkers.v1test2.CommandResult.outputs', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='duration', full_name='google.devtools.remoteworkers.v1test2.CommandResult.duration', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\030\001')), file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='overhead', full_name='google.devtools.remoteworkers.v1test2.CommandResult.overhead', index=4,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\030\001')), file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='statistics', full_name='google.devtools.remoteworkers.v1test2.CommandResult.statistics', index=5,
+      number=6, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1147,
+  serialized_end=1421,
 )
 
 
@@ -357,8 +439,8 @@ _FILEMETADATA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1039,
-  serialized_end=1171,
+  serialized_start=1424,
+  serialized_end=1556,
 )
 
 
@@ -395,8 +477,8 @@ _DIRECTORYMETADATA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1173,
-  serialized_end=1269,
+  serialized_start=1558,
+  serialized_end=1654,
 )
 
 
@@ -433,8 +515,8 @@ _DIGEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1271,
-  serialized_end=1313,
+  serialized_start=1656,
+  serialized_end=1698,
 )
 
 
@@ -471,8 +553,8 @@ _DIRECTORY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1316,
-  serialized_end=1474,
+  serialized_start=1701,
+  serialized_end=1859,
 )
 
 _COMMANDTASK_INPUTS_ENVIRONMENTVARIABLE.containing_type = _COMMANDTASK_INPUTS
@@ -490,6 +572,11 @@ _COMMANDTASK.fields_by_name['timeouts'].message_type = _COMMANDTASK_TIMEOUTS
 _COMMANDOUTPUTS.fields_by_name['outputs'].message_type = _DIGEST
 _COMMANDOVERHEAD.fields_by_name['duration'].message_type = google_dot_protobuf_dot_duration__pb2._DURATION
 _COMMANDOVERHEAD.fields_by_name['overhead'].message_type = google_dot_protobuf_dot_duration__pb2._DURATION
+_COMMANDRESULT.fields_by_name['status'].message_type = google_dot_rpc_dot_status__pb2._STATUS
+_COMMANDRESULT.fields_by_name['outputs'].message_type = _DIGEST
+_COMMANDRESULT.fields_by_name['duration'].message_type = google_dot_protobuf_dot_duration__pb2._DURATION
+_COMMANDRESULT.fields_by_name['overhead'].message_type = google_dot_protobuf_dot_duration__pb2._DURATION
+_COMMANDRESULT.fields_by_name['statistics'].message_type = google_dot_protobuf_dot_any__pb2._ANY
 _FILEMETADATA.fields_by_name['digest'].message_type = _DIGEST
 _DIRECTORYMETADATA.fields_by_name['digest'].message_type = _DIGEST
 _DIRECTORY.fields_by_name['files'].message_type = _FILEMETADATA
@@ -497,6 +584,7 @@ _DIRECTORY.fields_by_name['directories'].message_type = _DIRECTORYMETADATA
 DESCRIPTOR.message_types_by_name['CommandTask'] = _COMMANDTASK
 DESCRIPTOR.message_types_by_name['CommandOutputs'] = _COMMANDOUTPUTS
 DESCRIPTOR.message_types_by_name['CommandOverhead'] = _COMMANDOVERHEAD
+DESCRIPTOR.message_types_by_name['CommandResult'] = _COMMANDRESULT
 DESCRIPTOR.message_types_by_name['FileMetadata'] = _FILEMETADATA
 DESCRIPTOR.message_types_by_name['DirectoryMetadata'] = _DIRECTORYMETADATA
 DESCRIPTOR.message_types_by_name['Digest'] = _DIGEST
@@ -556,6 +644,13 @@ CommandOverhead = _reflection.GeneratedProtocolMessageType('CommandOverhead', (_
   ))
 _sym_db.RegisterMessage(CommandOverhead)
 
+CommandResult = _reflection.GeneratedProtocolMessageType('CommandResult', (_message.Message,), dict(
+  DESCRIPTOR = _COMMANDRESULT,
+  __module__ = 'google.devtools.remoteworkers.v1test2.command_pb2'
+  # @@protoc_insertion_point(class_scope:google.devtools.remoteworkers.v1test2.CommandResult)
+  ))
+_sym_db.RegisterMessage(CommandResult)
+
 FileMetadata = _reflection.GeneratedProtocolMessageType('FileMetadata', (_message.Message,), dict(
   DESCRIPTOR = _FILEMETADATA,
   __module__ = 'google.devtools.remoteworkers.v1test2.command_pb2'
@@ -587,4 +682,8 @@ _sym_db.RegisterMessage(Directory)
 
 DESCRIPTOR.has_options = True
 DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b('\n)com.google.devtools.remoteworkers.v1test2B\025RemoteWorkersCommandsP\001ZRgoogle.golang.org/genproto/googleapis/devtools/remoteworkers/v1test2;remoteworkers\242\002\002RW\252\002%Google.DevTools.RemoteWorkers.V1Test2'))
+_COMMANDRESULT.fields_by_name['duration'].has_options = True
+_COMMANDRESULT.fields_by_name['duration']._options = _descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\030\001'))
+_COMMANDRESULT.fields_by_name['overhead'].has_options = True
+_COMMANDRESULT.fields_by_name['overhead']._options = _descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\030\001'))
 # @@protoc_insertion_point(module_scope)
