@@ -1,4 +1,5 @@
-image: buildstream/buildstream-fedora:master-81-06ae434
+# Use a debian image with python 3.5 (and pip3) pre-installed
+image: python:3.5-stretch
 
 variables:
   BGD: bgd --verbose
@@ -8,6 +9,7 @@ stages:
   - post
 
 before_script:
+  - pip3 install setuptools
   - export PATH=~/.local/bin:${PATH}
   - pip3 install --user -e .
 
@@ -31,25 +33,13 @@ before_script:
     - ${BGD} bot --host=0.0.0.0 dummy &
     - ${BGD} execute --host=0.0.0.0 request --wait-for-completion
 
-tests-debian:
-  image: buildstream/buildstream-debian
+tests-debian-stretch:
   <<: *linux-tests
-
-# Need to yum install until we have our own image
-tests-fedora:
-  <<: *linux-tests
-  script:
-    - yum -y install clang libffi-devel openssl-devel python3-devel
-    - python3 setup.py test
-    - mkdir -p coverage/
-    - cp .coverage.* coverage/coverage."${CI_JOB_NAME}"
 
 run-dummy-job-debian:
   image: buildstream/buildstream-debian
   <<: *dummy-job
 
-run-dummy-job-fedora:
-  <<: *dummy-job
 
 coverage:
   stage: post
@@ -62,14 +52,14 @@ coverage:
     - coverage combine --rcfile=../.coveragerc -a coverage.*
     - coverage report --rcfile=../.coveragerc -m
   dependencies:
-  - tests-fedora
+  - tests-debian-stretch
 
 # Deploy, only for merges which land on master branch.
 #
 pages:
   stage: post
   dependencies:
-  - tests-fedora
+  - tests-debian-stretch
   script:
   - mv coverage/ public/
   artifacts:
