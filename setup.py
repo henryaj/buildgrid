@@ -17,6 +17,8 @@
 # Authors:
 #        Finn Ball <finn.ball@codethink.co.uk>
 
+import os
+import re
 import setuptools
 import sys
 
@@ -27,19 +29,69 @@ if sys.version_info[0] != 3 or sys.version_info[1] < 5:
     sys.exit(1)
 
 try:
-    from setuptools import setup
+    from setuptools import setup, find_packages, Command
+
 except ImportError:
     print("BuildGrid requires setuptools in order to build. Install it using"
           " your package manager (usually python3-setuptools) or via pip (pip3"
           " install setuptools).")
     sys.exit(1)
 
+class BuildGRPC(Command):
+    """Command to generate project *_pb2.py modules from proto files."""
+
+    description = 'build gRPC protobuf modules'
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        try:
+            import grpc_tools.command
+        except ImportError:
+            print("BuildGrid requires grpc_tools in order to build gRPC modules.\n"
+                  "Install it via pip (pip3 install grpcio-tools).")
+            exit(1)
+
+        protos_root = 'buildgrid/_protos'
+
+        grpc_tools.command.build_package_protos(protos_root)
+
+        # Postprocess imports in generated code
+        for root, _, files in os.walk(protos_root):
+            for filename in files:
+                if filename.endswith('.py'):
+                    path = os.path.join(root, filename)
+                    with open(path, 'r') as f:
+                        code = f.read()
+
+                    # All protos are in buildgrid._protos
+                    code = re.sub(r'^from ', r'from buildgrid._protos.',
+                                  code, flags=re.MULTILINE)
+                    # Except for the core google.protobuf protos
+                    code = re.sub(r'^from buildgrid._protos.google.protobuf', r'from google.protobuf',
+                                  code, flags=re.MULTILINE)
+
+                    with open(path, 'w') as f:
+                        f.write(code)
+def get_cmdclass():
+    cmdclass = {
+        'build_grpc': BuildGRPC,
+    }
+    return cmdclass
+
+
 setup(
     name="BuildGrid",
     version=__version__,
+    cmdclass=get_cmdclass(),
     license="Apache License, Version 2.0",
     description="A remote execution service",
-    packages=setuptools.find_packages(),
+    packages=find_packages(),
     install_requires=[
         'protobuf',
         'grpcio',
