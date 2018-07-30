@@ -17,8 +17,8 @@
 
 import io
 
-from google.bytestream import bytestream_pb2
-from google.devtools.remoteexecution.v1test import remote_execution_pb2 as re_pb2
+from buildgrid._protos.google.bytestream import bytestream_pb2
+from buildgrid._protos.google.devtools.remoteexecution.v1test import remote_execution_pb2 as re_pb2
 import pytest
 
 from buildgrid.server.cas.storage.storage_abc import StorageABC

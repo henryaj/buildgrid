@@ -23,7 +23,7 @@ Schedules jobs.
 
 from collections import deque
 
-from google.longrunning import operations_pb2
+from buildgrid._protos.google.longrunning import operations_pb2
 
 from .job import ExecuteStage, LeaseState
 

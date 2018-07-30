@@ -30,9 +30,9 @@ import time
 
 from ..cli import pass_context
 
-from google.devtools.remoteexecution.v1test import remote_execution_pb2, remote_execution_pb2_grpc
-from google.devtools.remoteexecution.v1test.remote_execution_pb2 import ExecuteOperationMetadata
-from google.longrunning import operations_pb2, operations_pb2_grpc
+from buildgrid._protos.google.devtools.remoteexecution.v1test import remote_execution_pb2, remote_execution_pb2_grpc
+from buildgrid._protos.google.devtools.remoteexecution.v1test.remote_execution_pb2 import ExecuteOperationMetadata
+from buildgrid._protos.google.longrunning import operations_pb2, operations_pb2_grpc
 from google.protobuf import any_pb2
 
 @click.group(short_help = "Simple execute client")

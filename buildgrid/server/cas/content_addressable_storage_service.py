@@ -24,7 +24,7 @@ to check for missing CAS blobs and update them in bulk.
 """
 
 import grpc
-from google.devtools.remoteexecution.v1test import remote_execution_pb2 as re_pb2, remote_execution_pb2_grpc as re_pb2_grpc
+from buildgrid._protos.google.devtools.remoteexecution.v1test import remote_execution_pb2 as re_pb2, remote_execution_pb2_grpc as re_pb2_grpc
 
 class ContentAddressableStorageService(re_pb2_grpc.ContentAddressableStorageServicer):
 

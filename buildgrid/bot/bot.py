@@ -29,7 +29,7 @@ import platform
 import queue
 import time
 
-from google.devtools.remoteworkers.v1test2 import bots_pb2, worker_pb2
+from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2, worker_pb2
 
 from . import bot_interface
 from .._exceptions import BotError

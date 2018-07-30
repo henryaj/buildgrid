@@ -18,13 +18,13 @@
 import logging
 import uuid
 
-import google.devtools.remoteexecution.v1test.remote_execution_pb2
+import buildgrid._protos.google.devtools.remoteexecution.v1test.remote_execution_pb2
 
 from enum import Enum
 
-from google.devtools.remoteexecution.v1test.remote_execution_pb2 import ExecuteOperationMetadata, ExecuteResponse
-from google.devtools.remoteworkers.v1test2 import bots_pb2, worker_pb2
-from google.longrunning import operations_pb2
+from buildgrid._protos.google.devtools.remoteexecution.v1test.remote_execution_pb2 import ExecuteOperationMetadata, ExecuteResponse
+from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2, worker_pb2
+from buildgrid._protos.google.longrunning import operations_pb2
 from google.protobuf import any_pb2
 
 class ExecuteStage(Enum):

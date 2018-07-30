@@ -26,10 +26,10 @@ import time
 import grpc
 from concurrent import futures
 
-from google.bytestream import bytestream_pb2_grpc
-from google.devtools.remoteexecution.v1test import remote_execution_pb2_grpc
-from google.devtools.remoteworkers.v1test2 import bots_pb2_grpc
-from google.longrunning import operations_pb2_grpc
+from buildgrid._protos.google.bytestream import bytestream_pb2_grpc
+from buildgrid._protos.google.devtools.remoteexecution.v1test import remote_execution_pb2_grpc
+from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2_grpc
+from buildgrid._protos.google.longrunning import operations_pb2_grpc
 
 from .cas.bytestream_service import ByteStreamService
 from .cas.content_addressable_storage_service import ContentAddressableStorageService

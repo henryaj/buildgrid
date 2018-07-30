@@ -21,8 +21,8 @@ import pytest
 from unittest import mock
 
 from grpc._server import _Context
-from google.devtools.remoteexecution.v1test import remote_execution_pb2
-from google.longrunning import operations_pb2
+from buildgrid._protos.google.devtools.remoteexecution.v1test import remote_execution_pb2
+from buildgrid._protos.google.longrunning import operations_pb2
 
 from buildgrid.server import scheduler, job
 from buildgrid.server.execution._exceptions import InvalidArgumentError

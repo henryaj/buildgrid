@@ -13,10 +13,10 @@ from google.protobuf import descriptor_pb2
 _sym_db = _symbol_database.Default()
 
 
-from google.api import annotations_pb2 as google_dot_api_dot_annotations__pb2
-from google.longrunning import operations_pb2 as google_dot_longrunning_dot_operations__pb2
+from buildgrid._protos.google.api import annotations_pb2 as google_dot_api_dot_annotations__pb2
+from buildgrid._protos.google.longrunning import operations_pb2 as google_dot_longrunning_dot_operations__pb2
 from google.protobuf import duration_pb2 as google_dot_protobuf_dot_duration__pb2
-from google.rpc import status_pb2 as google_dot_rpc_dot_status__pb2
+from buildgrid._protos.google.rpc import status_pb2 as google_dot_rpc_dot_status__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(

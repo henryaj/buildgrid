@@ -25,8 +25,8 @@ Serves remote execution requests.
 import grpc
 import logging
 
-from google.devtools.remoteexecution.v1test import remote_execution_pb2, remote_execution_pb2_grpc
-from google.longrunning import operations_pb2_grpc, operations_pb2
+from buildgrid._protos.google.devtools.remoteexecution.v1test import remote_execution_pb2, remote_execution_pb2_grpc
+from buildgrid._protos.google.longrunning import operations_pb2_grpc, operations_pb2
 
 from ._exceptions import InvalidArgumentError
 

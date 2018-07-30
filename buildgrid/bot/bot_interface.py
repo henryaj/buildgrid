@@ -25,7 +25,7 @@ Interface to grpc
 
 import logging
 
-from google.devtools.remoteworkers.v1test2 import bots_pb2, bots_pb2_grpc
+from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2, bots_pb2_grpc
 
 from .._exceptions import BotError
 

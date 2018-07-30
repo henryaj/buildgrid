@@ -24,8 +24,8 @@ The abstract base class for storage providers.
 
 import abc
 
-from google.rpc.status_pb2 import Status
-from google.rpc import code_pb2
+from buildgrid._protos.google.rpc.status_pb2 import Status
+from buildgrid._protos.google.rpc import code_pb2
 
 from ....settings import HASH
 

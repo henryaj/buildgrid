@@ -25,7 +25,7 @@ Action Cache currently not implemented.
 import logging
 import grpc
 
-from google.devtools.remoteexecution.v1test import remote_execution_pb2, remote_execution_pb2_grpc
+from buildgrid._protos.google.devtools.remoteexecution.v1test import remote_execution_pb2, remote_execution_pb2_grpc
 
 class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
 
