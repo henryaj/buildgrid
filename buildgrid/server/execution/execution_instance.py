@@ -50,7 +50,6 @@ class ExecutionInstance():
         return job.get_operation()
 
     def get_operation(self, name):
-        self.logger.debug("Getting operation: {}".format(name))
         operation = self._scheduler.jobs.get(name)
         if operation is None:
             raise InvalidArgumentError("Operation name does not exist: {}".format(name))
@@ -60,11 +59,9 @@ class ExecutionInstance():
     def list_operations(self, name, list_filter, page_size, page_token):
         # TODO: Pages
         # Spec says number of pages and length of a page are optional
-        self.logger.debug("Listing operations")
         return self._scheduler.get_operations()
 
     def delete_operation(self, name):
-        self.logger.debug("Deleting operation {}".format(name))
         try:
             self._scheduler.jobs.pop(name)
         except KeyError:

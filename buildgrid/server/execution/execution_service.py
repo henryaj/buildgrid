@@ -22,8 +22,10 @@ ExecutionService
 Serves remote execution requests.
 """
 
+import copy
 import grpc
 import logging
+import time
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
 from buildgrid._protos.google.longrunning import operations_pb2_grpc, operations_pb2
@@ -40,17 +42,36 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
         # Ignore request.instance_name for now
         # Have only one instance
         try:
-            yield self._instance.execute(request.action_digest,
-                                         request.skip_cache_lookup)
+            operation = self._instance.execute(request.action_digest,
+                                               request.skip_cache_lookup)
+
+            yield from self._stream_operation_updates(operation.name)
 
         except InvalidArgumentError as e:
             self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-            yield operations_pb2.Operation()
 
         except NotImplementedError as e:
             self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-            yield operations_pb2.Operation()
+
+    def WaitExecution(self, request, context):
+        try:
+            yield from self._stream_operation_updates(request.name)
+
+        except InvalidArgumentError as e:
+            self.logger.error(e)
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+
+    def _stream_operation_updates(self, name):
+        stream_previous = None
+        while True:
+            stream = self._instance.get_operation(name)
+            if stream != stream_previous:
+                yield stream
+                if stream.done == True: break
+                stream_previous = copy.deepcopy(stream)
+            time.sleep(1)

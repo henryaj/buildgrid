@@ -53,7 +53,6 @@ def cli(context, host, port):
 @pass_context
 def request(context, number, instance_name, wait_for_completion):
     action_digest = remote_execution_pb2.Digest()
-    action_digest.hash = 'zhora'
 
     context.logger.info("Sending execution request...\n")
     stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
@@ -61,24 +60,16 @@ def request(context, number, instance_name, wait_for_completion):
     request = remote_execution_pb2.ExecuteRequest(instance_name = instance_name,
                                                   action_digest = action_digest,
                                                   skip_cache_lookup = True)
+    responses = []
     for i in range(0, number):
-        response = stub.Execute(request)
-        for r in response:
-            context.logger.info(r)
+        responses.append(stub.Execute(request))
 
-    try:
-        while wait_for_completion:
-            request = operations_pb2.ListOperationsRequest()
-            context.logger.debug('Querying to see if jobs are complete.')
-            stub = operations_pb2_grpc.OperationsStub(context.channel)
-            response = stub.ListOperations(request)
-            if all(operation.done for operation in response.operations):
-                context.logger.info('Jobs complete')
-                break
-            time.sleep(1)
-
-    except KeyboardInterrupt:
-        pass
+    for response in responses:
+        if wait_for_completion:
+            for stream in response:
+                context.logger.info(stream)
+        else:
+            context.logger.info(next(response))
 
 @cli.command('status', short_help='Get the status of an operation')
 @click.argument('operation-name')
@@ -108,3 +99,15 @@ def list_operations(context):
 
     for op in response.operations:
         context.logger.info(op)
+
+@cli.command('wait', short_help='Streams an operation until it is complete')
+@click.argument('operation-name')
+@pass_context
+def wait_execution(context, operation_name):
+    stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
+    request = remote_execution_pb2.WaitExecutionRequest(name=operation_name)
+
+    response = stub.WaitExecution(request)
+
+    for stream in response:
+        context.logger.info(stream)

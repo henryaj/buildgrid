@@ -56,15 +56,30 @@ def test_execute(skip_cache_lookup, instance, context):
                                                   action_digest = action_digest,
                                                   skip_cache_lookup = skip_cache_lookup)
     response = instance.Execute(request, context)
-
-    for result in response:
+    if skip_cache_lookup is False:
+        [r for r in response]
+        context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
+    else:
+        result = next(response)
         assert isinstance(result, operations_pb2.Operation)
+        metadata = remote_execution_pb2.ExecuteOperationMetadata()
+        result.metadata.Unpack(metadata)
+        assert metadata.stage == job.ExecuteStage.QUEUED.value
+        assert uuid.UUID(result.name, version=4)
+        assert result.done is False
 
-        if skip_cache_lookup is False:
-            context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
-        else:
-            metadata = remote_execution_pb2.ExecuteOperationMetadata()
-            result.metadata.Unpack(metadata)
-            assert metadata.stage == job.ExecuteStage.QUEUED.value
-            assert uuid.UUID(result.name, version=4)
-            assert result.done is False
+def test_wait_execution(instance, context):
+    action_digest = remote_execution_pb2.Digest()
+    action_digest.hash = 'zhora'
+
+    execution_request = remote_execution_pb2.ExecuteRequest(instance_name = '',
+                                                            action_digest = action_digest,
+                                                            skip_cache_lookup = True)
+    execution_response = next(instance.Execute(execution_request, context))
+
+
+    request = remote_execution_pb2.WaitExecutionRequest(name=execution_response.name)
+
+    response = next(instance.WaitExecution(request, context))
+
+    assert response == execution_response
