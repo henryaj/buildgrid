@@ -21,7 +21,7 @@ import pytest
 from unittest import mock
 
 from grpc._server import _Context
-from buildgrid._protos.google.devtools.remoteexecution.v1test import remote_execution_pb2
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 
 from buildgrid.server import scheduler
 from buildgrid.server.execution import execution_instance, action_cache_service

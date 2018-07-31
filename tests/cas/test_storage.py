@@ -18,7 +18,7 @@
 import tempfile
 
 import boto3
-from buildgrid._protos.google.devtools.remoteexecution.v1test.remote_execution_pb2 import Digest
+from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Digest
 from moto import mock_s3
 import pytest
 

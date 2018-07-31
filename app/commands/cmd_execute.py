@@ -30,8 +30,8 @@ import time
 
 from ..cli import pass_context
 
-from buildgrid._protos.google.devtools.remoteexecution.v1test import remote_execution_pb2, remote_execution_pb2_grpc
-from buildgrid._protos.google.devtools.remoteexecution.v1test.remote_execution_pb2 import ExecuteOperationMetadata
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
+from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import ExecuteOperationMetadata
 from buildgrid._protos.google.longrunning import operations_pb2, operations_pb2_grpc
 from google.protobuf import any_pb2
 
@@ -52,25 +52,19 @@ def cli(context, host, port):
 @click.option('--wait-for-completion', is_flag=True)
 @pass_context
 def request(context, number, instance_name, wait_for_completion):
+    action_digest = remote_execution_pb2.Digest()
+    action_digest.hash = 'zhora'
+
     context.logger.info("Sending execution request...\n")
     stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
 
-    action = remote_execution_pb2.Action(command_digest = None,
-                                         input_root_digest = None,
-                                         output_files = [],
-                                         output_directories = None,
-                                         platform = None,
-                                         timeout = None,
-                                         do_not_cache = True)
-
-    action.command_digest.hash = 'foo'
-
     request = remote_execution_pb2.ExecuteRequest(instance_name = instance_name,
-                                                  action = action,
+                                                  action_digest = action_digest,
                                                   skip_cache_lookup = True)
     for i in range(0, number):
         response = stub.Execute(request)
-        context.logger.info("Response name: {}".format(response.name))
+        for r in response:
+            context.logger.info(r)
 
     try:
         while wait_for_completion:
@@ -96,7 +90,7 @@ def operation_status(context, operation_name):
     request = operations_pb2.GetOperationRequest(name=operation_name)
 
     response = stub.GetOperation(request)
-    _log_operation(context, response)
+    context.logger.info(response)
 
 @cli.command('list', short_help='List operations')
 @pass_context
@@ -113,13 +107,4 @@ def list_operations(context):
         return
 
     for op in response.operations:
-        _log_operation(context, op)
-
-def _log_operation(context, operation):
-    op_meta = ExecuteOperationMetadata()
-    operation.metadata.Unpack(op_meta)
-
-    context.logger.info("Name  : {}".format(operation.name))
-    context.logger.info("Done  : {}".format(operation.done))
-    context.logger.info("Stage : {}".format(ExecuteOperationMetadata.Stage.Name(op_meta.stage)))
-    context.logger.info("Key   : {}".format(operation.response))
+        context.logger.info(op)

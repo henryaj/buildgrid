@@ -22,7 +22,7 @@ import uuid
 from unittest import mock
 
 from grpc._server import _Context
-from buildgrid._protos.google.devtools.remoteexecution.v1test import remote_execution_pb2
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 from google.protobuf import any_pb2
 
@@ -49,22 +49,22 @@ def instance(execution):
 
 @pytest.mark.parametrize("skip_cache_lookup", [True, False])
 def test_execute(skip_cache_lookup, instance, context):
-    action = remote_execution_pb2.Action()
-    action.command_digest.hash = 'zhora'
+    action_digest = remote_execution_pb2.Digest()
+    action_digest.hash = 'zhora'
 
     request = remote_execution_pb2.ExecuteRequest(instance_name = '',
-                                                  action = action,
+                                                  action_digest = action_digest,
                                                   skip_cache_lookup = skip_cache_lookup)
+    response = instance.Execute(request, context)
 
-    result = instance.Execute(request, context)
+    for result in response:
+        assert isinstance(result, operations_pb2.Operation)
 
-    assert isinstance(result, operations_pb2.Operation)
-
-    if skip_cache_lookup is False:
-        context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
-    else:
-        metadata = remote_execution_pb2.ExecuteOperationMetadata()
-        result.metadata.Unpack(metadata)
-        assert metadata.stage == job.ExecuteStage.QUEUED.value
-        assert uuid.UUID(result.name, version=4)
-        assert result.done is False
+        if skip_cache_lookup is False:
+            context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
+        else:
+            metadata = remote_execution_pb2.ExecuteOperationMetadata()
+            result.metadata.Unpack(metadata)
+            assert metadata.stage == job.ExecuteStage.QUEUED.value
+            assert uuid.UUID(result.name, version=4)
+            assert result.done is False

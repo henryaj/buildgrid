@@ -21,7 +21,7 @@ import pytest
 from unittest import mock
 
 from grpc._server import _Context
-from buildgrid._protos.google.devtools.remoteexecution.v1test import remote_execution_pb2
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 
 from buildgrid.server import scheduler, job
@@ -37,11 +37,11 @@ def context():
 # Requests to make
 @pytest.fixture
 def execute_request():
-    action = remote_execution_pb2.Action()
-    action.command_digest.hash = 'zhora'
+    action_digest = remote_execution_pb2.Digest()
+    action_digest.hash = 'zhora'
 
     yield remote_execution_pb2.ExecuteRequest(instance_name = '',
-                                              action = action,
+                                              action_digest = action_digest,
                                               skip_cache_lookup = True)
 
 @pytest.fixture
@@ -59,10 +59,11 @@ def instance(execution):
 
 # Queue an execution, get operation corresponding to that request
 def test_get_operation(instance, execute_request, context):
-    response_execute = instance._instance.execute(execute_request.action,
+    response_execute = instance._instance.execute(execute_request.action_digest,
                                                   execute_request.skip_cache_lookup)
 
     request = operations_pb2.GetOperationRequest()
+
     request.name = response_execute.name
 
     response = instance.GetOperation(request, context)
@@ -75,7 +76,7 @@ def test_get_operation_fail(instance, context):
     context.set_code.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT)
 
 def test_list_operations(instance, execute_request, context):
-    response_execute = instance._instance.execute(execute_request.action,
+    response_execute = instance._instance.execute(execute_request.action_digest,
                                                   execute_request.skip_cache_lookup)
 
     request = operations_pb2.ListOperationsRequest()
@@ -84,7 +85,7 @@ def test_list_operations(instance, execute_request, context):
     assert response.operations[0].name == response_execute.name
 
 def test_list_operations_with_result(instance, execute_request, context):
-    response_execute = instance._instance.execute(execute_request.action,
+    response_execute = instance._instance.execute(execute_request.action_digest,
                                                   execute_request.skip_cache_lookup)
 
     action_result = remote_execution_pb2.ActionResult()
@@ -109,7 +110,7 @@ def test_list_operations_empty(instance, context):
 
 # Send execution off, delete, try to find operation should fail
 def test_delete_operation(instance, execute_request, context):
-    response_execute = instance._instance.execute(execute_request.action,
+    response_execute = instance._instance.execute(execute_request.action_digest,
                                                   execute_request.skip_cache_lookup)
     request = operations_pb2.DeleteOperationRequest()
     request.name = response_execute.name

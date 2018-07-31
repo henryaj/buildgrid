@@ -18,7 +18,7 @@
 import io
 
 from buildgrid._protos.google.bytestream import bytestream_pb2
-from buildgrid._protos.google.devtools.remoteexecution.v1test import remote_execution_pb2 as re_pb2
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2 as re_pb2
 import pytest
 
 from buildgrid.server.cas.storage.storage_abc import StorageABC
@@ -170,22 +170,22 @@ def test_cas_batch_update_blobs(instance):
     storage = SimpleStorage()
     servicer = ContentAddressableStorageService(storage)
     update_requests = [
-        re_pb2.UpdateBlobRequest(
-            content_digest=re_pb2.Digest(hash=HASH(b'abc').hexdigest(), size_bytes=3), data=b'abc'),
-        re_pb2.UpdateBlobRequest(
-            content_digest=re_pb2.Digest(hash="invalid digest!", size_bytes=1000),
+        re_pb2.BatchUpdateBlobsRequest.Request(
+            digest=re_pb2.Digest(hash=HASH(b'abc').hexdigest(), size_bytes=3), data=b'abc'),
+        re_pb2.BatchUpdateBlobsRequest.Request(
+            digest=re_pb2.Digest(hash="invalid digest!", size_bytes=1000),
             data=b'wrong data')
     ]
     request = re_pb2.BatchUpdateBlobsRequest(instance_name=instance, requests=update_requests)
     response = servicer.BatchUpdateBlobs(request, None)
     assert len(response.responses) == 2
     for blob_response in response.responses:
-        if blob_response.blob_digest == update_requests[0].content_digest:
+        if blob_response.digest == update_requests[0].digest:
             assert blob_response.status.code == 0
-        elif blob_response.blob_digest == update_requests[1].content_digest:
+        elif blob_response.digest == update_requests[1].digest:
             assert blob_response.status.code != 0
         else:
             raise Exception("Unexpected blob response")
     assert len(storage.data) == 1
-    assert (update_requests[0].content_digest.hash, 3) in storage.data
-    assert storage.data[(update_requests[0].content_digest.hash, 3)] == b'abc'
+    assert (update_requests[0].digest.hash, 3) in storage.data
+    assert storage.data[(update_requests[0].digest.hash, 3)] == b'abc'

@@ -27,7 +27,7 @@ import grpc
 from concurrent import futures
 
 from buildgrid._protos.google.bytestream import bytestream_pb2_grpc
-from buildgrid._protos.google.devtools.remoteexecution.v1test import remote_execution_pb2_grpc
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2_grpc
 from buildgrid._protos.google.longrunning import operations_pb2_grpc
 

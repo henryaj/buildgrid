@@ -23,7 +23,7 @@ import uuid
 from unittest import mock
 
 from grpc._server import _Context
-from buildgrid._protos.google.devtools.remoteexecution.v1test import remote_execution_pb2
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2, worker_pb2
 from google.protobuf import any_pb2
 

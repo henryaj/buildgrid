@@ -24,7 +24,7 @@ to check for missing CAS blobs and update them in bulk.
 """
 
 import grpc
-from buildgrid._protos.google.devtools.remoteexecution.v1test import remote_execution_pb2 as re_pb2, remote_execution_pb2_grpc as re_pb2_grpc
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2 as re_pb2, remote_execution_pb2_grpc as re_pb2_grpc
 
 class ContentAddressableStorageService(re_pb2_grpc.ContentAddressableStorageServicer):
 
@@ -42,10 +42,10 @@ class ContentAddressableStorageService(re_pb2_grpc.ContentAddressableStorageServ
         storage = self._storage
         requests = []
         for request_proto in request.requests:
-            requests.append((request_proto.content_digest, request_proto.data))
+            requests.append((request_proto.digest, request_proto.data))
         response = re_pb2.BatchUpdateBlobsResponse()
         for (digest, _), status in zip(requests, storage.bulk_update_blobs(requests)):
             response_proto = response.responses.add()
-            response_proto.blob_digest.CopyFrom(digest)
+            response_proto.digest.CopyFrom(digest)
             response_proto.status.CopyFrom(status)
         return response

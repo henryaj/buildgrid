@@ -34,12 +34,12 @@ class ExecutionInstance():
         self.logger = logging.getLogger(__name__)
         self._scheduler = scheduler
 
-    def execute(self, action, skip_cache_lookup):
+    def execute(self, action_digest, skip_cache_lookup):
         """ Sends a job for execution.
         Queues an action and creates an Operation instance to be associated with
         this action.
         """
-        job = Job(action)
+        job = Job(action_digest)
         self.logger.info("Operation name: {}".format(job.name))
 
         if not skip_cache_lookup:

@@ -39,7 +39,7 @@ from buildgrid._exceptions import BotError
 from ..cli import pass_context
 
 from buildgrid._protos.google.bytestream import bytestream_pb2, bytestream_pb2_grpc
-from buildgrid._protos.google.devtools.remoteexecution.v1test import remote_execution_pb2, remote_execution_pb2_grpc
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
 from google.protobuf import any_pb2
 
 @click.group(short_help = 'Create a bot client')

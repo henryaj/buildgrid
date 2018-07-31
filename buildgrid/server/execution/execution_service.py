@@ -25,7 +25,7 @@ Serves remote execution requests.
 import grpc
 import logging
 
-from buildgrid._protos.google.devtools.remoteexecution.v1test import remote_execution_pb2, remote_execution_pb2_grpc
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
 from buildgrid._protos.google.longrunning import operations_pb2_grpc, operations_pb2
 
 from ._exceptions import InvalidArgumentError
@@ -40,17 +40,17 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
         # Ignore request.instance_name for now
         # Have only one instance
         try:
-            return self._instance.execute(request.action,
-                                          request.skip_cache_lookup)
+            yield self._instance.execute(request.action_digest,
+                                         request.skip_cache_lookup)
 
         except InvalidArgumentError as e:
             self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-            return operations_pb2.Operation()
+            yield operations_pb2.Operation()
 
         except NotImplementedError as e:
             self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-            return operations_pb2.Operation()
+            yield operations_pb2.Operation()
