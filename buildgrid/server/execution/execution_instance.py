@@ -34,12 +34,12 @@ class ExecutionInstance():
         self.logger = logging.getLogger(__name__)
         self._scheduler = scheduler
 
-    def execute(self, action_digest, skip_cache_lookup):
+    def execute(self, action_digest, skip_cache_lookup, message_queue=None):
         """ Sends a job for execution.
         Queues an action and creates an Operation instance to be associated with
         this action.
         """
-        job = Job(action_digest)
+        job = Job(action_digest, message_queue)
         self.logger.info("Operation name: {}".format(job.name))
 
         if not skip_cache_lookup:
@@ -70,3 +70,15 @@ class ExecutionInstance():
     def cancel_operation(self, name):
         # TODO: Cancel leases
         raise NotImplementedError("Cancelled operations not supported")
+
+    def register_message_client(self, name, queue):
+        try:
+            self._scheduler.register_client(name, queue)
+        except KeyError:
+            raise InvalidArgumentError("Operation name does not exist: {}".format(name))
+
+    def unregister_message_client(self, name, queue):
+        try:
+            self._scheduler.unregister_client(name, queue)
+        except KeyError:
+            raise InvalidArgumentError("Operation name does not exist: {}".format(name))

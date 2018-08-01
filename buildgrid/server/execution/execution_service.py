@@ -22,10 +22,9 @@ ExecutionService
 Serves remote execution requests.
 """
 
-import copy
 import grpc
 import logging
-import time
+import queue
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
 from buildgrid._protos.google.longrunning import operations_pb2_grpc, operations_pb2
@@ -35,17 +34,23 @@ from ._exceptions import InvalidArgumentError
 class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
     def __init__(self, instance):
-        self._instance = instance
         self.logger = logging.getLogger(__name__)
+        self._instance = instance
 
     def Execute(self, request, context):
         # Ignore request.instance_name for now
         # Have only one instance
         try:
+            message_queue = queue.Queue()
             operation = self._instance.execute(request.action_digest,
-                                               request.skip_cache_lookup)
+                                               request.skip_cache_lookup,
+                                               message_queue)
 
-            yield from self._stream_operation_updates(operation.name)
+            remove_client = lambda : self._remove_client(operation.name, message_queue)
+            context.add_callback(remove_client)
+
+            yield from self._stream_operation_updates(message_queue,
+                                                      operation.name)
 
         except InvalidArgumentError as e:
             self.logger.error(e)
@@ -59,19 +64,28 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
     def WaitExecution(self, request, context):
         try:
-            yield from self._stream_operation_updates(request.name)
+            message_queue = queue.Queue()
+            operation_name = request.name
+
+            self._instance.register_message_client(operation_name, message_queue)
+
+            remove_client = lambda : self._remove_client(operation_name, message_queue)
+            context.add_callback(remove_client)
+
+            yield from self._stream_operation_updates(message_queue,
+                                                      operation_name)
 
         except InvalidArgumentError as e:
             self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
-    def _stream_operation_updates(self, name):
-        stream_previous = None
-        while True:
-            stream = self._instance.get_operation(name)
-            if stream != stream_previous:
-                yield stream
-                if stream.done == True: break
-                stream_previous = copy.deepcopy(stream)
-            time.sleep(1)
+    def _remove_client(self, operation_name, message_queue):
+        self._instance.unregister_message_client(operation_name, message_queue)
+
+    def _stream_operation_updates(self, message_queue, operation_name):
+        operation = message_queue.get()
+        while not operation.done:
+            yield operation
+            operation = message_queue.get()
+        yield operation

@@ -35,8 +35,17 @@ class Scheduler():
         self.jobs = {}
         self.queue = deque()
 
+    def register_client(self, name, queue):
+        self.jobs[name].register_client(queue)
+
+    def unregister_client(self, name, queue):
+        job = self.jobs[name]
+        job.unregister_client(queue)
+        if job.check_job_finished():
+            del self.jobs[name]
+
     def append_job(self, job):
-        job.execute_stage = ExecuteStage.QUEUED
+        job.update_execute_stage(ExecuteStage.QUEUED)
         self.jobs[job.name] = job
         self.queue.append(job)
 
@@ -45,9 +54,9 @@ class Scheduler():
 
         if job.n_tries >= self.MAX_N_TRIES:
             # TODO: Decide what to do with these jobs
-            job.execute_stage = ExecuteStage.COMPLETED
+            job.update_execute_stage(ExecuteStage.COMPLETED)
         else:
-            job.execute_stage = ExecuteStage.QUEUED
+            job.update_execute_stage(ExecuteStage.QUEUED)
             job.n_tries += 1
             self.queue.appendleft(job)
 
@@ -56,15 +65,14 @@ class Scheduler():
     def create_job(self):
         if len(self.queue) > 0:
             job = self.queue.popleft()
-            job.execute_stage = ExecuteStage.EXECUTING
+            job.update_execute_stage(ExecuteStage.EXECUTING)
             self.jobs[job.name] = job
             return job
-        return None
 
     def job_complete(self, name, result):
         job = self.jobs[name]
-        job.execute_stage = ExecuteStage.COMPLETED
         job.result = result
+        job.update_execute_stage(ExecuteStage.COMPLETED)
         self.jobs[name] = job
 
     def get_operations(self):
@@ -85,7 +93,7 @@ class Scheduler():
                 return lease
             else:
                 job = create_job
-                job.lease = job.create_lease()
+                job.create_lease()
 
         elif state == LeaseState.PENDING.value:
             job.lease = lease

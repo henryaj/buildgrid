@@ -51,21 +51,39 @@ class LeaseState(Enum):
 
 class Job():
 
-    def __init__(self, action):
-        self.action = action
-        self.bot_status = BotStatus.BOT_STATUS_UNSPECIFIED
-        self.execute_stage = ExecuteStage.UNKNOWN
+    def __init__(self, action_digest, message_queue=None):
         self.lease = None
         self.logger = logging.getLogger(__name__)
-        self.name = str(uuid.uuid4())
         self.result = None
 
+        self._action_digest = action_digest
+        self._execute_stage = ExecuteStage.UNKNOWN
         self._n_tries = 0
-        self._operation = operations_pb2.Operation(name = self.name)
+        self._name = str(uuid.uuid4())
+        self._operation = operations_pb2.Operation(name = self._name)
+        self._operation_update_queues = []
+
+        if message_queue is not None:
+            self.register_client(message_queue)
+
+    @property
+    def name(self):
+        return self._name
+
+    def check_job_finished(self):
+        if not self._operation_update_queues:
+            return self._operation.done
+        return False
+
+    def register_client(self, queue):
+        self._operation_update_queues.append(queue)
+        queue.put(self.get_operation())
+
+    def unregister_client(self, queue):
+        self._operation_update_queues.remove(queue)
 
     def get_operation(self):
         self._operation.metadata.CopyFrom(self._pack_any(self.get_operation_meta()))
-
         if self.result is not None:
             self._operation.done = True
             response = ExecuteResponse()
@@ -76,21 +94,26 @@ class Job():
 
     def get_operation_meta(self):
         meta = ExecuteOperationMetadata()
-        meta.stage = self.execute_stage.value
+        meta.stage = self._execute_stage.value
 
         return meta
 
     def create_lease(self):
-        action = self._pack_any(self.action)
+        action_digest = self._pack_any(self._action_digest)
 
         lease = bots_pb2.Lease(id = self.name,
-                               payload = action,
+                               payload = action_digest,
                                state = LeaseState.PENDING.value)
         self.lease = lease
         return lease
 
     def get_operations(self):
         return operations_pb2.ListOperationsResponse(operations = [self.get_operation()])
+
+    def update_execute_stage(self, stage):
+        self._execute_stage = stage
+        for queue in self._operation_update_queues:
+            queue.put(self.get_operation())
 
     def _pack_any(self, pack):
         any = any_pb2.Any()

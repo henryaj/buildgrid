@@ -187,7 +187,7 @@ def test_update_leases_work_complete(bot_session, context, instance):
     # Simulated the severed binding between client and server
     response = copy.deepcopy(instance.UpdateBotSession(request, context))
     assert isinstance(response, bots_pb2.BotSession)
-    assert instance._instance._scheduler.jobs[operation_name].execute_stage == ExecuteStage.COMPLETED
+    assert instance._instance._scheduler.jobs[operation_name]._execute_stage == ExecuteStage.COMPLETED
 
 def test_post_bot_event_temp(context, instance):
     request = bots_pb2.PostBotEventTempRequest()
