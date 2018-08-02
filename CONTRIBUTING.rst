@@ -9,8 +9,23 @@ We welcome contributions in the form of bug fixes or feature additions / enhance
 
 Any major feature additions should be raised as a proposal on the `Mailing List <https://lists.buildgrid.build/cgi-bin/mailman/listinfo/buildgrid/>`_ to be discussed, and then eventually followed up with an issue here on gitlab. We recommend that you propose the feature in advance of commencing work. We are also on irc, but do not have our own dedicated channel - you can find us on #buildstream on GIMPNet and #bazel on freenode.
 
-The author of any patch is expected to take ownership of that code and is to support it for a reasonable
-time-frame. This means addressing any unforeseen side effects and quirks the feature may have introduced.
+The author of any patch is expected to take ownership of that code and is to support it for a reasonable time-frame. This means addressing any unforeseen side effects and quirks the feature may have introduced. More on this below in 'Granting Committer Access'.
+
+Granting Committer Access
+-------------------------
+
+We'll hand out commit access to anyone who has successfully landed a single patch to the code base. Please request this via irc or the mailing list.
+
+This of course relies on contributors being responsive and show willingness to address problems after landing branches there should not be any problems here.
+
+What we are expecting of committers here in general is basically to
+escalate the review in cases of uncertainty:
+
+* If the patch/branch is very trivial (obvious few line changes or typos etc), and you are confident of the change, there is no need for review.
+
+* If the patch/branch is non trivial, please obtain a review from another committer who is familiar with the area which the branch effects. An approval from someone who is not the patch author will be needed before any merge. 
+
+We don't have any detailed policy for "bad actors", but will of course handle things on a case by case basis - commit access should not result in commit wars or be used as a tool to subvert the project when disagreements arise, such incidents (if any) would surely lead to temporary suspension of commit rights.
 
 Patch Submissions
 -----------------
