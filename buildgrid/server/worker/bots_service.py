@@ -43,7 +43,6 @@ class BotsService(bots_pb2_grpc.BotsServicer):
             self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-            return bots_pb2.BotSession()
 
     def UpdateBotSession(self, request, context):
         try:
@@ -53,13 +52,16 @@ class BotsService(bots_pb2_grpc.BotsServicer):
             self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-            return bots_pb2.BotSession()
 
         except OutofSyncError as e:
             self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.DATA_LOSS)
-            return bots_pb2.BotSession()
+
+        except NotImplementedError as e:
+            self.logger.error(e)
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.UNIMPLEMENTED)
 
     def PostBotEventTemp(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)

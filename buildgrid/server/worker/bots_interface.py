@@ -35,6 +35,7 @@ class BotsInterface():
         self.logger = logging.getLogger(__name__)
 
         self._bot_ids = {}
+        self._bot_sessions = {}
         self._scheduler = scheduler
 
     def create_bot_session(self, parent, bot_session):
@@ -59,7 +60,12 @@ class BotsInterface():
         bot_session.name = name
 
         self._bot_ids[name] = bot_id
+        self._bot_sessions[name] = bot_session
         self.logger.info("Created bot session name={} with bot_id={}".format(name, bot_id))
+
+        for lease in self._scheduler.create_leases():
+            bot_session.leases.extend([lease])
+
         return bot_session
 
     def update_bot_session(self, name, bot_session):
@@ -69,12 +75,65 @@ class BotsInterface():
         self.logger.debug("Updating bot session name={}".format(name))
         self._check_bot_ids(bot_session.bot_id, name)
 
-        leases = [self._scheduler.update_lease(lease) for lease in bot_session.leases]
+        server_session = self._bot_sessions[name]
+
+        leases = filter(None, [self.check_states(lease) for lease in bot_session.leases])
 
         del bot_session.leases[:]
         bot_session.leases.extend(leases)
 
+        for lease in self._scheduler.create_leases():
+            bot_session.leases.extend([lease])
+
+        self._bot_sessions[name] = bot_session
         return bot_session
+
+    def check_states(self, client_lease):
+        """ Edge detector for states
+        """
+        ## TODO: Handle cancelled states
+        try:
+            server_lease = self._scheduler.get_job_lease(client_lease.id)
+        except KeyError:
+            raise InvalidArgumentError("Lease not found on server: {}".format(client_lease))
+
+        server_state = LeaseState(server_lease.state)
+        client_state = LeaseState(client_lease.state)
+
+        if server_state == LeaseState.PENDING:
+
+            if client_state == LeaseState.ACTIVE:
+                self._scheduler.update_job_lease_state(client_lease.id, client_lease.state)
+            elif client_state == LeaseState.COMPLETED:
+                # TODO: Lease was rejected
+                raise NotImplementedError("'Not Accepted' is unsupported")
+            else:
+                raise OutofSyncError("Server lease: {}. Client lease: {}".format(server_lease, client_lease))
+
+        elif server_state == LeaseState.ACTIVE:
+
+            if client_state == LeaseState.ACTIVE:
+                pass
+
+            elif client_state == LeaseState.COMPLETED:
+                self._scheduler.job_complete(client_lease.id, client_lease.result)
+                self._scheduler.update_job_lease_state(client_lease.id, client_lease.state)
+                return None
+
+            else:
+                raise OutofSyncError("Server lease: {}. Client lease: {}".format(server_lease, client_lease))
+
+        elif server_state == LeaseState.COMPLETED:
+            raise OutofSyncError("Server lease: {}. Client lease: {}".format(server_lease, client_lease))
+
+        elif server_state == LeaseState.CANCELLED:
+            raise NotImplementedError("Cancelled states not supported yet")
+
+        else:
+            # Sould never get here
+            raise OutofSyncError("State now allowed: {}".format(server_state))
+
+        return client_lease
 
     def _check_bot_ids(self, bot_id, name = None):
         """ Checks the ID and the name of the bot.
@@ -103,7 +162,11 @@ class BotsInterface():
             raise InvalidArgumentError("Bot id does not exist: {}".format(name))
 
         self.logger.debug("Attempting to close {} with name: {}".format(bot_id, name))
-        self._scheduler.retry_job(name)
+        for lease in self._bot_sessions[name].leases:
+            if lease.state != LeaseState.COMPLETED.value:
+                # TODO: Be wary here, may need to handle rejected leases in future
+                self._scheduler.retry_job(lease.id)
+
         self.logger.debug("Closing bot session: {}".format(name))
         self._bot_ids.pop(name)
         self.logger.info("Closed bot {} with name: {}".format(bot_id, name))

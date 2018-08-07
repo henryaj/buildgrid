@@ -50,24 +50,17 @@ class Scheduler():
         self.queue.append(job)
 
     def retry_job(self, name):
-        job = self.jobs[name]
+        if job in self.jobs[name]:
+            if job.n_tries >= self.MAX_N_TRIES:
+                # TODO: Decide what to do with these jobs
+                job.update_execute_stage(ExecuteStage.COMPLETED)
+                # TODO: Mark these jobs as done
+            else:
+                job.update_execute_stage(ExecuteStage.QUEUED)
+                job.n_tries += 1
+                self.queue.appendleft(job)
 
-        if job.n_tries >= self.MAX_N_TRIES:
-            # TODO: Decide what to do with these jobs
-            job.update_execute_stage(ExecuteStage.COMPLETED)
-        else:
-            job.update_execute_stage(ExecuteStage.QUEUED)
-            job.n_tries += 1
-            self.queue.appendleft(job)
-
-        self.jobs[name] = job
-
-    def create_job(self):
-        if len(self.queue) > 0:
-            job = self.queue.popleft()
-            job.update_execute_stage(ExecuteStage.EXECUTING)
-            self.jobs[job.name] = job
-            return job
+            self.jobs[name] = job
 
     def job_complete(self, name, result):
         job = self.jobs[name]
@@ -81,48 +74,13 @@ class Scheduler():
             response.operations.extend([v.get_operation()])
         return response
 
-    def update_lease(self, lease):
-        name = lease.id
+    def update_job_lease_state(self, name, state):
         job = self.jobs.get(name)
-        state = lease.state
-
-        if state   == LeaseState.LEASE_STATE_UNSPECIFIED.value:
-            create_job = self.create_job()
-            if create_job is None:
-                # No job? Return lease.
-                return lease
-            else:
-                job = create_job
-                job.create_lease()
-
-        elif state == LeaseState.PENDING.value:
-            job.lease = lease
-
-        elif state == LeaseState.ACTIVE.value:
-            job.lease = lease
-
-        elif state == LeaseState.COMPLETED.value:
-            self.job_complete(job.name, lease.result)
-
-            create_job = self.create_job()
-            if create_job is None:
-                # Docs say not to use this state though if job has
-                # completed and no more jobs, then use this state to stop
-                # job being processed again
-                job.lease = lease
-                job.lease.state = LeaseState.LEASE_STATE_UNSPECIFIED.value
-            else:
-                job = create_job
-                job.lease = job.create_lease()
-
-        elif state == LeaseState.CANCELLED.value:
-            job.lease = lease
-
-        else:
-            raise Exception("Unknown state: {}".format(state))
-
+        job.lease.state = state
         self.jobs[name] = job
-        return job.lease
+
+    def get_job_lease(self, name):
+        return self.jobs[name].lease
 
     def cancel_session(self, name):
         job = self.jobs[name]
@@ -130,3 +88,12 @@ class Scheduler():
         if state == LeaseState.PENDING.value or \
            state == LeaseState.ACTIVE.value:
             self.retry_job(name)
+
+    def create_leases(self):
+        while len(self.queue) > 0:
+            job = self.queue.popleft()
+            job.update_execute_stage(ExecuteStage.EXECUTING)
+            job.lease = job.create_lease()
+            job.lease.state = LeaseState.PENDING.value
+            self.jobs[job.name] = job
+            yield job.lease
