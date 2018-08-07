@@ -29,7 +29,7 @@ from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2, bo
 
 from .._exceptions import BotError
 
-class BotInterface(object):
+class BotInterface:
     """ Interface handles calls to the server.
     """
 
@@ -39,22 +39,12 @@ class BotInterface(object):
         self._stub = bots_pb2_grpc.BotsStub(channel)
 
     def create_bot_session(self, parent, bot_session):
-        try:
-            request = bots_pb2.CreateBotSessionRequest(parent = parent,
-                                                       bot_session = bot_session)
-            return self._stub.CreateBotSession(request)
-
-        except Exception as e:
-            self.logger.error(e)
-            raise BotError(e)
+        request = bots_pb2.CreateBotSessionRequest(parent = parent,
+                                                   bot_session = bot_session)
+        return self._stub.CreateBotSession(request)
 
     def update_bot_session(self, bot_session, update_mask = None):
-        try:
-            request = bots_pb2.UpdateBotSessionRequest(name = bot_session.name,
-                                                       bot_session = bot_session,
-                                                       update_mask = update_mask)
-            return self._stub.UpdateBotSession(request)
-
-        except Exception as e:
-            self.logger.error(e)
-            raise BotError(e)
+        request = bots_pb2.UpdateBotSessionRequest(name = bot_session.name,
+                                                   bot_session = bot_session,
+                                                   update_mask = update_mask)
+        return self._stub.UpdateBotSession(request)
