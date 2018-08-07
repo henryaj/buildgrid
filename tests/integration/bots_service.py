@@ -37,6 +37,12 @@ def context():
     yield mock.MagicMock(spec = _Context)
 
 @pytest.fixture
+def action_job():
+    action_digest = remote_execution_pb2.Digest()
+    j = job.Job(action_digest, None)
+    yield j
+
+@pytest.fixture
 def bot_session():
     bot = bots_pb2.BotSession()
     bot.bot_id = 'ana'
@@ -101,7 +107,6 @@ def test_update_bot_session_zombie(bot_session, context, instance):
 
     response = instance.UpdateBotSession(request, context)
 
-    assert isinstance(response, bots_pb2.BotSession)
     context.set_code.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT)
 
 def test_update_bot_session_bot_id_fail(bot_session, context, instance):
@@ -113,90 +118,198 @@ def test_update_bot_session_bot_id_fail(bot_session, context, instance):
 
     context.set_code.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT)
 
-@pytest.mark.parametrize("number_of_leases", [1, 3, 500])
-def test_update_leases(number_of_leases, bot_session, context, instance):
-    leases = [bots_pb2.Lease() for x in range(number_of_leases)]
-    bot_session.leases.extend(leases)
+@pytest.mark.parametrize("number_of_jobs", [0, 1, 3, 500])
+def test_number_of_leases(number_of_jobs, bot_session, context, instance):
     request = bots_pb2.CreateBotSessionRequest(parent='',
                                                bot_session=bot_session)
-    # Simulated the severed binding between client and server
-    bot = copy.deepcopy(instance.CreateBotSession(request, context))
+    # Inject work
+    for n in range(0, number_of_jobs):
+        action_digest = remote_execution_pb2.Digest()
+        instance._instance._scheduler.append_job(job.Job(action_digest))
 
-    request = bots_pb2.UpdateBotSessionRequest(name=bot.name,
-                                               bot_session=bot)
+    response = instance.CreateBotSession(request, context)
 
-    response = instance.UpdateBotSession(request, context)
-
+    assert len(response.leases) == number_of_jobs
     assert isinstance(response, bots_pb2.BotSession)
-    assert len(response.leases) == len(bot.leases)
-    assert bot == response
 
 def test_update_leases_with_work(bot_session, context, instance):
-    leases = [bots_pb2.Lease() for x in range(2)]
-    bot_session.leases.extend(leases)
-
-    # Inject some work to be done
-    action = remote_execution_pb2.Action()
-    action.command_digest.hash = 'rick'
-    instance._instance._scheduler.append_job(job.Job(action))
-
     request = bots_pb2.CreateBotSessionRequest(parent='',
                                                bot_session=bot_session)
-    # Simulated the severed binding between client and server
-    bot = copy.deepcopy(instance.CreateBotSession(request, context))
+    # Inject work
+    action_digest = remote_execution_pb2.Digest(hash = 'gaff')
+    instance._instance._scheduler.append_job(job.Job(action_digest))
 
-    request = bots_pb2.UpdateBotSessionRequest(name=bot.name,
-                                               bot_session=bot)
+    response = instance.CreateBotSession(request, context)
 
-    response = instance.UpdateBotSession(request, context)
-    response_action = remote_execution_pb2.Action()
-    _unpack_any(response.leases[0].payload, response_action)
+    assert len(response.leases) == 1
+    response_action = remote_execution_pb2.Digest()
+    response.leases[0].payload.Unpack(response_action)
 
     assert isinstance(response, bots_pb2.BotSession)
     assert response.leases[0].state == LeaseState.PENDING.value
-    assert response.leases[1].state == LeaseState.LEASE_STATE_UNSPECIFIED.value
     assert uuid.UUID(response.leases[0].id, version=4)
-    assert response_action == action
+    assert response_action == action_digest
 
 def test_update_leases_work_complete(bot_session, context, instance):
-    leases = [bots_pb2.Lease() for x in range(2)]
-    bot_session.leases.extend(leases)
-
-    # Inject some work to be done
-    action = remote_execution_pb2.Action()
-    action.command_digest.hash = 'rick'
-    instance._instance._scheduler.append_job(job.Job(action))
-
     request = bots_pb2.CreateBotSessionRequest(parent='',
                                                bot_session=bot_session)
+    # Create bot session
     # Simulated the severed binding between client and server
-    bot = copy.deepcopy(instance.CreateBotSession(request, context))
+    response = copy.deepcopy(instance.CreateBotSession(request, context))
 
-    request = bots_pb2.UpdateBotSessionRequest(name=bot.name,
-                                               bot_session=bot)
+    # Inject work
+    action_digest = remote_execution_pb2.Digest(hash = 'gaff')
+    instance._instance._scheduler.append_job(job.Job(action_digest))
+
+    request = bots_pb2.UpdateBotSessionRequest(name=response.name,
+                                               bot_session=response)
+    response = copy.deepcopy(instance.UpdateBotSession(request, context))
+
+    assert response.leases[0].state == LeaseState.PENDING.value
+    response.leases[0].state = LeaseState.ACTIVE.value
+
+    request = bots_pb2.UpdateBotSessionRequest(name=response.name,
+                                               bot_session=response)
 
     response = copy.deepcopy(instance.UpdateBotSession(request, context))
 
-    operation_name = response.leases[0].id
-
-    assert response.leases[0].state == LeaseState.PENDING.value
     response.leases[0].state = LeaseState.COMPLETED.value
 
     request = bots_pb2.UpdateBotSessionRequest(name=response.name,
                                                bot_session=response)
-    # Simulated the severed binding between client and server
     response = copy.deepcopy(instance.UpdateBotSession(request, context))
-    assert isinstance(response, bots_pb2.BotSession)
-    assert instance._instance._scheduler.jobs[operation_name]._execute_stage == ExecuteStage.COMPLETED
+
+    assert len(response.leases) == 0
+
+def test_work_rejected_by_bot(bot_session, context, instance):
+    request = bots_pb2.CreateBotSessionRequest(parent='',
+                                               bot_session=bot_session)
+    # Inject work
+    action_digest = remote_execution_pb2.Digest(hash = 'gaff')
+    instance._instance._scheduler.append_job(job.Job(action_digest))
+
+    # Simulated the severed binding between client and server
+    response = copy.deepcopy(instance.CreateBotSession(request, context))
+
+    # Reject work
+    assert response.leases[0].state == LeaseState.PENDING.value
+    response.leases[0].state = LeaseState.COMPLETED.value
+    request = bots_pb2.UpdateBotSessionRequest(name=response.name,
+                                               bot_session=response)
+
+    response = instance.UpdateBotSession(request, context)
+
+    context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
+
+
+@pytest.mark.parametrize("state", [ LeaseState.LEASE_STATE_UNSPECIFIED, LeaseState.PENDING])
+def test_work_out_of_sync_from_pending(state, bot_session, context, instance):
+    request = bots_pb2.CreateBotSessionRequest(parent='',
+                                               bot_session=bot_session)
+    # Inject work
+    action_digest = remote_execution_pb2.Digest(hash = 'gaff')
+    instance._instance._scheduler.append_job(job.Job(action_digest))
+    # Simulated the severed binding between client and server
+    bot = copy.deepcopy(instance.CreateBotSession(request, context))
+
+    request = bots_pb2.UpdateBotSessionRequest(name=bot.name,
+                                               bot_session=bot)
+
+    response = copy.deepcopy(instance.UpdateBotSession(request, context))
+
+    response.leases[0].state = state.value
+
+    request = bots_pb2.UpdateBotSessionRequest(name=response.name,
+                                               bot_session=response)
+
+    response = instance.UpdateBotSession(request, context)
+
+    context.set_code.assert_called_once_with(grpc.StatusCode.DATA_LOSS)
+
+@pytest.mark.parametrize("state", [ LeaseState.LEASE_STATE_UNSPECIFIED, LeaseState.PENDING])
+def test_work_out_of_sync_from_active(state, bot_session, context, instance):
+    request = bots_pb2.CreateBotSessionRequest(parent='',
+                                               bot_session=bot_session)
+    # Inject work
+    action_digest = remote_execution_pb2.Digest(hash = 'gaff')
+    instance._instance._scheduler.append_job(job.Job(action_digest))
+    # Simulated the severed binding between client and server
+    bot = copy.deepcopy(instance.CreateBotSession(request, context))
+
+    request = bots_pb2.UpdateBotSessionRequest(name=bot.name,
+                                               bot_session=bot)
+
+    response = copy.deepcopy(instance.UpdateBotSession(request, context))
+
+    response = instance.UpdateBotSession(request, context)
+
+    context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
+
+@pytest.mark.parametrize("state", [ LeaseState.LEASE_STATE_UNSPECIFIED, LeaseState.PENDING])
+def test_work_out_of_sync_from_pending(state, bot_session, context, instance):
+    request = bots_pb2.CreateBotSessionRequest(parent='',
+                                               bot_session=bot_session)
+    # Inject work
+    action_digest = remote_execution_pb2.Digest(hash = 'gaff')
+    instance._instance._scheduler.append_job(job.Job(action_digest))
+    # Simulated the severed binding between client and server
+    response = copy.deepcopy(instance.CreateBotSession(request, context))
+
+    response.leases[0].state = state.value
+
+    request = bots_pb2.UpdateBotSessionRequest(name=response.name,
+                                               bot_session=response)
+
+    response = instance.UpdateBotSession(request, context)
+
+    context.set_code.assert_called_once_with(grpc.StatusCode.DATA_LOSS)
+
+@pytest.mark.parametrize("state", [ LeaseState.LEASE_STATE_UNSPECIFIED, LeaseState.PENDING])
+def test_work_out_of_sync_from_active(state, bot_session, context, instance):
+    request = bots_pb2.CreateBotSessionRequest(parent='',
+                                               bot_session=bot_session)
+    # Inject work
+    action_digest = remote_execution_pb2.Digest(hash = 'gaff')
+    instance._instance._scheduler.append_job(job.Job(action_digest))
+    # Simulated the severed binding between client and server
+    response = copy.deepcopy(instance.CreateBotSession(request, context))
+
+    response.leases[0].state = LeaseState.ACTIVE.value
+
+    request = copy.deepcopy(bots_pb2.UpdateBotSessionRequest(name=response.name,
+                                                             bot_session=response))
+
+    response = instance.UpdateBotSession(request, context)
+
+    response.leases[0].state = state.value
+
+    request = bots_pb2.UpdateBotSessionRequest(name=response.name,
+                                               bot_session=response)
+
+    response = instance.UpdateBotSession(request, context)
+
+    context.set_code.assert_called_once_with(grpc.StatusCode.DATA_LOSS)
+
+def test_work_active_to_active(bot_session, context, instance):
+    request = bots_pb2.CreateBotSessionRequest(parent='',
+                                               bot_session=bot_session)
+    # Inject work
+    action_digest = remote_execution_pb2.Digest(hash = 'gaff')
+    instance._instance._scheduler.append_job(job.Job(action_digest))
+    # Simulated the severed binding between client and server
+    response = copy.deepcopy(instance.CreateBotSession(request, context))
+
+    response.leases[0].state = LeaseState.ACTIVE.value
+
+    request = bots_pb2.UpdateBotSessionRequest(name=response.name,
+                                               bot_session=response)
+
+    response = instance.UpdateBotSession(request, context)
+
+    assert response.leases[0].state == LeaseState.ACTIVE.value
 
 def test_post_bot_event_temp(context, instance):
     request = bots_pb2.PostBotEventTempRequest()
     instance.PostBotEventTemp(request, context)
 
     context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
-
-def _unpack_any(unpack_from, to):
-    any = any_pb2.Any()
-    any.CopyFrom(unpack_from)
-    any.Unpack(to)
-    return to
