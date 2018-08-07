@@ -33,7 +33,8 @@ import tempfile
 
 from pathlib import Path, PurePath
 
-from buildgrid.bot import bot
+from buildgrid.bot import bot, bot_interface
+from buildgrid.bot.bot_session import BotSession, Device, Worker
 from buildgrid._exceptions import BotError
 
 from ..cli import pass_context
@@ -44,17 +45,23 @@ from google.protobuf import any_pb2
 
 @click.group(short_help = 'Create a bot client')
 @click.option('--parent', default='bgd_test')
-@click.option('--number-of-leases', default=1)
 @click.option('--port', default='50051')
 @click.option('--host', default='localhost')
 @pass_context
-def cli(context, host, port, number_of_leases, parent):
+def cli(context, host, port, parent):
+    channel = grpc.insecure_channel('{}:{}'.format(host, port))
+    interface = bot_interface.BotInterface(channel)
+
     context.logger = logging.getLogger(__name__)
     context.logger.info("Starting on port {}".format(port))
 
-    context.channel = grpc.insecure_channel('{}:{}'.format(host, port))
-    context.number_of_leases = number_of_leases
-    context.parent = parent
+    worker = Worker()
+    worker.add_device(Device())
+
+    bot_session = BotSession(parent, interface)
+    bot_session.add_worker(worker)
+
+    context.bot_session = bot_session
 
 @cli.command('dummy', short_help='Create a dummy bot session')
 @pass_context
@@ -63,15 +70,10 @@ def dummy(context):
     Simple dummy client. Creates a session, accepts leases, does fake work and
     updates the server.
     """
-
-    context.logger.info("Creating a bot session")
-
     try:
-        bot.Bot(work=_work_dummy,
-                context=context,
-                channel=context.channel,
-                parent=context.parent,
-                number_of_leases=context.number_of_leases)
+        b = bot.Bot(context.bot_session)
+        b.session(_work_dummy,
+                  context)
 
     except KeyboardInterrupt:
         pass
@@ -85,7 +87,7 @@ def dummy(context):
 @click.option('--port', show_default = True, default=11001)
 @click.option('--remote', show_default = True, default='localhost')
 @pass_context
-def _work_buildbox(context, remote, port, server_cert, client_key, client_cert, local_cas, fuse_dir):
+def work_buildbox(context, remote, port, server_cert, client_key, client_cert, local_cas, fuse_dir):
     """
     Uses BuildBox to run commands.
     """
@@ -101,11 +103,14 @@ def _work_buildbox(context, remote, port, server_cert, client_key, client_cert, 
     context.fuse_dir = fuse_dir
 
     try:
-        bot.Bot(work=_work_buildbox,
-                context=context,
-                channel=context.channel,
-                parent=context.parent,
-                number_of_leases=context.number_of_leases)
+        b = bot.Bot(work=_work_buildbox,
+                    bot_session=context.bot_session,
+                    channel=context.channel,
+                    parent=context.parent)
+
+        b.session(context.parent,
+                  _work_buildbox,
+                  context)
 
     except KeyboardInterrupt:
         pass
