@@ -49,13 +49,14 @@ class LeaseState(Enum):
 
 class Job():
 
-    def __init__(self, action_digest, message_queue=None):
+    def __init__(self, action_digest, do_not_cache=False, message_queue=None):
         self.lease = None
         self.logger = logging.getLogger(__name__)
         self.result = None
         self.result_cached = False
 
         self._action_digest = action_digest
+        self._do_not_cache = do_not_cache
         self._execute_stage = ExecuteStage.UNKNOWN
         self._n_tries = 0
         self._name = str(uuid.uuid4())
@@ -68,6 +69,14 @@ class Job():
     @property
     def name(self):
         return self._name
+
+    @property
+    def action_digest(self):
+        return self._action_digest
+
+    @property
+    def do_not_cache(self):
+        return self._do_not_cache
 
     def check_job_finished(self):
         if not self._operation_update_queues:

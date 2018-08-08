@@ -42,13 +42,15 @@ class ExecutionInstance():
         Queues an action and creates an Operation instance to be associated with
         this action.
         """
-        job = Job(action_digest, message_queue)
-        self.logger.info("Operation name: {}".format(job.name))
 
+        do_not_cache = False
         if self._storage is not None:
             action = self._storage.get_message(action_digest, Action)
             if action is not None:
-                job.do_not_cache = action.do_not_cache
+                do_not_cache = action.do_not_cache
+
+        job = Job(action_digest, do_not_cache, message_queue)
+        self.logger.info("Operation name: {}".format(job.name))
 
         self._scheduler.append_job(job, skip_cache_lookup)
 
