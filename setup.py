@@ -19,7 +19,6 @@
 
 import os
 import re
-import setuptools
 import sys
 
 from _version import __version__
@@ -30,12 +29,12 @@ if sys.version_info[0] != 3 or sys.version_info[1] < 5:
 
 try:
     from setuptools import setup, find_packages, Command
-
 except ImportError:
     print("BuildGrid requires setuptools in order to build. Install it using"
           " your package manager (usually python3-setuptools) or via pip (pip3"
           " install setuptools).")
     sys.exit(1)
+
 
 class BuildGRPC(Command):
     """Command to generate project *_pb2.py modules from proto files."""
@@ -78,12 +77,23 @@ class BuildGRPC(Command):
 
                     with open(path, 'w') as f:
                         f.write(code)
+
+
 def get_cmdclass():
     cmdclass = {
         'build_grpc': BuildGRPC,
     }
     return cmdclass
 
+tests_require = [
+    'coverage == 4.4.0',
+    'moto',
+    'pep8',
+    'pytest >= 3.1.0',
+    'pytest-cov >= 2.5.0',
+    'pytest-pep8',
+    'pytest-pylint',
+]
 
 setup(
     name="BuildGrid",
@@ -99,15 +109,14 @@ setup(
         'boto3',
         'botocore',
     ],
-    entry_points='''
-    [console_scripts]
-    bgd=app:cli
-    ''',
+    entry_points={
+        'console_scripts': [
+            'bgd = app:cli',
+        ]
+    },
     setup_requires=['pytest-runner'],
-    tests_require=['pep8',
-                   'moto',
-                   'coverage == 4.4.0',
-                   'pytest-cov >= 2.5.0',
-                   'pytest-pep8',
-                   'pytest >= 3.1.0'],
+    tests_require=tests_require,
+    extras_require={
+        'devel': tests_require,
+    },
 )
