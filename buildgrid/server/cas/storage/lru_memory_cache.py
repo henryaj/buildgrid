@@ -31,6 +31,7 @@ import threading
 
 from .storage_abc import StorageABC
 
+
 class _NullBytesIO(io.BufferedIOBase):
     """A file-like object that discards all data written to it."""
 

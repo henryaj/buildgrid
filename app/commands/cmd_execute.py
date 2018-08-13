@@ -35,7 +35,8 @@ from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 impo
 from buildgrid._protos.google.longrunning import operations_pb2, operations_pb2_grpc
 from google.protobuf import any_pb2
 
-@click.group(short_help = "Simple execute client")
+
+@click.group(short_help="Simple execute client")
 @click.option('--port', default='50051')
 @click.option('--host', default='localhost')
 @pass_context
@@ -45,6 +46,7 @@ def cli(context, host, port):
 
     context.channel = grpc.insecure_channel('{}:{}'.format(host, port))
     context.port = port
+
 
 @cli.command('request', short_help='Send a dummy action')
 @click.option('--number', default=1)
@@ -57,9 +59,9 @@ def request(context, number, instance_name, wait_for_completion):
     context.logger.info("Sending execution request...\n")
     stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
 
-    request = remote_execution_pb2.ExecuteRequest(instance_name = instance_name,
-                                                  action_digest = action_digest,
-                                                  skip_cache_lookup = True)
+    request = remote_execution_pb2.ExecuteRequest(instance_name=instance_name,
+                                                  action_digest=action_digest,
+                                                  skip_cache_lookup=True)
     responses = []
     for i in range(0, number):
         responses.append(stub.Execute(request))
@@ -70,6 +72,7 @@ def request(context, number, instance_name, wait_for_completion):
                 context.logger.info(stream)
         else:
             context.logger.info(next(response))
+
 
 @cli.command('status', short_help='Get the status of an operation')
 @click.argument('operation-name')
@@ -82,6 +85,7 @@ def operation_status(context, operation_name):
 
     response = stub.GetOperation(request)
     context.logger.info(response)
+
 
 @cli.command('list', short_help='List operations')
 @pass_context
@@ -99,6 +103,7 @@ def list_operations(context):
 
     for op in response.operations:
         context.logger.info(op)
+
 
 @cli.command('wait', short_help='Streams an operation until it is complete')
 @click.argument('operation-name')

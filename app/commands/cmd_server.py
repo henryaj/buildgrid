@@ -22,7 +22,6 @@ Server command
 Create a BuildGrid server.
 """
 
-
 import asyncio
 import click
 import logging
@@ -36,11 +35,15 @@ from buildgrid.server.cas.storage.with_cache import WithCacheStorage
 
 from ..cli import pass_context
 
-@click.group(short_help = "Start local server")
+_SIZE_PREFIXES = {'k': 2 ** 10, 'm': 2 ** 20, 'g': 2 ** 30, 't': 2 ** 40}
+
+
+@click.group(short_help="Start local server")
 @pass_context
 def cli(context):
     context.logger = logging.getLogger(__name__)
     context.logger.info("BuildGrid server booting up")
+
 
 @cli.command('start', short_help='Starts server')
 @click.option('--port', default='50051')
@@ -91,10 +94,12 @@ def start(context, port, max_cached_actions, allow_uar, cas, **cas_args):
         loop.run_until_complete(server.stop())
         loop.close()
 
+
 @cli.command('stop', short_help='Stops server')
 @pass_context
 def stop(context):
     context.logger.error("Not implemented yet")
+
 
 def _make_cas_storage(context, cas_type, cas_args):
     """Returns the storage provider corresponding to the given `cas_type`,
@@ -136,7 +141,7 @@ def _make_cas_storage(context, cas_type, cas_args):
     elif cas_type is None:
         return None
 
-_SIZE_PREFIXES = {'k': 2 ** 10, 'm': 2 ** 20, 'g': 2 ** 30, 't': 2 ** 40}
+
 def _parse_size(size):
     """Convert a string containing a size in bytes (e.g. '2GB') to a number."""
     size = size.lower()

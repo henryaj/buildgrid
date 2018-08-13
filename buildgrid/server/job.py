@@ -20,31 +20,59 @@ import uuid
 
 from enum import Enum
 
-from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import ExecuteOperationMetadata, ExecuteResponse
+from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import ExecuteOperationMetadata
+from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import ExecuteResponse
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2, worker_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 from google.protobuf import any_pb2
 
+
 class ExecuteStage(Enum):
-    UNKNOWN       = ExecuteOperationMetadata.Stage.Value('UNKNOWN')
-    CACHE_CHECK   = ExecuteOperationMetadata.Stage.Value('CACHE_CHECK')
-    QUEUED        = ExecuteOperationMetadata.Stage.Value('QUEUED')
-    EXECUTING     = ExecuteOperationMetadata.Stage.Value('EXECUTING')
-    COMPLETED     = ExecuteOperationMetadata.Stage.Value('COMPLETED')
+    UNKNOWN = ExecuteOperationMetadata.Stage.Value('UNKNOWN')
+
+    # Checking the result against the cache.
+    CACHE_CHECK = ExecuteOperationMetadata.Stage.Value('CACHE_CHECK')
+
+    # Currently idle, awaiting a free machine to execute.
+    QUEUED = ExecuteOperationMetadata.Stage.Value('QUEUED')
+
+    # Currently being executed by a worker.
+    EXECUTING = ExecuteOperationMetadata.Stage.Value('EXECUTING')
+
+    # Finished execution.
+    COMPLETED = ExecuteOperationMetadata.Stage.Value('COMPLETED')
+
 
 class BotStatus(Enum):
     BOT_STATUS_UNSPECIFIED = bots_pb2.BotStatus.Value('BOT_STATUS_UNSPECIFIED')
-    OK                     = bots_pb2.BotStatus.Value('OK')
-    UNHEALTHY              = bots_pb2.BotStatus.Value('UNHEALTHY');
-    HOST_REBOOTING         = bots_pb2.BotStatus.Value('HOST_REBOOTING')
-    BOT_TERMINATING        = bots_pb2.BotStatus.Value('BOT_TERMINATING')
+
+    # The bot is healthy, and will accept leases as normal.
+    OK = bots_pb2.BotStatus.Value('OK')
+
+    # The bot is unhealthy and will not accept new leases.
+    UNHEALTHY = bots_pb2.BotStatus.Value('UNHEALTHY')
+
+    # The bot has been asked to reboot the host.
+    HOST_REBOOTING = bots_pb2.BotStatus.Value('HOST_REBOOTING')
+
+    # The bot has been asked to shut down.
+    BOT_TERMINATING = bots_pb2.BotStatus.Value('BOT_TERMINATING')
+
 
 class LeaseState(Enum):
     LEASE_STATE_UNSPECIFIED = bots_pb2.LeaseState.Value('LEASE_STATE_UNSPECIFIED')
-    PENDING                 = bots_pb2.LeaseState.Value('PENDING')
-    ACTIVE                  = bots_pb2.LeaseState.Value('ACTIVE')
-    COMPLETED               = bots_pb2.LeaseState.Value('COMPLETED')
-    CANCELLED               = bots_pb2.LeaseState.Value('CANCELLED')
+
+    # The server expects the bot to accept this lease.
+    PENDING = bots_pb2.LeaseState.Value('PENDING')
+
+    # The bot has accepted this lease.
+    ACTIVE = bots_pb2.LeaseState.Value('ACTIVE')
+
+    # The bot is no longer leased.
+    COMPLETED = bots_pb2.LeaseState.Value('COMPLETED')
+
+    # The bot should immediately release all resources associated with the lease.
+    CANCELLED = bots_pb2.LeaseState.Value('CANCELLED')
 
 
 class Job():
@@ -60,7 +88,7 @@ class Job():
         self._execute_stage = ExecuteStage.UNKNOWN
         self._n_tries = 0
         self._name = str(uuid.uuid4())
-        self._operation = operations_pb2.Operation(name = self._name)
+        self._operation = operations_pb2.Operation(name=self._name)
         self._operation_update_queues = []
 
         if message_queue is not None:
@@ -111,14 +139,14 @@ class Job():
     def create_lease(self):
         action_digest = self._pack_any(self._action_digest)
 
-        lease = bots_pb2.Lease(id = self.name,
-                               payload = action_digest,
-                               state = LeaseState.PENDING.value)
+        lease = bots_pb2.Lease(id=self.name,
+                               payload=action_digest,
+                               state=LeaseState.PENDING.value)
         self.lease = lease
         return lease
 
     def get_operations(self):
-        return operations_pb2.ListOperationsResponse(operations = [self.get_operation()])
+        return operations_pb2.ListOperationsResponse(operations=[self.get_operation()])
 
     def update_execute_stage(self, stage):
         self._execute_stage = stage

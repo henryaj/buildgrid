@@ -43,7 +43,8 @@ from buildgrid._protos.google.bytestream import bytestream_pb2, bytestream_pb2_g
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
 from google.protobuf import any_pb2
 
-@click.group(short_help = 'Create a bot client')
+
+@click.group(short_help='Create a bot client')
 @click.option('--parent', default='bgd_test')
 @click.option('--port', default='50051')
 @click.option('--host', default='localhost')
@@ -63,6 +64,7 @@ def cli(context, host, port, parent):
 
     context.bot_session = bot_session
 
+
 @cli.command('dummy', short_help='Create a dummy bot session')
 @pass_context
 def dummy(context):
@@ -78,14 +80,15 @@ def dummy(context):
     except KeyboardInterrupt:
         pass
 
+
 @cli.command('buildbox', short_help='Create a bot session with busybox')
-@click.option('--fuse-dir', show_default = True, default=str(PurePath(Path.home(), 'fuse')))
-@click.option('--local-cas', show_default = True, default=str(PurePath(Path.home(), 'cas')))
-@click.option('--client-cert', show_default = True, default=str(PurePath(Path.home(), 'client.crt')))
-@click.option('--client-key', show_default = True, default=str(PurePath(Path.home(), 'client.key')))
-@click.option('--server-cert', show_default = True, default=str(PurePath(Path.home(), 'server.crt')))
-@click.option('--port', show_default = True, default=11001)
-@click.option('--remote', show_default = True, default='localhost')
+@click.option('--fuse-dir', show_default=True, default=str(PurePath(Path.home(), 'fuse')))
+@click.option('--local-cas', show_default=True, default=str(PurePath(Path.home(), 'cas')))
+@click.option('--client-cert', show_default=True, default=str(PurePath(Path.home(), 'client.crt')))
+@click.option('--client-key', show_default=True, default=str(PurePath(Path.home(), 'client.key')))
+@click.option('--server-cert', show_default=True, default=str(PurePath(Path.home(), 'server.crt')))
+@click.option('--port', show_default=True, default=11001)
+@click.option('--remote', show_default=True, default='localhost')
 @pass_context
 def work_buildbox(context, remote, port, server_cert, client_key, client_cert, local_cas, fuse_dir):
     """
@@ -115,9 +118,11 @@ def work_buildbox(context, remote, port, server_cert, client_key, client_cert, l
     except KeyboardInterrupt:
         pass
 
+
 async def _work_dummy(context, lease):
-    await asyncio.sleep(random.randint(1,5))
+    await asyncio.sleep(random.randint(1, 5))
     return lease
+
 
 async def _work_buildbox(context, lease):
     logger = context.logger
@@ -170,7 +175,7 @@ async def _work_buildbox(context, lease):
     output_root_digest.ParseFromString(std_out)
     logger.debug("Output root digest: {}".format(output_root_digest))
 
-    output_file = remote_execution_pb2.OutputDirectory(tree_digest = output_root_digest)
+    output_file = remote_execution_pb2.OutputDirectory(tree_digest=output_root_digest)
 
     action_result = remote_execution_pb2.ActionResult()
     action_result.output_directories.extend([output_file])
@@ -181,6 +186,7 @@ async def _work_buildbox(context, lease):
     lease.result.CopyFrom(action_result_any)
 
     return lease
+
 
 def _fetch_blob(remote, digest, out):
     resource_name = os.path.join(digest.hash, str(digest.size_bytes))
@@ -193,6 +199,7 @@ def _fetch_blob(remote, digest, out):
     out.flush()
     assert digest.size_bytes == os.fstat(out.fileno()).st_size
 
+
 def _fetch_command(casdir, remote, digest):
     with tempfile.NamedTemporaryFile(dir=os.path.join(casdir, 'tmp')) as out:
         _fetch_blob(remote, digest, out)
@@ -200,6 +207,7 @@ def _fetch_command(casdir, remote, digest):
         with open(out.name, 'rb') as f:
             remote_command.ParseFromString(f.read())
         return remote_command
+
 
 def _file_read(file_path):
     with open(file_path, 'rb') as f:

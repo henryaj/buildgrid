@@ -30,10 +30,12 @@ from buildgrid.server import action_cache, scheduler, job
 from buildgrid.server.cas.storage import lru_memory_cache
 from buildgrid.server.execution import execution_instance, execution_service
 
+
 @pytest.fixture
 def context():
-    cxt = mock.MagicMock(spec = _Context)
+    cxt = mock.MagicMock(spec=_Context)
     yield cxt
+
 
 @pytest.fixture(params=["action-cache", "no-action-cache"])
 def execution(request):
@@ -44,19 +46,21 @@ def execution(request):
         return execution_instance.ExecutionInstance(schedule, storage)
     return execution_instance.ExecutionInstance(scheduler.Scheduler())
 
+
 # Instance to test
 @pytest.fixture
 def instance(execution):
     yield execution_service.ExecutionService(execution)
+
 
 @pytest.mark.parametrize("skip_cache_lookup", [True, False])
 def test_execute(skip_cache_lookup, instance, context):
     action_digest = remote_execution_pb2.Digest()
     action_digest.hash = 'zhora'
 
-    request = remote_execution_pb2.ExecuteRequest(instance_name = '',
-                                                  action_digest = action_digest,
-                                                  skip_cache_lookup = skip_cache_lookup)
+    request = remote_execution_pb2.ExecuteRequest(instance_name='',
+                                                  action_digest=action_digest,
+                                                  skip_cache_lookup=skip_cache_lookup)
     response = instance.Execute(request, context)
 
     result = next(response)

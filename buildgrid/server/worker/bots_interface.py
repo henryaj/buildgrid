@@ -29,6 +29,7 @@ from ._exceptions import InvalidArgumentError, OutofSyncError
 from ..job import LeaseState
 from ..scheduler import Scheduler
 
+
 class BotsInterface():
 
     def __init__(self, scheduler):
@@ -91,7 +92,7 @@ class BotsInterface():
     def check_states(self, client_lease):
         """ Edge detector for states
         """
-        ## TODO: Handle cancelled states
+        # TODO: Handle cancelled states
         try:
             server_lease = self._scheduler.get_job_lease(client_lease.id)
         except KeyError:
@@ -135,7 +136,7 @@ class BotsInterface():
 
         return client_lease
 
-    def _check_bot_ids(self, bot_id, name = None):
+    def _check_bot_ids(self, bot_id, name=None):
         """ Checks the ID and the name of the bot.
         """
         if name is not None:
@@ -144,13 +145,16 @@ class BotsInterface():
                 raise InvalidArgumentError('Name not registered on server: {}'.format(name))
             elif _bot_id != bot_id:
                 self._close_bot_session(name)
-                raise InvalidArgumentError('Bot id invalid. ID sent: {} with name: {}. ID registered: {} with name: {}'.format(bot_id, name, _bot_id, _name))
-
+                raise InvalidArgumentError(
+                    'Bot id invalid. ID sent: {} with name: {}.'
+                    'ID registered: {} with name: {}'.format(bot_id, name, _bot_id, _name))
         else:
-             for _name, _bot_id in self._bot_ids.items():
-                 if bot_id == _bot_id:
-                     self._close_bot_session(_name)
-                     raise InvalidArgumentError('Bot id already registered. ID sent: {}. Id registered: {} with name: {}'.format(bot_id, _bot_id, _name))
+            for _name, _bot_id in self._bot_ids.items():
+                if bot_id == _bot_id:
+                    self._close_bot_session(_name)
+                    raise InvalidArgumentError(
+                        'Bot id already registered. ID sent: {}.'
+                        'Id registered: {} with name: {}'.format(bot_id, _bot_id, _name))
 
     def _close_bot_session(self, name):
         """ Before removing the session, close any leases and

@@ -29,6 +29,7 @@ from botocore.exceptions import ClientError
 
 from .storage_abc import StorageABC
 
+
 class S3Storage(StorageABC):
 
     def __init__(self, bucket, **kwargs):

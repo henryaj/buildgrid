@@ -30,6 +30,7 @@ from buildgrid._protos.google.rpc import code_pb2
 
 from ....settings import HASH
 
+
 class StorageABC(abc.ABC):
 
     @abc.abstractmethod

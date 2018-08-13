@@ -27,19 +27,39 @@ from enum import Enum
 
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2, worker_pb2
 
+
 class BotStatus(Enum):
+    # Default value.
     BOT_STATUS_UNSPECIFIED = bots_pb2.BotStatus.Value('BOT_STATUS_UNSPECIFIED')
-    OK                     = bots_pb2.BotStatus.Value('OK')
-    UNHEALTHY              = bots_pb2.BotStatus.Value('UNHEALTHY');
-    HOST_REBOOTING         = bots_pb2.BotStatus.Value('HOST_REBOOTING')
-    BOT_TERMINATING        = bots_pb2.BotStatus.Value('BOT_TERMINATING')
+
+    # The bot is healthy, and will accept leases as normal.
+    OK = bots_pb2.BotStatus.Value('OK')
+
+    # The bot is unhealthy and will not accept new leases.
+    UNHEALTHY = bots_pb2.BotStatus.Value('UNHEALTHY')
+
+    # The bot has been asked to reboot the host.
+    HOST_REBOOTING = bots_pb2.BotStatus.Value('HOST_REBOOTING')
+
+    # The bot has been asked to shut down.
+    BOT_TERMINATING = bots_pb2.BotStatus.Value('BOT_TERMINATING')
+
 
 class LeaseState(Enum):
+    # Default value.
     LEASE_STATE_UNSPECIFIED = bots_pb2.LeaseState.Value('LEASE_STATE_UNSPECIFIED')
-    PENDING                 = bots_pb2.LeaseState.Value('PENDING')
-    ACTIVE                  = bots_pb2.LeaseState.Value('ACTIVE')
-    COMPLETED               = bots_pb2.LeaseState.Value('COMPLETED')
-    CANCELLED               = bots_pb2.LeaseState.Value('CANCELLED')
+
+    # The server expects the bot to accept this lease.
+    PENDING = bots_pb2.LeaseState.Value('PENDING')
+
+    # The bot has accepted this lease.
+    ACTIVE = bots_pb2.LeaseState.Value('ACTIVE')
+
+    # The bot is no longer leased.
+    COMPLETED = bots_pb2.LeaseState.Value('COMPLETED')
+
+    # The bot should immediately release all resources associated with the lease.
+    CANCELLED = bots_pb2.LeaseState.Value('CANCELLED')
 
 
 class BotSession:
@@ -100,7 +120,7 @@ class BotSession:
                                    status=self._status,
                                    leases=leases,
                                    bot_id=self._bot_id,
-                                   name = self._name)
+                                   name=self._name)
 
     def lease_completed(self, lease):
         lease.state = LeaseState.COMPLETED.value
@@ -110,7 +130,7 @@ class BotSession:
         """
         State machine for any recieved updates to the leases.
         """
-        ## TODO: Compare with previous state of lease
+        # TODO: Compare with previous state of lease
         lease_bot = self._leases.get(lease.id)
         if lease.state == LeaseState.PENDING.value:
             lease.state = LeaseState.ACTIVE.value
@@ -122,6 +142,7 @@ class BotSession:
         lease = await self._work(self._context, lease)
         self.logger.debug("Work complete: {}".format(lease.id))
         self.lease_completed(lease)
+
 
 class Worker:
     def __init__(self, properties=None, configs=None):
@@ -167,6 +188,7 @@ class Worker:
 
         return worker
 
+
 class Device:
     def __init__(self, properties=None):
         """ Creates devices available to the worker
@@ -199,7 +221,6 @@ class Device:
     @property
     def properties(self):
         return self._properties
-
 
     def get_pb2(self):
         device = worker_pb2.Device(handle=self._name)

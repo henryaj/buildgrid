@@ -26,6 +26,7 @@ import collections
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2 as re_pb2
 
+
 class ActionCache:
 
     def __init__(self, storage, max_cached_actions):
@@ -67,10 +68,10 @@ class ActionCache:
         ActionResult are present in CAS.
         """
         blobs_needed = []
-        
+
         for output_file in action_result.output_files:
             blobs_needed.append(output_file.digest)
-        
+
         for output_directory in action_result.output_directories:
             blobs_needed.append(output_directory.tree_digest)
             tree = self._storage.get_message(output_directory.tree_digest,

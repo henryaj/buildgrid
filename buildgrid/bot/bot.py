@@ -31,6 +31,7 @@ from . import bot_interface, bot_session
 from .bot_session import BotStatus, LeaseState
 from .._exceptions import BotError
 
+
 class Bot:
     """
     Creates a local BotSession.
@@ -50,10 +51,8 @@ class Bot:
         try:
             task = asyncio.ensure_future(self._update_bot_session())
             loop.run_forever()
-
         except KeyboardInterrupt:
             pass
-
         finally:
             task.cancel()
             loop.close()

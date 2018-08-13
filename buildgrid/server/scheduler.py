@@ -29,6 +29,7 @@ from google.protobuf import any_pb2
 
 from .job import ExecuteStage, LeaseState
 
+
 class Scheduler():
 
     MAX_N_TRIES = 5

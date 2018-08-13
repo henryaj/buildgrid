@@ -22,9 +22,12 @@ Exceptions
 
 from enum import Enum
 
-""" Base BuildGrid Error class for internal exceptions.
-"""
+
 class BgdError(Exception):
+    """
+    Base BuildGrid Error class for internal exceptions.
+    """
+
     def __init__(self, message, *, detail=None, domain=None, reason=None):
         super().__init__(message)
 
@@ -37,23 +40,28 @@ class BgdError(Exception):
         self.domain = domain
         self.reason = reason
 
+
 class ErrorDomain(Enum):
-    SERVER    = 1
+    SERVER = 1
     EXECUTION = 2
-    WORKER    = 3
-    BOT       = 4
+    WORKER = 3
+    BOT = 4
+
 
 class ServerError(BgdError):
     def __init__(self, message, detail=None, reason=None):
         super().__init__(message, detail=detail, domain=ErrorDomain.SERVER, reason=reason)
 
+
 class ExecutionError(BgdError):
     def __init__(self, message, detail=None, reason=None):
         super().__init__(message, detail=detail, domain=ErrorDomain.EXECUTION, reason=reason)
 
+
 class WorkerError(BgdError):
     def __init__(self, message, detail=None, reason=None):
         super().__init__(message, detail=detail, domain=ErrorDomain.WORKER, reason=reason)
+
 
 class BotError(BgdError):
     def __init__(self, message, detail=None, reason=None):

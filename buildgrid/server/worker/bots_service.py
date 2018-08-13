@@ -29,6 +29,7 @@ from ._exceptions import InvalidArgumentError, OutofSyncError
 
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2, bots_pb2_grpc
 
+
 class BotsService(bots_pb2_grpc.BotsServicer):
 
     def __init__(self, instance):

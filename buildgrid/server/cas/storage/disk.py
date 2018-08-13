@@ -28,6 +28,7 @@ import tempfile
 
 from .storage_abc import StorageABC
 
+
 class DiskStorage(StorageABC):
 
     def __init__(self, path):

@@ -20,30 +20,34 @@ from unittest import mock
 
 from buildgrid.bot import bot_session, bot_interface
 
+
 @pytest.mark.parametrize("docker_value", ["True", "False"])
 @pytest.mark.parametrize("os_value", ["nexus7", "nexus8"])
 def test_create_device(docker_value, os_value):
-    properties = {'docker' : docker_value, 'os' : os_value}
+    properties = {'docker': docker_value, 'os': os_value}
     device = bot_session.Device(properties)
 
     assert uuid.UUID(device.name, version=4)
     assert properties == device.properties
 
+
 def test_create_device_key_fail():
-    properties = {'voight' : 'kampff'}
+    properties = {'voight': 'kampff'}
 
     with pytest.raises(KeyError):
         device = bot_session.Device(properties)
 
+
 def test_create_device_value_fail():
-    properties = {'docker' :  True}
+    properties = {'docker': True}
 
     with pytest.raises(ValueError):
         device = bot_session.Device(properties)
 
+
 def test_create_worker():
-    properties = {'pool' : 'swim'}
-    configs = {'DockerImage' : 'Windows'}
+    properties = {'pool': 'swim'}
+    configs = {'DockerImage': 'Windows'}
     worker = bot_session.Worker(properties, configs)
 
     assert properties == worker.properties
@@ -54,9 +58,10 @@ def test_create_worker():
 
     assert worker._devices[0] == device
 
+
 def test_create_worker_key_fail():
-    properties = {'voight' : 'kampff'}
-    configs = {'voight' : 'kampff'}
+    properties = {'voight': 'kampff'}
+    configs = {'voight': 'kampff'}
 
     with pytest.raises(KeyError):
         bot_session.Worker(properties)

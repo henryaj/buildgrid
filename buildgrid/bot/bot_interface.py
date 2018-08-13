@@ -22,15 +22,16 @@ Bot Interface
 Interface to grpc
 """
 
-
 import logging
 
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2, bots_pb2_grpc
 
 from .._exceptions import BotError
 
+
 class BotInterface:
-    """ Interface handles calls to the server.
+    """
+    Interface handles calls to the server.
     """
 
     def __init__(self, channel):
@@ -39,12 +40,12 @@ class BotInterface:
         self._stub = bots_pb2_grpc.BotsStub(channel)
 
     def create_bot_session(self, parent, bot_session):
-        request = bots_pb2.CreateBotSessionRequest(parent = parent,
-                                                   bot_session = bot_session)
+        request = bots_pb2.CreateBotSessionRequest(parent=parent,
+                                                   bot_session=bot_session)
         return self._stub.CreateBotSession(request)
 
-    def update_bot_session(self, bot_session, update_mask = None):
-        request = bots_pb2.UpdateBotSessionRequest(name = bot_session.name,
-                                                   bot_session = bot_session,
-                                                   update_mask = update_mask)
+    def update_bot_session(self, bot_session, update_mask=None):
+        request = bots_pb2.UpdateBotSessionRequest(name=bot_session.name,
+                                                   bot_session=bot_session,
+                                                   update_mask=update_mask)
         return self._stub.UpdateBotSession(request)

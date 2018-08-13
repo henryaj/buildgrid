@@ -28,6 +28,7 @@ from buildgrid._protos.google.longrunning import operations_pb2_grpc, operations
 
 from ._exceptions import InvalidArgumentError
 
+
 class OperationsService(operations_pb2_grpc.OperationsServicer):
 
     def __init__(self, instance):

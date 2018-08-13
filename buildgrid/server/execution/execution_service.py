@@ -25,11 +25,14 @@ Serves remote execution requests.
 import grpc
 import logging
 import queue
+from functools import partial
 
-from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc
 from buildgrid._protos.google.longrunning import operations_pb2_grpc, operations_pb2
 
 from ._exceptions import InvalidArgumentError
+
 
 class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
@@ -46,8 +49,7 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
                                                request.skip_cache_lookup,
                                                message_queue)
 
-            remove_client = lambda : self._remove_client(operation.name, message_queue)
-            context.add_callback(remove_client)
+            context.add_callback(partial(self._remove_client, operation.name, message_queue))
 
             yield from self._stream_operation_updates(message_queue,
                                                       operation.name)
@@ -69,8 +71,7 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
             self._instance.register_message_client(operation_name, message_queue)
 
-            remove_client = lambda : self._remove_client(operation_name, message_queue)
-            context.add_callback(remove_client)
+            context.add_callback(partial(self._remove_client, operation_name, message_queue))
 
             yield from self._stream_operation_updates(message_queue,
                                                       operation_name)

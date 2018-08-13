@@ -21,9 +21,11 @@ import pytest
 from buildgrid.server import action_cache
 from buildgrid.server.cas.storage import lru_memory_cache
 
+
 @pytest.fixture
 def cas():
     return lru_memory_cache.LRUMemoryCache(1024 * 1024)
+
 
 def test_null_action_cache(cas):
     cache = action_cache.ActionCache(cas, 0)
@@ -33,6 +35,7 @@ def test_null_action_cache(cas):
 
     cache.put_action_result(action_digest1, dummy_result)
     assert cache.get_action_result(action_digest1) is None
+
 
 def test_action_cache_expiry(cas):
     cache = action_cache.ActionCache(cas, 2)
@@ -53,6 +56,7 @@ def test_action_cache_expiry(cas):
     assert cache.get_action_result(action_digest1) is not None
     assert cache.get_action_result(action_digest2) is None
     assert cache.get_action_result(action_digest3) is not None
+
 
 def test_action_cache_checks_cas(cas):
     cache = action_cache.ActionCache(cas, 50)

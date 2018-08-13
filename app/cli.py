@@ -32,15 +32,18 @@ from . import _logging
 
 CONTEXT_SETTINGS = dict(auto_envvar_prefix='BUILDGRID')
 
+
 class Context(object):
 
     def __init__(self):
         self.verbose = False
         self.home = os.getcwd()
 
+
 pass_context = click.make_pass_decorator(Context, ensure=True)
 cmd_folder = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                           'commands'))
+
 
 class BuildGridCLI(click.MultiCommand):
 
@@ -63,6 +66,7 @@ class BuildGridCLI(click.MultiCommand):
             return
         return mod.cli
 
+
 @click.command(cls=BuildGridCLI, context_settings=CONTEXT_SETTINGS)
 @click.option('-v', '--verbose', is_flag=True,
               help='Enables verbose mode.')
@@ -73,4 +77,3 @@ def cli(context, verbose):
     context.verbose = verbose
     if verbose:
         logger.setLevel(logging.DEBUG)
-    

@@ -27,18 +27,22 @@ from buildgrid.server import action_cache
 from buildgrid.server.cas.storage import lru_memory_cache
 from buildgrid.server.execution import action_cache_service
 
+
 # Can mock this
 @pytest.fixture
 def context():
-    yield mock.MagicMock(spec = _Context)
+    yield mock.MagicMock(spec=_Context)
+
 
 @pytest.fixture
 def cas():
     yield lru_memory_cache.LRUMemoryCache(1024 * 1024)
 
+
 @pytest.fixture
 def cache(cas):
     yield action_cache.ActionCache(cas, 50)
+
 
 def test_simple_action_result(cache, context):
     service = action_cache_service.ActionCacheService(cache)
@@ -59,6 +63,7 @@ def test_simple_action_result(cache, context):
     request = remote_execution_pb2.GetActionResultRequest(action_digest=action_digest)
     fetched_result = service.GetActionResult(request, context)
     assert fetched_result.stdout_raw == action_result.stdout_raw
+
 
 def test_disabled_update_action_result(cache, context):
     service = action_cache_service.ActionCacheService(cache, False)

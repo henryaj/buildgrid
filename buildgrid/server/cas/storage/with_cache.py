@@ -31,6 +31,7 @@ import io
 
 from .storage_abc import StorageABC
 
+
 class _OutputTee(io.BufferedIOBase):
     """A file-like object that writes data to two file-like objects.
 
