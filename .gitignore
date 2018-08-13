@@ -1,0 +1,18 @@
+# Compiled python modules:
+/**/__pycache__/
+app/**/*.pyc
+buildgrid/**/*.pyc
+tests/**/*.pyc
+
+# Distribution folder (setuptools):
+dist/
+
+# Python egg metadata (setuptools):
+/*.egg-info
+.eggs
+
+# Testing related things:
+.coverage
+.coverage.*
+.pylint.d/
+.pytest_cache/
