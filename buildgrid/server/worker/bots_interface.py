@@ -29,7 +29,7 @@ from ._exceptions import InvalidArgumentError, OutofSyncError
 from ..job import LeaseState
 
 
-class BotsInterface():
+class BotsInterface:
 
     def __init__(self, scheduler):
         self.logger = logging.getLogger(__name__)
@@ -74,8 +74,6 @@ class BotsInterface():
         """
         self.logger.debug("Updating bot session name={}".format(name))
         self._check_bot_ids(bot_session.bot_id, name)
-
-        server_session = self._bot_sessions[name]
 
         leases = filter(None, [self.check_states(lease) for lease in bot_session.leases])
 

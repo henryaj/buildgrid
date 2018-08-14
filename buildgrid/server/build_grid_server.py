@@ -42,7 +42,7 @@ from .worker.bots_service import BotsService
 from .worker.bots_interface import BotsInterface
 
 
-class BuildGridServer(object):
+class BuildGridServer:
 
     def __init__(self, port='50051', max_workers=10, cas_storage=None,
                  action_cache=None, allow_update_action_result=True):

@@ -46,28 +46,28 @@ def cli(context):
     context.logger.info("BuildGrid server booting up")
 
 
-@cli.command('start', short_help='Starts server')
+@cli.command('start', short_help="Starts server")
 @click.option('--port', default='50051')
 @click.option('--max-cached-actions', type=int, default=50,
-              help='Maximum number of actions to keep in the ActionCache.')
+              help="Maximum number of actions to keep in the ActionCache.")
 @click.option('--allow-update-action-result/--forbid-update-action-result',
               'allow_uar', default=True,
-              help='Whether or not to allow clients to manually edit the action cache.')
+              help="Whether or not to allow clients to manually edit the action cache.")
 @click.option('--cas',
               type=click.Choice(('lru', 's3', 'disk', 'with-cache')),
-              help='CAS storage type to use.')
+              help="CAS storage type to use.")
 @click.option('--cas-cache',
               type=click.Choice(('lru', 's3', 'disk')),
-              help='For --cas=with-cache, the CAS storage to use as the cache.')
+              help="For --cas=with-cache, the CAS storage to use as the cache.")
 @click.option('--cas-fallback',
               type=click.Choice(('lru', 's3', 'disk')),
-              help='For --cas=with-cache, the CAS storage to use as the fallback.')
-@click.option('--cas-lru-size', help='For --cas=lru, the LRU cache\'s memory limit.')
-@click.option('--cas-s3-bucket', help='For --cas=s3, the bucket name.')
-@click.option('--cas-s3-endpoint', help='For --cas=s3, the endpoint URI.')
+              help="For --cas=with-cache, the CAS storage to use as the fallback.")
+@click.option('--cas-lru-size', help="For --cas=lru, the LRU cache's memory limit.")
+@click.option('--cas-s3-bucket', help="For --cas=s3, the bucket name.")
+@click.option('--cas-s3-endpoint', help="For --cas=s3, the endpoint URI.")
 @click.option('--cas-disk-directory',
               type=click.Path(file_okay=False, dir_okay=True, writable=True),
-              help='For --cas=disk, the folder to store CAS blobs in.')
+              help="For --cas=disk, the folder to store CAS blobs in.")
 @pass_context
 def start(context, port, max_cached_actions, allow_uar, cas, **cas_args):
     context.logger.info("Starting on port {}".format(port))
@@ -96,7 +96,7 @@ def start(context, port, max_cached_actions, allow_uar, cas, **cas_args):
         loop.close()
 
 
-@cli.command('stop', short_help='Stops server')
+@cli.command('stop', short_help="Stops server")
 @pass_context
 def stop(context):
     context.logger.error("Not implemented yet")
@@ -141,6 +141,7 @@ def _make_cas_storage(context, cas_type, cas_args):
         return WithCacheStorage(cache, fallback)
     elif cas_type is None:
         return None
+    return None
 
 
 def _parse_size(size):

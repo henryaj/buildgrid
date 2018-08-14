@@ -52,9 +52,9 @@ class Bot:
             loop.close()
 
     async def _update_bot_session(self):
+        """
+        Calls the server periodically to inform the server the client has not died.
+        """
         while True:
-            """ Calls the server periodically to inform the server the client
-            has not died.
-            """
             self._bot_session.update_bot_session()
             await asyncio.sleep(self._update_period)

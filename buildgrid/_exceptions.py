@@ -31,12 +31,10 @@ class BgdError(Exception):
     def __init__(self, message, *, detail=None, domain=None, reason=None):
         super().__init__(message)
 
-        """ Any additional detail and extra information
-        """
+        # Additional detail and extra information
         self.detail = detail
 
-        """ Domand and reason.
-        """
+        # Domand and reason
         self.domain = domain
         self.reason = reason
 

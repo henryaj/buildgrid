@@ -45,7 +45,7 @@ def cli(context, host, port):
     context.port = port
 
 
-@cli.command('request', short_help='Send a dummy action')
+@cli.command('request', short_help="Send a dummy action")
 @click.option('--number', default=1)
 @click.option('--instance-name', default='testing')
 @click.option('--wait-for-completion', is_flag=True)
@@ -59,8 +59,9 @@ def request(context, number, instance_name, wait_for_completion):
     request = remote_execution_pb2.ExecuteRequest(instance_name=instance_name,
                                                   action_digest=action_digest,
                                                   skip_cache_lookup=True)
-    responses = []
-    for i in range(0, number):
+
+    responses = list()
+    for _ in range(0, number):
         responses.append(stub.Execute(request))
 
     for response in responses:
@@ -71,7 +72,7 @@ def request(context, number, instance_name, wait_for_completion):
             context.logger.info(next(response))
 
 
-@cli.command('status', short_help='Get the status of an operation')
+@cli.command('status', short_help="Get the status of an operation")
 @click.argument('operation-name')
 @pass_context
 def operation_status(context, operation_name):
@@ -84,7 +85,7 @@ def operation_status(context, operation_name):
     context.logger.info(response)
 
 
-@cli.command('list', short_help='List operations')
+@cli.command('list', short_help="List operations")
 @pass_context
 def list_operations(context):
     context.logger.info("Getting list of operations")
@@ -94,7 +95,7 @@ def list_operations(context):
 
     response = stub.ListOperations(request)
 
-    if len(response.operations) < 1:
+    if not response.operations:
         context.logger.warning("No operations to list")
         return
 
@@ -102,7 +103,7 @@ def list_operations(context):
         context.logger.info(op)
 
 
-@cli.command('wait', short_help='Streams an operation until it is complete')
+@cli.command('wait', short_help="Streams an operation until it is complete")
 @click.argument('operation-name')
 @pass_context
 def wait_execution(context, operation_name):

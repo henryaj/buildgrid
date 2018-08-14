@@ -75,7 +75,7 @@ class LeaseState(Enum):
     CANCELLED = bots_pb2.LeaseState.Value('CANCELLED')
 
 
-class Job():
+class Job:
 
     def __init__(self, action_digest, do_not_cache=False, message_queue=None):
         self.lease = None
@@ -154,6 +154,6 @@ class Job():
             queue.put(self.get_operation())
 
     def _pack_any(self, pack):
-        any = any_pb2.Any()
-        any.Pack(pack)
-        return any
+        some_any = any_pb2.Any()
+        some_any.Pack(pack)
+        return some_any

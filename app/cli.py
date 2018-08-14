@@ -33,7 +33,7 @@ from . import _logging
 CONTEXT_SETTINGS = dict(auto_envvar_prefix='BUILDGRID')
 
 
-class Context(object):
+class Context:
 
     def __init__(self):
         self.verbose = False
@@ -63,7 +63,7 @@ class BuildGridCLI(click.MultiCommand):
         except ModuleNotFoundError as e:
             raise Exception(e)
         except ImportError as e:
-            return
+            return None
         return mod.cli
 
 

@@ -42,7 +42,7 @@ from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_p
 from ..cli import pass_context
 
 
-@click.group(short_help='Create a bot client')
+@click.group(short_help="Create a bot client")
 @click.option('--parent', default='bgd_test')
 @click.option('--port', default='50051')
 @click.option('--host', default='localhost')
@@ -63,7 +63,7 @@ def cli(context, host, port, parent):
     context.bot_session = bot_session
 
 
-@cli.command('dummy', short_help='Create a dummy bot session')
+@cli.command('dummy', short_help="Create a dummy bot session")
 @pass_context
 def dummy(context):
     """
@@ -79,7 +79,7 @@ def dummy(context):
         pass
 
 
-@cli.command('buildbox', short_help='Create a bot session with busybox')
+@cli.command('buildbox', short_help="Create a bot session with busybox")
 @click.option('--fuse-dir', show_default=True, default=str(PurePath(Path.home(), 'fuse')))
 @click.option('--local-cas', show_default=True, default=str(PurePath(Path.home(), 'cas')))
 @click.option('--client-cert', show_default=True, default=str(PurePath(Path.home(), 'client.crt')))
@@ -167,7 +167,7 @@ async def _work_buildbox(context, lease):
                             stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE)
     std_send = action.input_root_digest.SerializeToString()
-    std_out, std_error = proc.communicate(std_send)
+    std_out, _ = proc.communicate(std_send)
 
     output_root_digest = remote_execution_pb2.Digest()
     output_root_digest.ParseFromString(std_out)

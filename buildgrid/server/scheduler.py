@@ -31,7 +31,7 @@ from buildgrid._protos.google.longrunning import operations_pb2
 from .job import ExecuteStage, LeaseState
 
 
-class Scheduler():
+class Scheduler:
 
     MAX_N_TRIES = 5
 
@@ -103,12 +103,11 @@ class Scheduler():
     def cancel_session(self, name):
         job = self.jobs[name]
         state = job.lease.state
-        if state == LeaseState.PENDING.value or \
-           state == LeaseState.ACTIVE.value:
+        if state in (LeaseState.PENDING.value, LeaseState.ACTIVE.value):
             self.retry_job(name)
 
     def create_leases(self):
-        while len(self.queue) > 0:
+        while self.queue:
             job = self.queue.popleft()
             job.update_execute_stage(ExecuteStage.EXECUTING)
             job.lease = job.create_lease()

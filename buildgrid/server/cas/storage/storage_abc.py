@@ -93,7 +93,7 @@ class StorageABC(abc.ABC):
                     write_session = self.begin_write(digest)
                     write_session.write(data)
                     self.commit_write(digest, write_session)
-                except Exception as ex:
+                except IOError as ex:
                     result.append(Status(code=code_pb2.UNKNOWN, message=str(ex)))
                 else:
                     result.append(Status(code=code_pb2.OK))

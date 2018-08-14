@@ -74,6 +74,7 @@ class BotSession:
         self.logger = logging.getLogger(__name__)
 
         self._bot_id = '{}.{}'.format(parent, platform.node())
+        self._context = None
         self._interface = interface
         self._leases = {}
         self._name = None
@@ -131,7 +132,6 @@ class BotSession:
         State machine for any recieved updates to the leases.
         """
         # TODO: Compare with previous state of lease
-        lease_bot = self._leases.get(lease.id)
         if lease.state == LeaseState.PENDING.value:
             lease.state = LeaseState.ACTIVE.value
             asyncio.ensure_future(self.create_work(lease))

@@ -30,7 +30,7 @@ from ._exceptions import InvalidArgumentError
 from ..job import Job
 
 
-class ExecutionInstance():
+class ExecutionInstance:
 
     def __init__(self, scheduler, storage=None):
         self.logger = logging.getLogger(__name__)

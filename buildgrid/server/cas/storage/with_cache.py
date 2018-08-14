@@ -39,6 +39,8 @@ class _OutputTee(io.BufferedIOBase):
     """
 
     def __init__(self, file_a, file_b):
+        super().__init__()
+
         self._original_a = file_a
         if isinstance(file_a, io.BufferedIOBase):
             self._a = file_a
@@ -82,6 +84,8 @@ class _CachingTee(io.RawIOBase):
     """
 
     def __init__(self, fallback_file, digest, cache):
+        super().__init__()
+
         self._file = fallback_file
         self._digest = digest
         self._cache = cache
