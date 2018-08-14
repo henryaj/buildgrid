@@ -22,18 +22,15 @@ Execute command
 Request work to be executed and monitor status of jobs.
 """
 
+import logging
+
 import click
 import grpc
-import logging
-import sys
-import time
-
-from ..cli import pass_context
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
-from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import ExecuteOperationMetadata
 from buildgrid._protos.google.longrunning import operations_pb2, operations_pb2_grpc
-from google.protobuf import any_pb2
+
+from ..cli import pass_context
 
 
 @click.group(short_help="Simple execute client")

@@ -23,9 +23,10 @@ Schedules jobs.
 
 from collections import deque
 
+from google.protobuf import any_pb2
+
 from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import ActionResult
 from buildgrid._protos.google.longrunning import operations_pb2
-from google.protobuf import any_pb2
 
 from .job import ExecuteStage, LeaseState
 

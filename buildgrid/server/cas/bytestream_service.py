@@ -24,9 +24,9 @@ CAS blobs.
 """
 
 import grpc
+
 from buildgrid._protos.google.bytestream import bytestream_pb2, bytestream_pb2_grpc
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2 as re_pb2
-from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc as re_pb2_grpc
 
 from ...settings import HASH
 

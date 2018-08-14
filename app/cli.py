@@ -24,9 +24,9 @@ will be attempted to be imported.
 """
 
 import os
-import sys
-import click
 import logging
+
+import click
 
 from . import _logging
 

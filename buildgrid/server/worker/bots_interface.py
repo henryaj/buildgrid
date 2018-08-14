@@ -27,7 +27,6 @@ import uuid
 
 from ._exceptions import InvalidArgumentError, OutofSyncError
 from ..job import LeaseState
-from ..scheduler import Scheduler
 
 
 class BotsInterface():

@@ -23,25 +23,23 @@ Create a bot interface and request work
 """
 
 import asyncio
-import click
-import grpc
 import logging
 import os
 import random
 import subprocess
 import tempfile
-
 from pathlib import Path, PurePath
+
+import click
+import grpc
+from google.protobuf import any_pb2
 
 from buildgrid.bot import bot, bot_interface
 from buildgrid.bot.bot_session import BotSession, Device, Worker
-from buildgrid._exceptions import BotError
+from buildgrid._protos.google.bytestream import bytestream_pb2, bytestream_pb2_grpc
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 
 from ..cli import pass_context
-
-from buildgrid._protos.google.bytestream import bytestream_pb2, bytestream_pb2_grpc
-from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
-from google.protobuf import any_pb2
 
 
 @click.group(short_help='Create a bot client')

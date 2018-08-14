@@ -21,14 +21,13 @@ ExecutionInstance
 An instance of the Remote Execution Server.
 """
 
-import uuid
 import logging
 
 from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Action
 
 from ._exceptions import InvalidArgumentError
 
-from ..job import Job, ExecuteStage
+from ..job import Job
 
 
 class ExecutionInstance():

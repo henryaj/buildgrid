@@ -21,8 +21,9 @@ OperationsService
 
 """
 
-import grpc
 import logging
+
+import grpc
 
 from buildgrid._protos.google.longrunning import operations_pb2_grpc, operations_pb2
 

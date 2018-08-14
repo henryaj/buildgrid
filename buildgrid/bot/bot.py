@@ -23,13 +23,7 @@ Creates a bot session.
 """
 
 import asyncio
-import collections
 import logging
-import time
-
-from . import bot_interface, bot_session
-from .bot_session import BotStatus, LeaseState
-from .._exceptions import BotError
 
 
 class Bot:

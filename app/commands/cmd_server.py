@@ -23,8 +23,9 @@ Create a BuildGrid server.
 """
 
 import asyncio
-import click
 import logging
+
+import click
 
 from buildgrid.server import build_grid_server
 from buildgrid.server.action_cache import ActionCache

@@ -22,9 +22,9 @@ BuildGridServer
 Creates the user a local server BuildGrid server.
 """
 
-import time
-import grpc
 from concurrent import futures
+
+import grpc
 
 from buildgrid._protos.google.bytestream import bytestream_pb2_grpc
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc

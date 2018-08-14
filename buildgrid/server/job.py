@@ -17,14 +17,14 @@
 
 import logging
 import uuid
-
 from enum import Enum
+
+from google.protobuf import any_pb2
 
 from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import ExecuteOperationMetadata
 from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import ExecuteResponse
-from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2, worker_pb2
+from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
-from google.protobuf import any_pb2
 
 
 class ExecuteStage(Enum):
