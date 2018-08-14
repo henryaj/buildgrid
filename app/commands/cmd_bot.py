@@ -104,15 +104,10 @@ def work_buildbox(context, remote, port, server_cert, client_key, client_cert, l
     context.fuse_dir = fuse_dir
 
     try:
-        b = bot.Bot(work=_work_buildbox,
-                    bot_session=context.bot_session,
-                    channel=context.channel,
-                    parent=context.parent)
+        b = bot.Bot(bot_session=context.bot_session)
 
-        b.session(context.parent,
-                  _work_buildbox,
-                  context)
-
+        b.session(work=_work_buildbox,
+                  context=context)
     except KeyboardInterrupt:
         pass
 
