@@ -11,29 +11,13 @@ Any major feature additions should be raised as a proposal on the `Mailing List 
 
 The author of any patch is expected to take ownership of that code and is to support it for a reasonable time-frame. This means addressing any unforeseen side effects and quirks the feature may have introduced. More on this below in 'Granting Committer Access'.
 
-Granting Committer Access
--------------------------
-
-We'll hand out commit access to anyone who has successfully landed a single patch to the code base. Please request this via irc or the mailing list.
-
-This of course relies on contributors being responsive and show willingness to address problems after landing branches there should not be any problems here.
-
-What we are expecting of committers here in general is basically to
-escalate the review in cases of uncertainty:
-
-* If the patch/branch is very trivial (obvious few line changes or typos etc), and you are confident of the change, there is no need for review.
-
-* If the patch/branch is non trivial, please obtain a review from another committer who is familiar with the area which the branch effects. An approval from someone who is not the patch author will be needed before any merge. 
-
-We don't have any detailed policy for "bad actors", but will of course handle things on a case by case basis - commit access should not result in commit wars or be used as a tool to subvert the project when disagreements arise, such incidents (if any) would surely lead to temporary suspension of commit rights.
-
 Patch Submissions
 -----------------
 
 We will be running `trunk based development <https://trunkbaseddevelopment.com>`_. The idea behind this is that merge requests to the trunk will be small and made often, thus making the review and merge process as fast as possible. We do not want to end up with a huge backlog of outstanding merge requests. If possible,
 it is preferred that merge requests address specific points and clearly outline what problem they are solving.
 
-Branches must be submitted as merge requests on gitlab and should be associated with an issue report on gitlab, whenever possible. If it's a tiny change, we'll accept an MR without it being associated to a gitlab issue, but generally we strongly prefer an issue to be raised in advance. This is so that we can track the work that is currently in progress on the project - please see our Gitlab policy below.
+Branches must be submitted as merge requests on gitlab and should be associated with an issue report on gitlab, whenever possible. If it's a small change, we'll accept an MR without it being associated to a gitlab issue, but generally we prefer an issue to be raised in advance. This is so that we can track the work that is currently in progress on the project - please see our Gitlab policy below.
 
 Each commit should address a specific gitlab issue number in the commit message. This is really important for provenance reasons.
 
@@ -113,6 +97,21 @@ Remember that with python, the modules (python files) are also symbols
 within their containing *package*, as such; modules which are entirely
 private to BuildGrid are named as such, e.g. ``_roy.py``.
 
+Granting Committer Access
+-------------------------
+
+We'll hand out commit access to anyone who has successfully landed a single patch to the code base. Please request this via irc or the mailing list.
+
+This of course relies on contributors being responsive and show willingness to address problems after landing branches there should not be any problems here.
+
+What we are expecting of committers here in general is basically to
+escalate the review in cases of uncertainty:
+
+* If the patch/branch is very trivial (obvious few line changes or typos etc), and you are confident of the change, there is no need for review.
+
+* If the patch/branch is non trivial, please obtain a review from another committer who is familiar with the area which the branch effects. An approval from someone who is not the patch author will be needed before any merge. 
+
+We don't have any detailed policy for "bad actors", but will of course handle things on a case by case basis - commit access should not result in commit wars or be used as a tool to subvert the project when disagreements arise, such incidents (if any) would surely lead to temporary suspension of commit rights.
 
 BuildGrid policy for use of Gitlab features
 -------------------------------------------
