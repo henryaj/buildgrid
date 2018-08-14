@@ -95,6 +95,14 @@ tests_require = [
     'pytest-pylint',
 ]
 
+docs_require = [
+    'sphinx',
+    'sphinx-click',
+    'sphinx-rtd-theme',
+    'sphinxcontrib-apidoc',
+    'sphinxcontrib-napoleon',
+]
+
 setup(
     name="BuildGrid",
     version=__version__,
@@ -117,6 +125,7 @@ setup(
     setup_requires=['pytest-runner'],
     tests_require=tests_require,
     extras_require={
-        'devel': tests_require,
+        'docs': docs_require,
+        'tests': tests_require,
     },
 )
