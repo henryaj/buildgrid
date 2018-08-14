@@ -144,7 +144,7 @@ class BotsInterface:
                 self._close_bot_session(name)
                 raise InvalidArgumentError(
                     'Bot id invalid. ID sent: {} with name: {}.'
-                    'ID registered: {} with name: {}'.format(bot_id, name, _bot_id, _name))
+                    'ID registered: {} for that name'.format(bot_id, name, _bot_id))
         else:
             for _name, _bot_id in self._bot_ids.items():
                 if bot_id == _bot_id:
