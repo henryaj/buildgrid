@@ -64,7 +64,8 @@ class Scheduler:
         job.update_execute_stage(ExecuteStage.QUEUED)
 
     def retry_job(self, name):
-        if job in self.jobs[name]:
+        if name in self.jobs:
+            job = self.jobs[name]
             if job.n_tries >= self.MAX_N_TRIES:
                 # TODO: Decide what to do with these jobs
                 job.update_execute_stage(ExecuteStage.COMPLETED)
