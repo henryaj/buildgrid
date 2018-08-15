@@ -40,6 +40,17 @@ run-dummy-job-debian:
   image: buildstream/buildstream-debian
   <<: *dummy-job
 
+build-docs:
+  stage: test
+  script:
+    - pip3 install --editable ".[docs]"
+    - make -C docs html
+    - mkdir -p documentation/
+    - cp -a docs/build/html/. documentation/
+  artifacts:
+    paths:
+    - documentation/
+
 
 coverage:
   stage: post
@@ -61,8 +72,10 @@ pages:
   stage: post
   dependencies:
   - tests-debian-stretch
+  - build-docs
   script:
-  - mv coverage/ public/
+  - cp -a coverage/. public/
+  - cp -a documentation/* public/
   artifacts:
     paths:
     - public/
