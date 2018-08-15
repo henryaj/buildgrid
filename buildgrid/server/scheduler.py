@@ -25,7 +25,6 @@ from collections import deque
 
 from google.protobuf import any_pb2
 
-from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import ActionResult
 from buildgrid._protos.google.longrunning import operations_pb2
 
 from .job import ExecuteStage, LeaseState
@@ -83,9 +82,7 @@ class Scheduler:
         job.update_execute_stage(ExecuteStage.COMPLETED)
         self.jobs[name] = job
         if not job.do_not_cache and self.action_cache is not None:
-            action_result = ActionResult()
-            result.Unpack(action_result)
-            self.action_cache.put_action_result(job.action_digest, action_result)
+            self.action_cache.put_action_result(job.action_digest, result)
 
     def get_operations(self):
         response = operations_pb2.ListOperationsResponse()
@@ -94,7 +91,7 @@ class Scheduler:
         return response
 
     def update_job_lease_state(self, name, state):
-        job = self.jobs.get(name)
+        job = self.jobs[name]
         job.lease.state = state
         self.jobs[name] = job
 

@@ -104,13 +104,14 @@ class BotSession:
             self._update_lease_from_server(lease)
 
     def update_bot_session(self):
+        self.logger.debug("Updating bot session: {}".format(self._bot_id))
         session = self._interface.update_bot_session(self.get_pb2())
-        for lease in session.leases:
-            self._update_lease_from_server(lease)
-
-        for k, v in self._leases.items():
+        for k, v in list(self._leases.items()):
             if v.state == LeaseState.COMPLETED.value:
                 del self._leases[k]
+
+        for lease in session.leases:
+            self._update_lease_from_server(lease)
 
     def get_pb2(self):
         leases = list(self._leases.values())
@@ -134,12 +135,16 @@ class BotSession:
         # TODO: Compare with previous state of lease
         if lease.state == LeaseState.PENDING.value:
             lease.state = LeaseState.ACTIVE.value
-            asyncio.ensure_future(self.create_work(lease))
             self._leases[lease.id] = lease
+            self.update_bot_session()
+            asyncio.ensure_future(self.create_work(lease))
 
     async def create_work(self, lease):
         self.logger.debug("Work created: {}".format(lease.id))
-        lease = await self._work(self._context, lease)
+
+        loop = asyncio.get_event_loop()
+        lease = await loop.run_in_executor(None, self._work, self._context, lease)
+
         self.logger.debug("Work complete: {}".format(lease.id))
         self.lease_completed(lease)
 

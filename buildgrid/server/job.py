@@ -21,26 +21,25 @@ from enum import Enum
 
 from google.protobuf import any_pb2
 
-from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import ExecuteOperationMetadata
-from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import ExecuteResponse
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 
 
 class ExecuteStage(Enum):
-    UNKNOWN = ExecuteOperationMetadata.Stage.Value('UNKNOWN')
+    UNKNOWN = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('UNKNOWN')
 
     # Checking the result against the cache.
-    CACHE_CHECK = ExecuteOperationMetadata.Stage.Value('CACHE_CHECK')
+    CACHE_CHECK = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('CACHE_CHECK')
 
     # Currently idle, awaiting a free machine to execute.
-    QUEUED = ExecuteOperationMetadata.Stage.Value('QUEUED')
+    QUEUED = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('QUEUED')
 
     # Currently being executed by a worker.
-    EXECUTING = ExecuteOperationMetadata.Stage.Value('EXECUTING')
+    EXECUTING = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('EXECUTING')
 
     # Finished execution.
-    COMPLETED = ExecuteOperationMetadata.Stage.Value('COMPLETED')
+    COMPLETED = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('COMPLETED')
 
 
 class BotStatus(Enum):
@@ -80,13 +79,13 @@ class Job:
     def __init__(self, action_digest, do_not_cache=False, message_queue=None):
         self.lease = None
         self.logger = logging.getLogger(__name__)
+        self.n_tries = 0
         self.result = None
         self.result_cached = False
 
         self._action_digest = action_digest
         self._do_not_cache = do_not_cache
         self._execute_stage = ExecuteStage.UNKNOWN
-        self._n_tries = 0
         self._name = str(uuid.uuid4())
         self._operation = operations_pb2.Operation(name=self._name)
         self._operation_update_queues = []
@@ -122,15 +121,16 @@ class Job:
         self._operation.metadata.CopyFrom(self._pack_any(self.get_operation_meta()))
         if self.result is not None:
             self._operation.done = True
-            response = ExecuteResponse()
-            self.result.Unpack(response.result)
-            response.cached_result = self.result_cached
+            action_result = remote_execution_pb2.ActionResult()
+            self.result.Unpack(action_result)
+            response = remote_execution_pb2.ExecuteResponse(result=action_result,
+                                                            cached_result=self.result_cached)
             self._operation.response.CopyFrom(self._pack_any(response))
 
         return self._operation
 
     def get_operation_meta(self):
-        meta = ExecuteOperationMetadata()
+        meta = remote_execution_pb2.ExecuteOperationMetadata()
         meta.stage = self._execute_stage.value
         meta.action_digest.CopyFrom(self._action_digest)
 

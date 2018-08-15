@@ -100,12 +100,14 @@ def test_list_operations_with_result(instance, execute_request, context):
     action_result = remote_execution_pb2.ActionResult()
     output_file = remote_execution_pb2.OutputFile(path='unicorn')
     action_result.output_files.extend([output_file])
-    instance._instance._scheduler.jobs[response_execute.name].result = _pack_any(action_result)
+
+    instance._instance._scheduler.job_complete(response_execute.name, _pack_any(action_result))
 
     request = operations_pb2.ListOperationsRequest()
     response = instance.ListOperations(request, context)
 
     assert response.operations[0].name == response_execute.name
+
     execute_response = remote_execution_pb2.ExecuteResponse()
     response.operations[0].response.Unpack(execute_response)
     assert execute_response.result == action_result
