@@ -31,7 +31,7 @@ before_script:
     - ${BGD} server start &
     - sleep 1 # Allow server to boot
     - ${BGD} bot --host=0.0.0.0 dummy &
-    - ${BGD} execute --host=0.0.0.0 request --wait-for-completion
+    - ${BGD} execute --host=0.0.0.0 request-dummy --wait-for-completion
 
 tests-debian-stretch:
   <<: *linux-tests
