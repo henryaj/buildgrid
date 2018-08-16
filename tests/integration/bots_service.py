@@ -224,51 +224,6 @@ def test_work_out_of_sync_from_pending(state, bot_session, context, instance):
     action_digest = remote_execution_pb2.Digest(hash='gaff')
     instance._instance._scheduler.append_job(job.Job(action_digest))
     # Simulated the severed binding between client and server
-    bot = copy.deepcopy(instance.CreateBotSession(request, context))
-
-    request = bots_pb2.UpdateBotSessionRequest(name=bot.name,
-                                               bot_session=bot)
-
-    response = copy.deepcopy(instance.UpdateBotSession(request, context))
-
-    response.leases[0].state = state.value
-
-    request = bots_pb2.UpdateBotSessionRequest(name=response.name,
-                                               bot_session=response)
-
-    response = instance.UpdateBotSession(request, context)
-
-    context.set_code.assert_called_once_with(grpc.StatusCode.DATA_LOSS)
-
-
-@pytest.mark.parametrize("state", [LeaseState.LEASE_STATE_UNSPECIFIED, LeaseState.PENDING])
-def test_work_out_of_sync_from_active(state, bot_session, context, instance):
-    request = bots_pb2.CreateBotSessionRequest(parent='',
-                                               bot_session=bot_session)
-    # Inject work
-    action_digest = remote_execution_pb2.Digest(hash='gaff')
-    instance._instance._scheduler.append_job(job.Job(action_digest))
-    # Simulated the severed binding between client and server
-    bot = copy.deepcopy(instance.CreateBotSession(request, context))
-
-    request = bots_pb2.UpdateBotSessionRequest(name=bot.name,
-                                               bot_session=bot)
-
-    response = copy.deepcopy(instance.UpdateBotSession(request, context))
-
-    response = instance.UpdateBotSession(request, context)
-
-    context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
-
-
-@pytest.mark.parametrize("state", [LeaseState.LEASE_STATE_UNSPECIFIED, LeaseState.PENDING])
-def test_work_out_of_sync_from_pending(state, bot_session, context, instance):
-    request = bots_pb2.CreateBotSessionRequest(parent='',
-                                               bot_session=bot_session)
-    # Inject work
-    action_digest = remote_execution_pb2.Digest(hash='gaff')
-    instance._instance._scheduler.append_job(job.Job(action_digest))
-    # Simulated the severed binding between client and server
     response = copy.deepcopy(instance.CreateBotSession(request, context))
 
     response.leases[0].state = state.value
