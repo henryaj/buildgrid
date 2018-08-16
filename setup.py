@@ -89,7 +89,7 @@ tests_require = [
     'coverage == 4.4.0',
     'moto',
     'pep8',
-    'pytest >= 3.1.0',
+    'pytest == 3.6.4',
     'pytest-cov >= 2.5.0',
     'pytest-pep8',
     'pytest-pylint',
