@@ -15,14 +15,13 @@
 # Authors:
 #        Finn Ball <finn.ball@codethink.co.uk>
 
-import grpc
-import pytest
-
 from unittest import mock
 
+import grpc
 from grpc._server import _Context
-from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
+import pytest
 
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid.server import action_cache
 from buildgrid.server.cas.storage import lru_memory_cache
 from buildgrid.server.execution import action_cache_service

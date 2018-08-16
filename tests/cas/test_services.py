@@ -17,10 +17,10 @@
 
 import io
 
-from buildgrid._protos.google.bytestream import bytestream_pb2
-from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2 as re_pb2
 import pytest
 
+from buildgrid._protos.google.bytestream import bytestream_pb2
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2 as re_pb2
 from buildgrid.server.cas.storage.storage_abc import StorageABC
 from buildgrid.server.cas.bytestream_service import ByteStreamService
 from buildgrid.server.cas.content_addressable_storage_service import ContentAddressableStorageService

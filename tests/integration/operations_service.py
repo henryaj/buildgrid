@@ -15,19 +15,19 @@
 # Authors:
 #        Finn Ball <finn.ball@codethink.co.uk>
 
-import grpc
-import pytest
-
 from unittest import mock
 
+import grpc
 from grpc._server import _Context
+import pytest
+
+from google.protobuf import any_pb2
+
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
-
-from buildgrid.server import scheduler, job
+from buildgrid.server import scheduler
 from buildgrid.server.execution._exceptions import InvalidArgumentError
 from buildgrid.server.execution import execution_instance, operations_service
-from google.protobuf import any_pb2
 
 
 # Can mock this

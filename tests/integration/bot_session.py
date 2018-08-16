@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import grpc
-import pytest
 import uuid
 
-from unittest import mock
+import pytest
 
-from buildgrid.bot import bot_session, bot_interface
+from buildgrid.bot import bot_session
 
 
 @pytest.mark.parametrize("docker_value", ["True", "False"])

@@ -16,19 +16,17 @@
 #        Finn Ball <finn.ball@codethink.co.uk>
 
 import copy
-import grpc
-import pytest
 import uuid
-
 from unittest import mock
 
+import grpc
 from grpc._server import _Context
-from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
-from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2, worker_pb2
-from google.protobuf import any_pb2
+import pytest
 
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
+from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid.server import scheduler, job
-from buildgrid.server.job import ExecuteStage, LeaseState
+from buildgrid.server.job import LeaseState
 from buildgrid.server.worker import bots_interface, bots_service
 
 
