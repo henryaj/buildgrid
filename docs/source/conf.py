@@ -24,8 +24,8 @@ from _version import __version__
 # -- Project information -----------------------------------------------------
 
 project = 'BuildGrid'
-copyright = '2018, The BuildGrid Contributors'
-author = 'The BuildGrid Contributors'
+copyright = '2018, Bloomberg LP'
+author = None
 
 # The short X.Y version
 version = __version__
