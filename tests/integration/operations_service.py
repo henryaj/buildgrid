@@ -15,6 +15,8 @@
 # Authors:
 #        Finn Ball <finn.ball@codethink.co.uk>
 
+# pylint: disable=redefined-outer-name
+
 from unittest import mock
 
 import grpc
@@ -78,7 +80,7 @@ def test_get_operation(instance, execute_request, context):
 
 def test_get_operation_fail(instance, context):
     request = operations_pb2.GetOperationRequest()
-    response = instance.GetOperation(request, context)
+    instance.GetOperation(request, context)
 
     context.set_code.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT)
 
@@ -127,7 +129,7 @@ def test_delete_operation(instance, execute_request, context):
                                                   execute_request.skip_cache_lookup)
     request = operations_pb2.DeleteOperationRequest()
     request.name = response_execute.name
-    response = instance.DeleteOperation(request, context)
+    instance.DeleteOperation(request, context)
 
     request = operations_pb2.GetOperationRequest()
     request.name = response_execute.name
@@ -150,6 +152,6 @@ def test_cancel_operation(instance, context):
 
 
 def _pack_any(pack):
-    any = any_pb2.Any()
-    any.Pack(pack)
-    return any
+    some_any = any_pb2.Any()
+    some_any.Pack(pack)
+    return some_any

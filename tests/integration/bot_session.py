@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=redefined-outer-name
+
 import uuid
 
 import pytest
@@ -33,14 +35,14 @@ def test_create_device_key_fail():
     properties = {'voight': 'kampff'}
 
     with pytest.raises(KeyError):
-        device = bot_session.Device(properties)
+        bot_session.Device(properties)
 
 
 def test_create_device_value_fail():
     properties = {'docker': True}
 
     with pytest.raises(ValueError):
-        device = bot_session.Device(properties)
+        bot_session.Device(properties)
 
 
 def test_create_worker():

@@ -15,6 +15,8 @@
 # Authors:
 #        Finn Ball <finn.ball@codethink.co.uk>
 
+# pylint: disable=redefined-outer-name
+
 from unittest import mock
 
 import grpc

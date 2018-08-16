@@ -15,6 +15,8 @@
 # Authors:
 #        Finn Ball <finn.ball@codethink.co.uk>
 
+# pylint: disable=redefined-outer-name
+
 import uuid
 from unittest import mock
 
@@ -68,25 +70,24 @@ def test_execute(skip_cache_lookup, instance, context):
     assert uuid.UUID(result.name, version=4)
     assert result.done is False
 
-"""
-def test_wait_execution(instance, context):
+
+# def test_wait_execution(instance, context):
     # TODO: Figure out why next(response) hangs on the .get()
     # method when running in pytest.
-    action_digest = remote_execution_pb2.Digest()
-    action_digest.hash = 'zhora'
+#     action_digest = remote_execution_pb2.Digest()
+#     action_digest.hash = 'zhora'
 
-    j = job.Job(action_digest, None)
-    j._operation.done = True
+#     j = job.Job(action_digest, None)
+#     j._operation.done = True
 
-    request = remote_execution_pb2.WaitExecutionRequest(name=j.name)
+#     request = remote_execution_pb2.WaitExecutionRequest(name=j.name)
 
-    instance._instance._scheduler.jobs[j.name] = j
+#     instance._instance._scheduler.jobs[j.name] = j
 
-    action_result_any = any_pb2.Any()
-    action_result = remote_execution_pb2.ActionResult()
-    action_result_any.Pack(action_result)
+#     action_result_any = any_pb2.Any()
+#     action_result = remote_execution_pb2.ActionResult()
+#     action_result_any.Pack(action_result)
 
-    instance._instance._scheduler._update_execute_stage(j, job.ExecuteStage.COMPLETED)
+#     instance._instance._scheduler._update_execute_stage(j, job.ExecuteStage.COMPLETED)
 
-    response = instance.WaitExecution(request, context)
-"""
+#     response = instance.WaitExecution(request, context)

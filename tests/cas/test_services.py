@@ -15,6 +15,8 @@
 # Authors:
 #        Carter Sande <csande@bloomberg.net>
 
+# pylint: disable=redefined-outer-name
+
 import io
 
 import pytest
@@ -33,10 +35,11 @@ class SimpleStorage(StorageABC):
     Does not attempt to delete old entries, so this is only useful for testing.
     """
 
-    def __init__(self, existing_data=[]):
+    def __init__(self, existing_data=None):
         self.data = {}
-        for datum in existing_data:
-            self.data[(HASH(datum).hexdigest(), len(datum))] = datum
+        if existing_data:
+            for datum in existing_data:
+                self.data[(HASH(datum).hexdigest(), len(datum))] = datum
 
     def has_blob(self, digest):
         return (digest.hash, digest.size_bytes) in self.data
@@ -59,7 +62,8 @@ class SimpleStorage(StorageABC):
 
 
 class MockObject:
-    pass
+    def __init__(self):
+        self.abort = None
 
 
 class MockException(Exception):
@@ -148,7 +152,8 @@ def test_bytestream_write_rejects_wrong_hash():
     context.abort = raise_mock_exception
     with pytest.raises(MockException):
         servicer.Write(requests, context)
-    assert len(storage.data) == 0
+
+    assert len(storage.data) is 0
 
 
 @pytest.mark.parametrize("instance", instances)

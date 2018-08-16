@@ -15,6 +15,8 @@
 # Authors:
 #        Finn Ball <finn.ball@codethink.co.uk>
 
+# pylint: disable=redefined-outer-name
+
 import copy
 import uuid
 from unittest import mock
@@ -113,7 +115,7 @@ def test_update_bot_session_zombie(bot_session, context, instance):
     request = bots_pb2.UpdateBotSessionRequest(name=bot.name,
                                                bot_session=bot)
 
-    response = instance.UpdateBotSession(request, context)
+    instance.UpdateBotSession(request, context)
 
     context.set_code.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT)
 
@@ -132,7 +134,7 @@ def test_number_of_leases(number_of_jobs, bot_session, context, instance):
     request = bots_pb2.CreateBotSessionRequest(parent='',
                                                bot_session=bot_session)
     # Inject work
-    for n in range(0, number_of_jobs):
+    for _ in range(0, number_of_jobs):
         action_digest = remote_execution_pb2.Digest()
         instance._instance._scheduler.append_job(job.Job(action_digest))
 
@@ -190,7 +192,7 @@ def test_update_leases_work_complete(bot_session, context, instance):
                                                bot_session=response)
     response = copy.deepcopy(instance.UpdateBotSession(request, context))
 
-    assert len(response.leases) == 0
+    assert len(response.leases) is 0
 
 
 def test_work_rejected_by_bot(bot_session, context, instance):

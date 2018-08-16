@@ -15,6 +15,8 @@
 # Authors:
 #        Carter Sande <csande@bloomberg.net>
 
+# pylint: disable=redefined-outer-name
+
 import pytest
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2

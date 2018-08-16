@@ -15,6 +15,8 @@
 # Authors:
 #        Carter Sande <csande@bloomberg.net>
 
+# pylint: disable=redefined-outer-name
+
 import tempfile
 
 import boto3
