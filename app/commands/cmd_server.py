@@ -39,34 +39,34 @@ from ..cli import pass_context
 _SIZE_PREFIXES = {'k': 2 ** 10, 'm': 2 ** 20, 'g': 2 ** 30, 't': 2 ** 40}
 
 
-@click.group(short_help="Start local server")
+@click.group(name='server', short_help="Start a local server instance.")
 @pass_context
 def cli(context):
     context.logger = logging.getLogger(__name__)
     context.logger.info("BuildGrid server booting up")
 
 
-@cli.command('start', short_help="Starts server")
-@click.option('--port', default='50051')
-@click.option('--max-cached-actions', type=int, default=50,
+@cli.command('start', short_help="Setup a new server instance.")
+@click.option('--port', type=click.INT, default='50051', show_default=True,
+              help="The port number to be listened.")
+@click.option('--max-cached-actions', type=click.INT, default=50, show_default=True,
               help="Maximum number of actions to keep in the ActionCache.")
 @click.option('--allow-update-action-result/--forbid-update-action-result',
-              'allow_uar', default=True,
+              'allow_uar', default=True, show_default=True,
               help="Whether or not to allow clients to manually edit the action cache.")
-@click.option('--cas',
-              type=click.Choice(('lru', 's3', 'disk', 'with-cache')),
-              help="CAS storage type to use.")
-@click.option('--cas-cache',
-              type=click.Choice(('lru', 's3', 'disk')),
+@click.option('--cas', type=click.Choice(('lru', 's3', 'disk', 'with-cache')),
+              help="The CAS storage type to use.")
+@click.option('--cas-cache', type=click.Choice(('lru', 's3', 'disk')),
               help="For --cas=with-cache, the CAS storage to use as the cache.")
-@click.option('--cas-fallback',
-              type=click.Choice(('lru', 's3', 'disk')),
+@click.option('--cas-fallback', type=click.Choice(('lru', 's3', 'disk')),
               help="For --cas=with-cache, the CAS storage to use as the fallback.")
-@click.option('--cas-lru-size', help="For --cas=lru, the LRU cache's memory limit.")
-@click.option('--cas-s3-bucket', help="For --cas=s3, the bucket name.")
-@click.option('--cas-s3-endpoint', help="For --cas=s3, the endpoint URI.")
-@click.option('--cas-disk-directory',
-              type=click.Path(file_okay=False, dir_okay=True, writable=True),
+@click.option('--cas-lru-size', type=click.STRING,
+              help="For --cas=lru, the LRU cache's memory limit.")
+@click.option('--cas-s3-bucket', type=click.STRING,
+              help="For --cas=s3, the bucket name.")
+@click.option('--cas-s3-endpoint', type=click.STRING,
+              help="For --cas=s3, the endpoint URI.")
+@click.option('--cas-disk-directory', type=click.Path(file_okay=False, dir_okay=True, writable=True),
               help="For --cas=disk, the folder to store CAS blobs in.")
 @pass_context
 def start(context, port, max_cached_actions, allow_uar, cas, **cas_args):
@@ -96,7 +96,7 @@ def start(context, port, max_cached_actions, allow_uar, cas, **cas_args):
         loop.close()
 
 
-@cli.command('stop', short_help="Stops server")
+@cli.command('stop', short_help="Request a server to teardown.")
 @pass_context
 def stop(context):
     context.logger.error("Not implemented yet")

@@ -30,9 +30,11 @@ from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_p
 from ..cli import pass_context
 
 
-@click.group(short_help='Interact with the CAS')
-@click.option('--port', default='50051')
-@click.option('--host', default='localhost')
+@click.group(name='cas', short_help="Interact with the CAS server.")
+@click.option('--port', type=click.INT, default='50051', show_default=True,
+              help="Remote server's port number.")
+@click.option('--host', type=click.STRING, default='localhost', show_default=True,
+              help="Remote server's hostname.")
 @pass_context
 def cli(context, host, port):
     context.logger = logging.getLogger(__name__)
@@ -42,9 +44,10 @@ def cli(context, host, port):
     context.port = port
 
 
-@cli.command('upload-files', short_help='Upload files')
-@click.argument('files', nargs=-1, type=click.File('rb'))
-@click.option('--instance-name', default='testing')
+@cli.command('upload-files', short_help="Upload files to the CAS server.")
+@click.option('--instance-name', type=click.STRING, default='testing', show_default=True,
+              help="Targeted farm instance name.")
+@click.argument('files', nargs=-1, type=click.File('rb'), required=True)
 @pass_context
 def upload_files(context, files, instance_name):
     stub = remote_execution_pb2_grpc.ContentAddressableStorageStub(context.channel)
@@ -63,9 +66,10 @@ def upload_files(context, files, instance_name):
     context.logger.info("Response: {}".format(response))
 
 
-@cli.command('upload-dir', short_help='Upload files')
-@click.argument('directory')
-@click.option('--instance-name', default='testing')
+@cli.command('upload-dir', short_help="Upload a directory to the CAS server.")
+@click.option('--instance-name', type=click.STRING, default='testing', show_default=True,
+              help="Targeted farm instance name.")
+@click.argument('directory', nargs=1, type=click.Path(), required=True)
 @pass_context
 def upload_dir(context, directory, instance_name):
     context.logger.info("Uploading directory to cas")

@@ -37,9 +37,11 @@ from buildgrid._protos.google.longrunning import operations_pb2, operations_pb2_
 from ..cli import pass_context
 
 
-@click.group(short_help='Simple execute client')
-@click.option('--port', default='50051')
-@click.option('--host', default='localhost')
+@click.group(name='execute', short_help="Execute simple operations.")
+@click.option('--port', type=click.INT, default='50051', show_default=True,
+              help="Remote server's port number.")
+@click.option('--host', type=click.STRING, default='localhost', show_default=True,
+              help="Remote server's hostname.")
 @pass_context
 def cli(context, host, port):
     context.logger = logging.getLogger(__name__)
@@ -49,10 +51,13 @@ def cli(context, host, port):
     context.port = port
 
 
-@cli.command('request-dummy', short_help='Send a dummy action')
-@click.option('--number', default=1)
-@click.option('--instance-name', default='testing')
-@click.option('--wait-for-completion', is_flag=True, help='Stream updates until jobs are completed')
+@cli.command('request-dummy', short_help="Send a dummy action.")
+@click.option('--instance-name', type=click.STRING, default='testing', show_default=True,
+              help="Targeted farm instance name.")
+@click.option('--number', type=click.INT, default=1, show_default=True,
+              help="Number of request to send.")
+@click.option('--wait-for-completion', is_flag=True,
+              help="Stream updates until jobs are completed.")
 @pass_context
 def request_dummy(context, number, instance_name, wait_for_completion):
     action_digest = remote_execution_pb2.Digest()
@@ -76,8 +81,8 @@ def request_dummy(context, number, instance_name, wait_for_completion):
             context.logger.info(next(response))
 
 
-@cli.command('status', short_help='Get the status of an operation')
-@click.argument('operation-name')
+@cli.command('status', short_help="Get the status of an operation.")
+@click.argument('operation-name', nargs=1, type=click.STRING, required=True)
 @pass_context
 def operation_status(context, operation_name):
     context.logger.info("Getting operation status...")
@@ -89,7 +94,7 @@ def operation_status(context, operation_name):
     context.logger.info(response)
 
 
-@cli.command('list', short_help='List operations')
+@cli.command('list', short_help="List operations.")
 @pass_context
 def list_operations(context):
     context.logger.info("Getting list of operations")
@@ -107,8 +112,8 @@ def list_operations(context):
         context.logger.info(op)
 
 
-@cli.command('wait', short_help='Streams an operation until it is complete')
-@click.argument('operation-name')
+@cli.command('wait', short_help="Streams an operation until it is complete.")
+@click.argument('operation-name', nargs=1, type=click.STRING, required=True)
 @pass_context
 def wait_execution(context, operation_name):
     stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
@@ -120,13 +125,15 @@ def wait_execution(context, operation_name):
         context.logger.info(stream)
 
 
-@cli.command('command', short_help='Send a command to be executed')
-@click.argument('input-root')
-@click.argument('commands', nargs=-1)
-@click.option('--output-file', nargs=2, type=(str, bool), multiple=True,
-              help='{Expected output file, is_executeable flag}')
-@click.option('--output-directory', default='testing', help='Output directory for output files')
-@click.option('--instance-name', default='testing')
+@cli.command('command', short_help="Send a command to be executed.")
+@click.option('--instance-name', type=click.STRING, default='testing', show_default=True,
+              help="Targeted farm instance name.")
+@click.option('--output-file', nargs=2, type=(click.STRING, click.BOOL), multiple=True,
+              help="Tuple of expected output file and is-executeable flag.")
+@click.option('--output-directory', default='testing', show_default=True,
+              help="Output directory for the output files.")
+@click.argument('input-root', nargs=1, type=click.Path(), required=True)
+@click.argument('commands', nargs=-1, type=click.STRING, required=True)
 @pass_context
 def command(context, input_root, commands, output_file, output_directory, instance_name):
     stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
