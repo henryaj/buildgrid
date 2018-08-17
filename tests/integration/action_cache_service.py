@@ -23,10 +23,10 @@ import grpc
 from grpc._server import _Context
 import pytest
 
+
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
-from buildgrid.server import action_cache
 from buildgrid.server.cas.storage import lru_memory_cache
-from buildgrid.server.execution import action_cache_service
+from buildgrid.server.execution import action_cache, action_cache_service
 
 
 # Can mock this
@@ -67,7 +67,8 @@ def test_simple_action_result(cache, context):
 
 
 def test_disabled_update_action_result(cache, context):
-    service = action_cache_service.ActionCacheService(cache, False)
+    disabled_push = action_cache.ActionCache(cas, 50, False)
+    service = action_cache_service.ActionCacheService(disabled_push)
 
     request = remote_execution_pb2.UpdateActionResultRequest()
     service.UpdateActionResult(request, context)

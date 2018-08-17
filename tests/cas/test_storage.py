@@ -20,8 +20,9 @@
 import tempfile
 
 import boto3
-from moto import mock_s3
 import pytest
+
+from moto import mock_s3
 
 from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Digest
 from buildgrid.server.cas.storage.lru_memory_cache import LRUMemoryCache
