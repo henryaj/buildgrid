@@ -25,7 +25,7 @@ Instance of the Remote Workers interface.
 import logging
 import uuid
 
-from ._exceptions import InvalidArgumentError, OutofSyncError
+from .._exceptions import InvalidArgumentError, OutofSyncError
 from ..job import LeaseState
 
 

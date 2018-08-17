@@ -30,7 +30,7 @@ import grpc
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc
 
-from ._exceptions import InvalidArgumentError
+from .._exceptions import InvalidArgumentError
 
 
 class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):

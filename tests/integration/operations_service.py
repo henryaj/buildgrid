@@ -27,8 +27,10 @@ from google.protobuf import any_pb2
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
+
 from buildgrid.server import scheduler
-from buildgrid.server.execution._exceptions import InvalidArgumentError
+from buildgrid.server._exceptions import InvalidArgumentError
+
 from buildgrid.server.execution import execution_instance, operations_service
 
 

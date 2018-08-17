@@ -25,9 +25,10 @@ import pytest
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
-from buildgrid.server import action_cache, scheduler, job
+
+from buildgrid.server import scheduler, job
 from buildgrid.server.cas.storage import lru_memory_cache
-from buildgrid.server.execution import execution_instance, execution_service
+from buildgrid.server.execution import action_cache, execution_instance, execution_service
 
 
 @pytest.fixture

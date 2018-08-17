@@ -27,7 +27,7 @@ import grpc
 
 from buildgrid._protos.google.longrunning import operations_pb2_grpc, operations_pb2
 
-from ._exceptions import InvalidArgumentError
+from .._exceptions import InvalidArgumentError
 
 
 class OperationsService(operations_pb2_grpc.OperationsServicer):

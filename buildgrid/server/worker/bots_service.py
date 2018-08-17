@@ -27,7 +27,7 @@ import grpc
 
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2_grpc
 
-from ._exceptions import InvalidArgumentError, OutofSyncError
+from .._exceptions import InvalidArgumentError, OutofSyncError
 
 
 class BotsService(bots_pb2_grpc.BotsServicer):

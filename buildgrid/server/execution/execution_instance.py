@@ -25,7 +25,7 @@ import logging
 
 from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Action
 
-from ._exceptions import InvalidArgumentError
+from .._exceptions import InvalidArgumentError
 
 from ..job import Job
 
