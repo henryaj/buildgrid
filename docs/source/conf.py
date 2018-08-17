@@ -45,7 +45,8 @@ release = __version__
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
-    'sphinx_click.ext'
+    'sphinx_click.ext',
+    'sphinxcontrib.apidoc'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -74,6 +75,26 @@ exclude_patterns = []
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
+
+
+# -- Options for apidoc ------------------------------------------------------
+
+# The path to the module to document. This must be a path to a Python package.
+# This path can be a path relative to the documentation source directory or an
+# absolute path.
+apidoc_module_dir = '../../buildgrid'
+
+# The output directory. If it does not exist, it is created. This path is
+# relative to the documentation source directory.
+apidoc_output_dir = 'api'
+
+# An optional list of modules to exclude. These should be paths relative to
+# apidoc_module_dir. fnmatch-style wildcarding is supported.
+apidoc_excluded_paths = ['_protos']
+
+# Put documentation for each module on its own page. Otherwise there will be
+# one page per (sub)package.
+apidoc_separate_modules = True
 
 
 # -- Options for HTML output -------------------------------------------------
