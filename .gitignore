@@ -16,3 +16,7 @@ dist/
 .coverage.*
 .pylint.d/
 .pytest_cache/
+
+# Documentation related things:
+docs/build/
+docs/source/api/

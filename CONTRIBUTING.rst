@@ -1,6 +1,11 @@
-Contributing to BuildGrid
-=========================
-Some guidelines for people wanting to contribute. Also please always feel free to speak to us, we're very friendly :-)
+
+.. _contributing:
+
+Contributing
+============
+
+Some guidelines for people wanting to contribute. Also please always feel free
+to speak to us, we're very friendly :-)
 
 Feature Additions
 -----------------
@@ -157,7 +162,7 @@ Priority Labels
 For now, we only have 'High Priority', which indicates an urgent task. We may add more granularity if we get more contributors. 
 
 Status
-'''''
+''''''
 We have:
 
 * ToDo
