@@ -44,8 +44,7 @@ from .worker.bots_interface import BotsInterface
 
 class BuildGridServer:
 
-    def __init__(self, port='50051', max_workers=10, cas_storage=None,
-                 action_cache=None, allow_update_action_result=True):
+    def __init__(self, port='50051', max_workers=10, cas_storage=None, action_cache=None):
         port = '[::]:{0}'.format(port)
         scheduler = Scheduler(action_cache)
         bots_interface = BotsInterface(scheduler)
@@ -68,13 +67,12 @@ class BuildGridServer:
             bytestream_pb2_grpc.add_ByteStreamServicer_to_server(ByteStreamService(cas_storage),
                                                                  self._server)
         if action_cache is not None:
-            action_cache_service = ActionCacheService(action_cache,
-                                                      allow_update_action_result)
+            action_cache_service = ActionCacheService(action_cache)
             remote_execution_pb2_grpc.add_ActionCacheServicer_to_server(action_cache_service,
                                                                         self._server)
 
-    async def start(self):
+    def start(self):
         self._server.start()
 
-    async def stop(self):
+    def stop(self):
         self._server.stop(0)

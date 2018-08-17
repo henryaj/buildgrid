@@ -117,10 +117,3 @@ BuildGrid's Command Line Interface (CLI) reference documentation.
 
 .. click:: app.commands.cmd_server:start
    :prog: bgd server start
-
-----
-
-.. _invoking_bgd_server_stop:
-
-.. click:: app.commands.cmd_server:stop
-   :prog: bgd server stop

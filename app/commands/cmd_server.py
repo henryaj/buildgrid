@@ -28,11 +28,11 @@ import logging
 import click
 
 from buildgrid.server import build_grid_server
-from buildgrid.server.action_cache import ActionCache
 from buildgrid.server.cas.storage.disk import DiskStorage
 from buildgrid.server.cas.storage.lru_memory_cache import LRUMemoryCache
 from buildgrid.server.cas.storage.s3 import S3Storage
 from buildgrid.server.cas.storage.with_cache import WithCacheStorage
+from buildgrid.server.execution.action_cache import ActionCache
 
 from ..cli import pass_context
 
@@ -72,34 +72,29 @@ def cli(context):
 def start(context, port, max_cached_actions, allow_uar, cas, **cas_args):
     context.logger.info("Starting on port {}".format(port))
 
-    loop = asyncio.get_event_loop()
-
     cas_storage = _make_cas_storage(context, cas, cas_args)
+
     if cas_storage is None:
         context.logger.info("Running without CAS - action cache will be unavailable")
         action_cache = None
+
     else:
-        action_cache = ActionCache(cas_storage, max_cached_actions)
+        action_cache = ActionCache(cas_storage, max_cached_actions, allow_uar)
 
     server = build_grid_server.BuildGridServer(port,
                                                cas_storage=cas_storage,
-                                               action_cache=action_cache,
-                                               allow_update_action_result=allow_uar)
-
+                                               action_cache=action_cache)
+    loop = asyncio.get_event_loop()
     try:
-        asyncio.ensure_future(server.start())
+        server.start()
         loop.run_forever()
+
     except KeyboardInterrupt:
         pass
+
     finally:
-        loop.run_until_complete(server.stop())
+        server.stop()
         loop.close()
-
-
-@cli.command('stop', short_help="Request a server to teardown.")
-@pass_context
-def stop(context):
-    context.logger.error("Not implemented yet")
 
 
 def _make_cas_storage(context, cas_type, cas_args):
