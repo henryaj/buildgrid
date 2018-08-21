@@ -29,7 +29,7 @@ def work_temp_directory(context, lease):
     then uploads results back to CAS
     """
 
-    instance_name = context.instance_name
+    parent = context.parent
     stub_bytestream = bytestream_pb2_grpc.ByteStreamStub(context.channel)
 
     action_digest = remote_execution_pb2.Digest()
@@ -37,12 +37,12 @@ def work_temp_directory(context, lease):
 
     action = remote_execution_pb2.Action()
 
-    action = parse_to_pb2_from_fetch(action, stub_bytestream, action_digest, instance_name)
+    action = parse_to_pb2_from_fetch(action, stub_bytestream, action_digest, parent)
 
     with tempfile.TemporaryDirectory() as temp_dir:
 
         command = remote_execution_pb2.Command()
-        command = parse_to_pb2_from_fetch(command, stub_bytestream, action.command_digest, instance_name)
+        command = parse_to_pb2_from_fetch(command, stub_bytestream, action.command_digest, parent)
 
         arguments = "cd {} &&".format(temp_dir)
 
@@ -51,7 +51,7 @@ def work_temp_directory(context, lease):
 
         context.logger.info(arguments)
 
-        write_fetch_directory(temp_dir, stub_bytestream, action.input_root_digest, instance_name)
+        write_fetch_directory(temp_dir, stub_bytestream, action.input_root_digest, parent)
 
         proc = subprocess.Popen(arguments,
                                 shell=True,
@@ -75,7 +75,7 @@ def work_temp_directory(context, lease):
             requests.append(remote_execution_pb2.BatchUpdateBlobsRequest.Request(
                 digest=digest, data=chunk))
 
-        request = remote_execution_pb2.BatchUpdateBlobsRequest(instance_name=instance_name,
+        request = remote_execution_pb2.BatchUpdateBlobsRequest(instance_name=parent,
                                                                requests=requests)
 
         stub_cas = remote_execution_pb2_grpc.ContentAddressableStorageStub(context.channel)

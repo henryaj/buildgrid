@@ -54,7 +54,8 @@ class BotsInterface:
             pass
 
         # Bot session name, selected by the server
-        name = str(uuid.uuid4())
+        name = "{}/{}".format(parent, str(uuid.uuid4()))
+
         bot_session.name = name
 
         self._bot_ids[name] = bot_id

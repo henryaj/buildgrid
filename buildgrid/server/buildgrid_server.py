@@ -29,34 +29,22 @@ from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_p
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2_grpc
 from buildgrid._protos.google.longrunning import operations_pb2_grpc
 
+from .buildgrid_instance import BuildGridInstance
 from .cas.bytestream_service import ByteStreamService
 from .cas.content_addressable_storage_service import ContentAddressableStorageService
 from .execution.action_cache_service import ActionCacheService
 from .execution.execution_service import ExecutionService
 from .execution.operations_service import OperationsService
-from .execution.execution_instance import ExecutionInstance
-from .scheduler import Scheduler
 from .worker.bots_service import BotsService
-from .worker.bots_interface import BotsInterface
 
 
 class BuildGridServer:
 
-    def __init__(self, port='50051', max_workers=10, cas_storage=None, action_cache=None):
+    def __init__(self, port='50051', instances=None, max_workers=10, action_cache=None, cas_storage=None):
         port = '[::]:{0}'.format(port)
-        scheduler = Scheduler(action_cache)
-        bots_interface = BotsInterface(scheduler)
-        execution_instance = ExecutionInstance(scheduler, cas_storage)
 
         self._server = grpc.server(futures.ThreadPoolExecutor(max_workers))
         self._server.add_insecure_port(port)
-
-        bots_pb2_grpc.add_BotsServicer_to_server(BotsService(bots_interface),
-                                                 self._server)
-        remote_execution_pb2_grpc.add_ExecutionServicer_to_server(ExecutionService(execution_instance),
-                                                                  self._server)
-        operations_pb2_grpc.add_OperationsServicer_to_server(OperationsService(execution_instance),
-                                                             self._server)
 
         if cas_storage is not None:
             cas_service = ContentAddressableStorageService(cas_storage)
@@ -68,6 +56,20 @@ class BuildGridServer:
             action_cache_service = ActionCacheService(action_cache)
             remote_execution_pb2_grpc.add_ActionCacheServicer_to_server(action_cache_service,
                                                                         self._server)
+
+        buildgrid_instances = {}
+        if not instances:
+            buildgrid_instances["main"] = BuildGridInstance(action_cache, cas_storage)
+        else:
+            for name in instances:
+                buildgrid_instances[name] = BuildGridInstance(action_cache, cas_storage)
+
+        bots_pb2_grpc.add_BotsServicer_to_server(BotsService(buildgrid_instances),
+                                                 self._server)
+        remote_execution_pb2_grpc.add_ExecutionServicer_to_server(ExecutionService(buildgrid_instances),
+                                                                  self._server)
+        operations_pb2_grpc.add_OperationsServicer_to_server(OperationsService(buildgrid_instances),
+                                                             self._server)
 
     def start(self):
         self._server.start()

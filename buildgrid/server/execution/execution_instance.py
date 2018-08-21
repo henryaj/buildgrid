@@ -56,12 +56,14 @@ class ExecutionInstance:
 
     def get_operation(self, name):
         operation = self._scheduler.jobs.get(name)
+
         if operation is None:
             raise InvalidArgumentError("Operation name does not exist: {}".format(name))
+
         else:
             return operation.get_operation()
 
-    def list_operations(self, name, list_filter, page_size, page_token):
+    def list_operations(self, list_filter, page_size, page_token):
         # TODO: Pages
         # Spec says number of pages and length of a page are optional
         return self._scheduler.get_operations()
@@ -71,10 +73,6 @@ class ExecutionInstance:
             self._scheduler.jobs.pop(name)
         except KeyError:
             raise InvalidArgumentError("Operation name does not exist: {}".format(name))
-
-    def cancel_operation(self, name):
-        # TODO: Cancel leases
-        raise NotImplementedError("Cancelled operations not supported")
 
     def register_message_client(self, name, queue):
         try:

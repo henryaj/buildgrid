@@ -36,34 +36,35 @@ from ..cli import pass_context
 
 
 @click.group(name='execute', short_help="Execute simple operations.")
+@click.option('--instance-name', type=click.STRING, default='main',
+              show_default=True, help="Targeted farm instance name.")
 @click.option('--port', type=click.INT, default='50051', show_default=True,
               help="Remote server's port number.")
 @click.option('--host', type=click.STRING, default='localhost', show_default=True,
               help="Remote server's hostname.")
 @pass_context
-def cli(context, host, port):
+def cli(context, instance_name, host, port):
     context.logger = logging.getLogger(__name__)
     context.logger.info("Starting on port {}".format(port))
 
+    context.instance_name = instance_name
     context.channel = grpc.insecure_channel('{}:{}'.format(host, port))
     context.port = port
 
 
 @cli.command('request-dummy', short_help="Send a dummy action.")
-@click.option('--instance-name', type=click.STRING, default='testing', show_default=True,
-              help="Targeted farm instance name.")
 @click.option('--number', type=click.INT, default=1, show_default=True,
               help="Number of request to send.")
 @click.option('--wait-for-completion', is_flag=True,
               help="Stream updates until jobs are completed.")
 @pass_context
-def request_dummy(context, number, instance_name, wait_for_completion):
+def request_dummy(context, number, wait_for_completion):
     action_digest = remote_execution_pb2.Digest()
 
     context.logger.info("Sending execution request...")
     stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
 
-    request = remote_execution_pb2.ExecuteRequest(instance_name=instance_name,
+    request = remote_execution_pb2.ExecuteRequest(instance_name=context.instance_name,
                                                   action_digest=action_digest,
                                                   skip_cache_lookup=True)
 
@@ -98,7 +99,7 @@ def list_operations(context):
     context.logger.info("Getting list of operations")
     stub = operations_pb2_grpc.OperationsStub(context.channel)
 
-    request = operations_pb2.ListOperationsRequest()
+    request = operations_pb2.ListOperationsRequest(name=context.instance_name)
 
     response = stub.ListOperations(request)
 
@@ -115,7 +116,8 @@ def list_operations(context):
 @pass_context
 def wait_execution(context, operation_name):
     stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
-    request = remote_execution_pb2.WaitExecutionRequest(name=operation_name)
+    request = remote_execution_pb2.WaitExecutionRequest(instance_name=context.instance_name,
+                                                        name=operation_name)
 
     response = stub.WaitExecution(request)
 
@@ -124,8 +126,6 @@ def wait_execution(context, operation_name):
 
 
 @cli.command('command', short_help="Send a command to be executed.")
-@click.option('--instance-name', type=click.STRING, default='testing', show_default=True,
-              help="Targeted farm instance name.")
 @click.option('--output-file', nargs=2, type=(click.STRING, click.BOOL), multiple=True,
               help="Tuple of expected output file and is-executeable flag.")
 @click.option('--output-directory', default='testing', show_default=True,
@@ -133,7 +133,7 @@ def wait_execution(context, operation_name):
 @click.argument('input-root', nargs=1, type=click.Path(), required=True)
 @click.argument('commands', nargs=-1, type=click.STRING, required=True)
 @pass_context
-def command(context, input_root, commands, output_file, output_directory, instance_name):
+def command(context, input_root, commands, output_file, output_directory):
     stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
 
     execute_command = remote_execution_pb2.Command()
@@ -170,11 +170,11 @@ def command(context, input_root, commands, output_file, output_directory, instan
     requests.append(remote_execution_pb2.BatchUpdateBlobsRequest.Request(
         digest=action_digest, data=action.SerializeToString()))
 
-    request = remote_execution_pb2.BatchUpdateBlobsRequest(instance_name=instance_name,
+    request = remote_execution_pb2.BatchUpdateBlobsRequest(instance_name=context.instance_name,
                                                            requests=requests)
     remote_execution_pb2_grpc.ContentAddressableStorageStub(context.channel).BatchUpdateBlobs(request)
 
-    request = remote_execution_pb2.ExecuteRequest(instance_name=instance_name,
+    request = remote_execution_pb2.ExecuteRequest(instance_name=context.instance_name,
                                                   action_digest=action_digest,
                                                   skip_cache_lookup=True)
     response = stub.Execute(request)
@@ -201,7 +201,7 @@ def command(context, input_root, commands, output_file, output_directory, instan
                     raise
 
         with open(path, 'wb+') as f:
-            write_fetch_blob(f, stub, output_file_response.digest, instance_name)
+            write_fetch_blob(f, stub, output_file_response.digest, context.instance_name)
 
         if output_file_response.path in output_executeables:
             st = os.stat(path)

@@ -35,47 +35,49 @@ from .._exceptions import InvalidArgumentError
 
 class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
-    def __init__(self, instance):
+    def __init__(self, instances):
         self.logger = logging.getLogger(__name__)
-        self._instance = instance
+        self._instances = instances
 
     def Execute(self, request, context):
-        # Ignore request.instance_name for now
-        # Have only one instance
         try:
             message_queue = queue.Queue()
-            operation = self._instance.execute(request.action_digest,
-                                               request.skip_cache_lookup,
-                                               message_queue)
+            instance = self._get_instance(request.instance_name)
+            operation = instance.execute(request.action_digest,
+                                         request.skip_cache_lookup,
+                                         message_queue)
 
-            context.add_callback(partial(self._remove_client, operation.name, message_queue))
+            context.add_callback(partial(instance.unregister_message_client,
+                                         operation.name, message_queue))
 
-            yield from self._stream_operation_updates(message_queue,
-                                                      operation.name)
+            yield from instance.stream_operation_updates(message_queue,
+                                                         operation.name)
 
         except InvalidArgumentError as e:
             self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-            yield operations_pb2.Operation()
-
-        except NotImplementedError as e:
-            self.logger.error(e)
-            context.set_details(str(e))
-            context.set_code(grpc.StatusCode.UNIMPLEMENTED)
             yield operations_pb2.Operation()
 
     def WaitExecution(self, request, context):
         try:
+            names = request.name.split("/")
+
+            # Operation name should be in format:
+            # {instance/name}/{operation_id}
+            instance_name = ''.join(names[0:-1])
+
             message_queue = queue.Queue()
-            operation_name = request.name
+            operation_name = names[-1]
+            instance = self._get_instance(instance_name)
 
-            self._instance.register_message_client(operation_name, message_queue)
+            instance.register_message_client(operation_name, message_queue)
 
-            context.add_callback(partial(self._remove_client, operation_name, message_queue))
+            context.add_callback(partial(instance.unregister_message_client,
+                                         operation_name, message_queue))
 
-            yield from self._stream_operation_updates(message_queue,
-                                                      operation_name)
+            yield from instance.stream_operation_updates(message_queue,
+                                                         operation_name)
 
         except InvalidArgumentError as e:
             self.logger.error(e)
@@ -83,12 +85,9 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
             yield operations_pb2.Operation()
 
-    def _remove_client(self, operation_name, message_queue):
-        self._instance.unregister_message_client(operation_name, message_queue)
+    def _get_instance(self, name):
+        try:
+            return self._instances[name]
 
-    def _stream_operation_updates(self, message_queue, operation_name):
-        operation = message_queue.get()
-        while not operation.done:
-            yield operation
-            operation = message_queue.get()
-        yield operation
+        except KeyError:
+            raise InvalidArgumentError("Instance doesn't exist on server: {}".format(name))

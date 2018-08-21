@@ -25,7 +25,7 @@ import logging
 
 import click
 
-from buildgrid.server import build_grid_server
+from buildgrid.server import buildgrid_server
 from buildgrid.server.cas.storage.disk import DiskStorage
 from buildgrid.server.cas.storage.lru_memory_cache import LRUMemoryCache
 from buildgrid.server.cas.storage.s3 import S3Storage
@@ -45,6 +45,7 @@ def cli(context):
 
 
 @cli.command('start', short_help="Setup a new server instance.")
+@click.argument('instances', nargs=-1, type=click.STRING)
 @click.option('--port', type=click.INT, default='50051', show_default=True,
               help="The port number to be listened.")
 @click.option('--max-cached-actions', type=click.INT, default=50, show_default=True,
@@ -67,7 +68,9 @@ def cli(context):
 @click.option('--cas-disk-directory', type=click.Path(file_okay=False, dir_okay=True, writable=True),
               help="For --cas=disk, the folder to store CAS blobs in.")
 @pass_context
-def start(context, port, max_cached_actions, allow_uar, cas, **cas_args):
+def start(context, instances, port, max_cached_actions, allow_uar, cas, **cas_args):
+    """ Starts a BuildGrid server.
+    """
     context.logger.info("Starting on port {}".format(port))
 
     cas_storage = _make_cas_storage(context, cas, cas_args)
@@ -79,9 +82,13 @@ def start(context, port, max_cached_actions, allow_uar, cas, **cas_args):
     else:
         action_cache = ActionCache(cas_storage, max_cached_actions, allow_uar)
 
-    server = build_grid_server.BuildGridServer(port,
-                                               cas_storage=cas_storage,
-                                               action_cache=action_cache)
+    if instances is None:
+        instances = ['main']
+
+    server = buildgrid_server.BuildGridServer(port,
+                                              instances,
+                                              cas_storage=cas_storage,
+                                              action_cache=action_cache)
     loop = asyncio.get_event_loop()
     try:
         server.start()

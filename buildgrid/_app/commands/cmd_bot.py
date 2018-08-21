@@ -35,7 +35,7 @@ from ..cli import pass_context
 
 
 @click.group(name='bot', short_help="Create and register bot clients.")
-@click.option('--parent', type=click.STRING, default='bgd_test', show_default=True,
+@click.option('--parent', type=click.STRING, default='main', show_default=True,
               help="Targeted farm resource.")
 @click.option('--port', type=click.INT, default='50051', show_default=True,
               help="Remote server's port number.")
@@ -49,6 +49,7 @@ def cli(context, host, port, parent):
     context.logger = logging.getLogger(__name__)
     context.logger.info("Starting on port {}".format(port))
     context.channel = channel
+    context.parent = parent
 
     worker = Worker()
     worker.add_device(Device())
@@ -75,14 +76,11 @@ def run_dummy(context):
 
 
 @cli.command('temp-directory', short_help="Runs commands in temp directory and uploads results.")
-@click.option('--instance-name', type=click.STRING, default='testing', show_default=True,
-              help="Targeted farm instance name.")
 @pass_context
-def run_temp_directory(context, instance_name):
+def run_temp_directory(context):
     """ Downloads files and command from CAS and runs
     in a temp directory, uploading result back to CAS
     """
-    context.instance_name = instance_name
     try:
         b = bot.Bot(context.bot_session)
         b.session(temp_directory.work_temp_directory,

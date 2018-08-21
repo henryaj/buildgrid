@@ -33,14 +33,17 @@ from .._exceptions import InvalidArgumentError, OutofSyncError
 
 class BotsService(bots_pb2_grpc.BotsServicer):
 
-    def __init__(self, instance):
-        self._instance = instance
+    def __init__(self, instances):
+        self._instances = instances
         self.logger = logging.getLogger(__name__)
 
     def CreateBotSession(self, request, context):
         try:
-            return self._instance.create_bot_session(request.parent,
-                                                     request.bot_session)
+            parent = request.parent
+            instance = self._get_instance(request.parent)
+            return instance.create_bot_session(parent,
+                                               request.bot_session)
+
         except InvalidArgumentError as e:
             self.logger.error(e)
             context.set_details(str(e))
@@ -50,8 +53,15 @@ class BotsService(bots_pb2_grpc.BotsServicer):
 
     def UpdateBotSession(self, request, context):
         try:
-            return self._instance.update_bot_session(request.name,
-                                                     request.bot_session)
+            names = request.name.split("/")
+            # Operation name should be in format:
+            # {instance/name}/{uuid}
+            instance_name = ''.join(names[0:-1])
+
+            instance = self._get_instance(instance_name)
+            return instance.update_bot_session(request.name,
+                                               request.bot_session)
+
         except InvalidArgumentError as e:
             self.logger.error(e)
             context.set_details(str(e))
@@ -72,3 +82,10 @@ class BotsService(bots_pb2_grpc.BotsServicer):
     def PostBotEventTemp(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         return Empty()
+
+    def _get_instance(self, name):
+        try:
+            return self._instances[name]
+
+        except KeyError:
+            raise InvalidArgumentError("Instance doesn't exist on server: {}".format(name))
