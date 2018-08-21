@@ -37,6 +37,7 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
     def GetOperation(self, request, context):
         try:
             return self._instance.get_operation(request.name)
+
         except InvalidArgumentError as e:
             self.logger.error(e)
             context.set_details(str(e))
@@ -52,15 +53,19 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
     def DeleteOperation(self, request, context):
         try:
             return self._instance.delete_operation(request.name)
+
         except InvalidArgumentError as e:
             self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            return operations_pb2.Operation()
 
     def CancelOperation(self, request, context):
         try:
             return self._instance.cancel_operation(request.name)
+
         except NotImplementedError as e:
             self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+            return operations_pb2.Operation()

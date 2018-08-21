@@ -24,6 +24,7 @@ import logging
 
 import grpc
 
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc
 
 from .._exceptions import NotFoundError
@@ -39,13 +40,19 @@ class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
         try:
             return self._action_cache.get_action_result(request.action_digest)
 
-        except NotFoundError:
+        except NotFoundError as e:
+            self.logger.error(e)
             context.set_code(grpc.StatusCode.NOT_FOUND)
+
+        return remote_execution_pb2.ActionResult()
 
     def UpdateActionResult(self, request, context):
         try:
             self._action_cache.update_action_result(request.action_digest, request.action_result)
             return request.action_result
 
-        except NotImplementedError:
+        except NotImplementedError as e:
+            self.logger.error(e)
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+
+        return remote_execution_pb2.ActionResult()

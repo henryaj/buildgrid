@@ -23,6 +23,9 @@ import logging
 
 import grpc
 
+from google.protobuf.empty_pb2 import Empty
+
+from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2_grpc
 
 from .._exceptions import InvalidArgumentError, OutofSyncError
@@ -43,6 +46,8 @@ class BotsService(bots_pb2_grpc.BotsServicer):
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
+        return bots_pb2.BotSession()
+
     def UpdateBotSession(self, request, context):
         try:
             return self._instance.update_bot_session(request.name,
@@ -62,5 +67,8 @@ class BotsService(bots_pb2_grpc.BotsServicer):
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
 
+        return bots_pb2.BotSession()
+
     def PostBotEventTemp(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        return Empty()

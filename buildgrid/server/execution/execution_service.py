@@ -28,6 +28,8 @@ import grpc
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc
 
+from buildgrid._protos.google.longrunning import operations_pb2
+
 from .._exceptions import InvalidArgumentError
 
 
@@ -55,11 +57,13 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            yield operations_pb2.Operation()
 
         except NotImplementedError as e:
             self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+            yield operations_pb2.Operation()
 
     def WaitExecution(self, request, context):
         try:
@@ -77,6 +81,7 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            yield operations_pb2.Operation()
 
     def _remove_client(self, operation_name, message_queue):
         self._instance.unregister_message_client(operation_name, message_queue)
