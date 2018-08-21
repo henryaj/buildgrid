@@ -10,6 +10,7 @@ omit =
   *_pb2.py
   *_pb2_grpc.py
   */.eggs/*
+  */_app/*
 
 [report]
 show_missing = True

@@ -119,7 +119,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'bgd = app:cli',
+            'bgd = buildgrid._app:cli',
         ]
     },
     setup_requires=['pytest-runner'],

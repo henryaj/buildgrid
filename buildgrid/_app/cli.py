@@ -58,7 +58,7 @@ class BuildGridCLI(click.MultiCommand):
 
     def get_command(self, context, name):
         try:
-            mod = __import__(name='app.commands.cmd_{}'.format(name),
+            mod = __import__(name='buildgrid._app.commands.cmd_{}'.format(name),
                              fromlist=['cli'])
         except ImportError:
             return None
