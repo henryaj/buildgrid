@@ -31,30 +31,59 @@ def gen_fetch_blob(stub, digest, instance_name=""):
         yield response.data
 
 
-def write_fetch_directory(directory, stub, digest, instance_name=""):
-    """ Given a directory digest, fetches files and writes them to a directory
+def write_fetch_directory(root_directory, stub, digest, instance_name=None):
+    """Locally replicates a directory from CAS.
+
+    Args:
+        root_directory (str): local directory to populate.
+        stub (): gRPC stub for CAS communication.
+        digest (Digest): digest for the directory to fetch from CAS.
+        instance_name (str, optional): farm instance name to query data from.
     """
-    # TODO: Extend to symlinks and inner directories
-    # pathlib.Path('/my/directory').mkdir(parents=True, exist_ok=True)
+    if not os.path.isabs(root_directory):
+        root_directory = os.path.abspath(root_directory)
+    if not os.path.exists(root_directory):
+        os.makedirs(root_directory, exist_ok=True)
 
-    directory_pb2 = remote_execution_pb2.Directory()
-    directory_pb2 = parse_to_pb2_from_fetch(directory_pb2, stub, digest, instance_name)
+    directory = parse_to_pb2_from_fetch(remote_execution_pb2.Directory(),
+                                        stub, digest, instance_name)
 
-    for file_node in directory_pb2.files:
-        path = os.path.join(directory, file_node.name)
-        with open(path, 'wb') as f:
-            write_fetch_blob(f, stub, file_node.digest, instance_name)
+    for directory_node in directory.directories:
+        child_path = os.path.join(root_directory, directory_node.name)
+
+        write_fetch_directory(child_path, stub, directory_node.digest, instance_name)
+
+    for file_node in directory.files:
+        child_path = os.path.join(root_directory, file_node.name)
+
+        with open(child_path, 'wb') as child_file:
+            write_fetch_blob(child_file, stub, file_node.digest, instance_name)
+
+    for symlink_node in directory.symlinks:
+        child_path = os.path.join(root_directory, symlink_node.name)
+
+        if os.path.isabs(symlink_node.target):
+            continue  # No out of temp-directory links for now.
+        target_path = os.path.join(root_directory, symlink_node.target)
+
+        os.symlink(child_path, target_path)
 
 
-def write_fetch_blob(out, stub, digest, instance_name=""):
-    """ Given an output buffer, fetches blob and writes to buffer
+def write_fetch_blob(target_file, stub, digest, instance_name=None):
+    """Extracts a blob from CAS into a local file.
+
+    Args:
+        target_file (str): local file to write.
+        stub (): gRPC stub for CAS communication.
+        digest (Digest): digest for the blob to fetch from CAS.
+        instance_name (str, optional): farm instance name to query data from.
     """
 
     for stream in gen_fetch_blob(stub, digest, instance_name):
-        out.write(stream)
+        target_file.write(stream)
+    target_file.flush()
 
-    out.flush()
-    assert digest.size_bytes == os.fstat(out.fileno()).st_size
+    assert digest.size_bytes == os.fstat(target_file.fileno()).st_size
 
 
 def parse_to_pb2_from_fetch(pb2, stub, digest, instance_name=""):
