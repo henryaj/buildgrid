@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+from operator import attrgetter
 import os
 
 from buildgrid.settings import HASH
@@ -99,7 +100,15 @@ def parse_to_pb2_from_fetch(pb2, stub, digest, instance_name=""):
 
 
 def create_digest(bytes_to_digest):
-    """ Creates a hash based on the hex digest and returns the digest
+    """Computes the :obj:`Digest` of a piece of data.
+
+    The :obj:`Digest` of a data is a function of its hash **and** size.
+
+    Args:
+        bytes_to_digest (bytes): byte data to digest.
+
+    Returns:
+        :obj:`Digest`: The gRPC :obj:`Digest` for the given byte data.
     """
     return remote_execution_pb2.Digest(hash=HASH(bytes_to_digest).hexdigest(),
                                        size_bytes=len(bytes_to_digest))
@@ -136,6 +145,54 @@ def file_maker(file_path, file_digest):
                                          is_executable=os.access(file_path, os.X_OK))
 
 
-def read_file(read):
-    with open(read, 'rb') as f:
-        return f.read()
+def read_file(file_path):
+    """Loads raw file content in memory.
+
+    Args:
+        file_path (str): path to the target file.
+
+    Returns:
+        bytes: Raw file's content until EOF.
+
+    Raises:
+        OSError: If `file_path` does not exist or is not readable.
+    """
+    with open(file_path, 'rb') as byte_file:
+        return byte_file.read()
+
+
+def output_file_maker(file_path, input_path, cas=None):
+    """Creates an :obj:`OutputFile` from a local file and possibly upload it.
+
+    If `cas` is specified, the local file will be uploded/stored in remote CAS
+    (the :obj:`OutputFile` message won't).
+
+    Note:
+        `file_path` **must** point inside or be relative to `input_path`.
+
+    Args:
+        file_path (str): absolute or relative path to a local file.
+        input_path (str): absolute or relative path to the input root directory.
+        cas (:obj:`Uploader`): a CAS client uploader.
+
+    Returns:
+        :obj:`OutputFile`: a new gRPC :obj:`OutputFile` object for the file
+        pointed by `file_path`.
+    """
+    if not os.path.isabs(file_path):
+        file_path = os.path.abspath(file_path)
+    if not os.path.isabs(input_path):
+        input_path = os.path.abspath(input_path)
+
+    if cas is not None:
+        file_digest = cas.upload_file(file_path)
+    else:
+        file_digest = create_digest(read_file(file_path))
+
+    output_file = remote_execution_pb2.OutputFile()
+    output_file.digest.CopyFrom(file_digest)
+    # OutputFile.path should be relative to the working direcory:
+    output_file.path = os.path.relpath(file_path, start=input_path)
+    output_file.is_executable = os.access(file_path, os.X_OK)
+
+    return output_file
