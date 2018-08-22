@@ -54,32 +54,45 @@ def work_buildbox(context, lease):
     logger.debug("vdir hash: {}".format(action.input_root_digest.hash))
     logger.debug("\n{}".format(' '.join(remote_command.arguments)))
 
-    command = ['buildbox',
-               '--remote={}'.format('https://{}:{}'.format(context.remote, context.port)),
-               '--server-cert={}'.format(context.server_cert),
-               '--client-key={}'.format(context.client_key),
-               '--client-cert={}'.format(context.client_cert),
-               '--local={}'.format(context.local_cas),
-               '--chdir={}'.format(environment['PWD']),
-               context.fuse_dir]
+    # Input hash must be written to disk for buildbox.
+    os.makedirs(os.path.join(casdir, 'tmp'), exist_ok=True)
+    with tempfile.NamedTemporaryFile(dir=os.path.join(casdir, 'tmp')) as input_digest_file:
+        with open(input_digest_file.name, 'wb') as f:
+            f.write(action.input_root_digest.SerializeToString())
+            f.flush()
 
-    command.extend(remote_command.arguments)
+        with tempfile.NamedTemporaryFile(dir=os.path.join(casdir, 'tmp')) as output_digest_file:
+            command = ['buildbox',
+                       '--remote={}'.format('https://{}:{}'.format(context.remote, context.port)),
+                       '--server-cert={}'.format(context.server_cert),
+                       '--client-key={}'.format(context.client_key),
+                       '--client-cert={}'.format(context.client_cert),
+                       '--input-digest={}'.format(input_digest_file.name),
+                       '--output-digest={}'.format(output_digest_file.name),
+                       '--local={}'.format(casdir)]
+            if 'PWD' in environment and environment['PWD']:
+                command.append('--chdir={}'.format(environment['PWD']))
 
-    logger.debug(' '.join(command))
-    logger.debug("Input root digest:\n{}".format(action.input_root_digest))
-    logger.info("Launching process")
+            command.append(context.fuse_dir)
+            command.extend(remote_command.arguments)
 
-    proc = subprocess.Popen(command,
-                            stdin=subprocess.PIPE,
-                            stdout=subprocess.PIPE)
-    std_send = action.input_root_digest.SerializeToString()
-    std_out, _ = proc.communicate(std_send)
+            logger.debug(' '.join(command))
+            logger.debug("Input root digest:\n{}".format(action.input_root_digest))
+            logger.info("Launching process")
 
-    output_root_digest = remote_execution_pb2.Digest()
-    output_root_digest.ParseFromString(std_out)
-    logger.debug("Output root digest: {}".format(output_root_digest))
+            proc = subprocess.Popen(command,
+                                    stdin=subprocess.PIPE,
+                                    stdout=subprocess.PIPE)
+            proc.communicate()
 
-    output_file = remote_execution_pb2.OutputDirectory(tree_digest=output_root_digest)
+            output_root_digest = remote_execution_pb2.Digest()
+            with open(output_digest_file.name, 'rb') as f:
+                output_root_digest.ParseFromString(f.read())
+            logger.debug("Output root digest: {}".format(output_root_digest))
+
+            if len(output_root_digest.hash) < 64:
+                logger.warning("Buildbox command failed - no output root digest present.")
+            output_file = remote_execution_pb2.OutputDirectory(tree_digest=output_root_digest)
 
     action_result = remote_execution_pb2.ActionResult()
     action_result.output_directories.extend([output_file])
