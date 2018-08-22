@@ -28,9 +28,9 @@ from buildgrid.utils import read_file
 def work_buildbox(context, lease):
     logger = context.logger
 
-    action_any = lease.payload
-    action = remote_execution_pb2.Action()
-    action_any.Unpack(action)
+    digest_any = lease.payload
+    digest = remote_execution_pb2.Digest()
+    digest_any.Unpack(digest)
 
     cert_server = read_file(context.server_cert)
     cert_client = read_file(context.client_cert)
@@ -44,6 +44,9 @@ def work_buildbox(context, lease):
     channel = grpc.secure_channel('{}:{}'.format(context.remote, context.port), credentials)
 
     stub = bytestream_pb2_grpc.ByteStreamStub(channel)
+
+    casdir = context.local_cas
+    action = _buildstream_fetch_action(casdir, stub, digest)
 
     remote_command = _buildstream_fetch_command(context.local_cas, stub, action.command_digest)
     environment = dict((x.name, x.value) for x in remote_command.environment_variables)
