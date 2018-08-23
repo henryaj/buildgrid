@@ -21,7 +21,7 @@ Implements an in-memory action Cache
 """
 
 
-from ..cas.reference_cache import ReferenceCache
+from ..referencestorage.storage import ReferenceCache
 
 
 class ActionCache(ReferenceCache):

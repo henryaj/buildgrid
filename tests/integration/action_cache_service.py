@@ -26,7 +26,8 @@ import pytest
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid.server.cas.storage import lru_memory_cache
-from buildgrid.server.execution import action_cache, action_cache_service
+from buildgrid.server.actioncache.storage import ActionCache
+from buildgrid.server.actioncache.service import ActionCacheService
 
 
 # Can mock this
@@ -42,11 +43,11 @@ def cas():
 
 @pytest.fixture
 def cache(cas):
-    yield action_cache.ActionCache(cas, 50)
+    yield ActionCache(cas, 50)
 
 
 def test_simple_action_result(cache, context):
-    service = action_cache_service.ActionCacheService(cache)
+    service = ActionCacheService(cache)
     action_digest = remote_execution_pb2.Digest(hash='sample', size_bytes=4)
 
     # Check that before adding the ActionResult, attempting to fetch it fails
@@ -67,8 +68,8 @@ def test_simple_action_result(cache, context):
 
 
 def test_disabled_update_action_result(cache, context):
-    disabled_push = action_cache.ActionCache(cas, 50, False)
-    service = action_cache_service.ActionCacheService(disabled_push)
+    disabled_push = ActionCache(cas, 50, False)
+    service = ActionCacheService(disabled_push)
 
     request = remote_execution_pb2.UpdateActionResultRequest()
     service.UpdateActionResult(request, context)

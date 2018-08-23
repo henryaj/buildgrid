@@ -14,45 +14,21 @@
 
 
 """
-ExecutionInstance
+OperationsInstance
 =================
-An instance of the Remote Execution Server.
+An instance of the LongRunningOperations Service.
 """
 
 import logging
 
-from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Action
-
 from .._exceptions import InvalidArgumentError
 
-from ..job import Job
 
+class OperationsInstance:
 
-class ExecutionInstance:
-
-    def __init__(self, scheduler, storage=None):
+    def __init__(self, scheduler):
         self.logger = logging.getLogger(__name__)
-        self._storage = storage
         self._scheduler = scheduler
-
-    def execute(self, action_digest, skip_cache_lookup, message_queue=None):
-        """ Sends a job for execution.
-        Queues an action and creates an Operation instance to be associated with
-        this action.
-        """
-
-        do_not_cache = False
-        if self._storage is not None:
-            action = self._storage.get_message(action_digest, Action)
-            if action is not None:
-                do_not_cache = action.do_not_cache
-
-        job = Job(action_digest, do_not_cache, message_queue)
-        self.logger.info("Operation name: {}".format(job.name))
-
-        self._scheduler.append_job(job, skip_cache_lookup)
-
-        return job.get_operation()
 
     def get_operation(self, name):
         operation = self._scheduler.jobs.get(name)
@@ -71,17 +47,20 @@ class ExecutionInstance:
     def delete_operation(self, name):
         try:
             self._scheduler.jobs.pop(name)
+
         except KeyError:
             raise InvalidArgumentError("Operation name does not exist: {}".format(name))
 
     def register_message_client(self, name, queue):
         try:
             self._scheduler.register_client(name, queue)
+
         except KeyError:
             raise InvalidArgumentError("Operation name does not exist: {}".format(name))
 
     def unregister_message_client(self, name, queue):
         try:
             self._scheduler.unregister_client(name, queue)
+
         except KeyError:
             raise InvalidArgumentError("Operation name does not exist: {}".format(name))

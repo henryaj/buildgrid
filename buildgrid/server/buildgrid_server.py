@@ -29,13 +29,12 @@ from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_p
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2_grpc
 from buildgrid._protos.google.longrunning import operations_pb2_grpc
 
-from .buildgrid_instance import BuildGridInstance
-from .cas.bytestream_service import ByteStreamService
-from .cas.content_addressable_storage_service import ContentAddressableStorageService
-from .execution.action_cache_service import ActionCacheService
-from .execution.execution_service import ExecutionService
-from .execution.operations_service import OperationsService
-from .worker.bots_service import BotsService
+from .instance import BuildGridInstance
+from .cas.service import ByteStreamService, ContentAddressableStorageService
+from .actioncache.service import ActionCacheService
+from .execution.service import ExecutionService
+from .operations.service import OperationsService
+from .bots.service import BotsService
 
 
 class BuildGridServer:

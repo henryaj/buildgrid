@@ -28,9 +28,11 @@ from google.protobuf import any_pb2
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 
-from buildgrid.server import job, buildgrid_instance
+from buildgrid.server import job
+from buildgrid.server.instance import BuildGridInstance
 from buildgrid.server.cas.storage import lru_memory_cache
-from buildgrid.server.execution import action_cache, execution_service
+from buildgrid.server.actioncache.storage import ActionCache
+from buildgrid.server.execution.service import ExecutionService
 
 
 @pytest.fixture
@@ -43,18 +45,18 @@ def context():
 def buildgrid(request):
     if request.param == "action-cache":
         storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
-        cache = action_cache.ActionCache(storage, 50)
+        cache = ActionCache(storage, 50)
 
-        return buildgrid_instance.BuildGridInstance(action_cache=cache,
-                                                    cas_storage=storage)
-    return buildgrid_instance.BuildGridInstance()
+        return BuildGridInstance(action_cache=cache,
+                                 cas_storage=storage)
+    return BuildGridInstance()
 
 
 # Instance to test
 @pytest.fixture
 def instance(buildgrid):
     instances = {"": buildgrid}
-    yield execution_service.ExecutionService(instances)
+    yield ExecutionService(instances)
 
 
 @pytest.mark.parametrize("skip_cache_lookup", [True, False])

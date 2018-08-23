@@ -17,8 +17,8 @@
 
 import pytest
 
+from buildgrid.server.actioncache.storage import ActionCache
 from buildgrid.server.cas.storage import lru_memory_cache
-from buildgrid.server.execution import action_cache
 from buildgrid.server._exceptions import NotFoundError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 
@@ -28,8 +28,8 @@ def cas():
     return lru_memory_cache.LRUMemoryCache(1024 * 1024)
 
 
-def test_null_action_cache(cas):
-    cache = action_cache.ActionCache(cas, 0)
+def test_null_cas_action_cache(cas):
+    cache = ActionCache(cas, 0)
 
     action_digest1 = remote_execution_pb2.Digest(hash='alpha', size_bytes=4)
     dummy_result = remote_execution_pb2.ActionResult()
@@ -39,8 +39,8 @@ def test_null_action_cache(cas):
         cache.get_action_result(action_digest1)
 
 
-def test_action_cache_expiry(cas):
-    cache = action_cache.ActionCache(cas, 2)
+def test_expiry(cas):
+    cache = ActionCache(cas, 2)
 
     action_digest1 = remote_execution_pb2.Digest(hash='alpha', size_bytes=4)
     action_digest2 = remote_execution_pb2.Digest(hash='bravo', size_bytes=4)
@@ -62,8 +62,8 @@ def test_action_cache_expiry(cas):
     assert cache.get_action_result(action_digest3) is not None
 
 
-def test_action_cache_checks_cas(cas):
-    cache = action_cache.ActionCache(cas, 50)
+def test_checks_cas(cas):
+    cache = ActionCache(cas, 50)
 
     action_digest1 = remote_execution_pb2.Digest(hash='alpha', size_bytes=4)
     action_digest2 = remote_execution_pb2.Digest(hash='bravo', size_bytes=4)

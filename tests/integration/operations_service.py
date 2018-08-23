@@ -28,10 +28,10 @@ from google.protobuf import any_pb2
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 
-from buildgrid.server import buildgrid_instance
+from buildgrid.server.instance import BuildGridInstance
 from buildgrid.server._exceptions import InvalidArgumentError
 
-from buildgrid.server.execution import operations_service
+from buildgrid.server.operations.service import OperationsService
 
 
 instance_name = "blade"
@@ -56,14 +56,14 @@ def execute_request():
 
 @pytest.fixture
 def buildgrid():
-    yield buildgrid_instance.BuildGridInstance()
+    yield BuildGridInstance()
 
 
 # Instance to test
 @pytest.fixture
 def instance(buildgrid):
     instances = {instance_name: buildgrid}
-    yield operations_service.OperationsService(instances)
+    yield OperationsService(instances)
 
 
 # Queue an execution, get operation corresponding to that request

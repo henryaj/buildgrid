@@ -26,9 +26,11 @@ import pytest
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
-from buildgrid.server import job, buildgrid_instance
+from buildgrid.server import job
+from buildgrid.server.instance import BuildGridInstance
 from buildgrid.server.job import LeaseState
-from buildgrid.server.worker import bots_interface, bots_service
+from buildgrid.server.bots.instance import BotsInterface
+from buildgrid.server.bots.service import BotsService
 
 
 # GRPC context
@@ -53,19 +55,19 @@ def bot_session():
 
 @pytest.fixture
 def buildgrid():
-    yield buildgrid_instance.BuildGridInstance()
+    yield BuildGridInstance()
 
 
 @pytest.fixture
 def bots(schedule):
-    yield bots_interface.BotsInterface(schedule)
+    yield BotsInterface(schedule)
 
 
 # Instance to test
 @pytest.fixture
 def instance(buildgrid):
     instances = {"": buildgrid}
-    yield bots_service.BotsService(instances)
+    yield BotsService(instances)
 
 
 def test_create_bot_session(bot_session, context, instance):

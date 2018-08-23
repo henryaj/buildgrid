@@ -14,19 +14,45 @@
 
 
 """
-ByteStreamService
+CAS services
 ==================
 
-Implements the ByteStream API, which clients can use to read and write
-CAS blobs.
+Implements the Content Addressable Storage API and ByteStream API.
 """
+
 
 import grpc
 
 from buildgrid._protos.google.bytestream import bytestream_pb2, bytestream_pb2_grpc
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2 as re_pb2
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc as re_pb2_grpc
 
 from ...settings import HASH
+
+
+class ContentAddressableStorageService(re_pb2_grpc.ContentAddressableStorageServicer):
+
+    def __init__(self, storage):
+        self._storage = storage
+
+    def FindMissingBlobs(self, request, context):
+        # Only one instance for now.
+        storage = self._storage
+        return re_pb2.FindMissingBlobsResponse(
+            missing_blob_digests=storage.missing_blobs(request.blob_digests))
+
+    def BatchUpdateBlobs(self, request, context):
+        # Only one instance for now.
+        storage = self._storage
+        requests = []
+        for request_proto in request.requests:
+            requests.append((request_proto.digest, request_proto.data))
+        response = re_pb2.BatchUpdateBlobsResponse()
+        for (digest, _), status in zip(requests, storage.bulk_update_blobs(requests)):
+            response_proto = response.responses.add()
+            response_proto.digest.CopyFrom(digest)
+            response_proto.status.CopyFrom(status)
+        return response
 
 
 class ByteStreamService(bytestream_pb2_grpc.ByteStreamServicer):

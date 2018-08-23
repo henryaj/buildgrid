@@ -25,9 +25,9 @@ Contains scheduler, execution instance and an interface to the bots.
 
 import logging
 
-from .execution.execution_instance import ExecutionInstance
+from .execution.instance import ExecutionInstance
 from .scheduler import Scheduler
-from .worker.bots_interface import BotsInterface
+from .bots.instance import BotsInterface
 
 
 class BuildGridInstance(ExecutionInstance, BotsInterface):

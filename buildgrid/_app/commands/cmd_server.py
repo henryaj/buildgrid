@@ -31,7 +31,7 @@ from buildgrid.server.cas.storage.disk import DiskStorage
 from buildgrid.server.cas.storage.lru_memory_cache import LRUMemoryCache
 from buildgrid.server.cas.storage.s3 import S3Storage
 from buildgrid.server.cas.storage.with_cache import WithCacheStorage
-from buildgrid.server.execution.action_cache import ActionCache
+from buildgrid.server.actioncache.storage import ActionCache
 
 from ..cli import pass_context
 

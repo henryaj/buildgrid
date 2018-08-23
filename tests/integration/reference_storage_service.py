@@ -25,7 +25,8 @@ from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_p
 from buildgrid._protos.buildstream.v2 import buildstream_pb2
 
 from buildgrid.server.cas.storage import lru_memory_cache
-from buildgrid.server.cas import reference_cache, reference_storage_service
+from buildgrid.server.referencestorage.service import ReferenceStorageService
+from buildgrid.server.referencestorage.storage import ReferenceCache
 
 
 # Can mock this
@@ -41,12 +42,12 @@ def cas():
 
 @pytest.fixture
 def cache(cas):
-    yield reference_cache.ReferenceCache(cas, 50)
+    yield ReferenceCache(cas, 50)
 
 
 def test_simple_result(cache, context):
     keys = ["rick", "roy", "rach"]
-    service = reference_storage_service.ReferenceStorageService(cache)
+    service = ReferenceStorageService(cache)
 
     # Check that before adding the ReferenceResult, attempting to fetch it fails
     request = buildstream_pb2.GetReferenceRequest(key=keys[0])
@@ -67,9 +68,9 @@ def test_simple_result(cache, context):
 
 
 def test_disabled_update_result(cache, context):
-    disabled_push = reference_cache.ReferenceCache(cas, 50, False)
+    disabled_push = ReferenceCache(cas, 50, False)
     keys = ["rick", "roy", "rach"]
-    service = reference_storage_service.ReferenceStorageService(disabled_push)
+    service = ReferenceStorageService(disabled_push)
 
     # Add an ReferenceResult to the cache
     reference_result = remote_execution_pb2.Digest(hash='deckard')
@@ -85,8 +86,8 @@ def test_disabled_update_result(cache, context):
 
 @pytest.mark.parametrize("allow_updates", [True, False])
 def test_status(allow_updates, context):
-    cache = reference_cache.ReferenceCache(cas, 5, allow_updates)
-    service = reference_storage_service.ReferenceStorageService(cache)
+    cache = ReferenceCache(cas, 5, allow_updates)
+    service = ReferenceStorageService(cache)
 
     request = buildstream_pb2.StatusRequest()
     response = service.Status(request, context)
