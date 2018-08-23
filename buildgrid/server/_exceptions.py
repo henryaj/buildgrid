@@ -38,3 +38,11 @@ class OutofSyncError(BgdError):
 
     def __init__(self, message, detail=None, reason=None):
         super().__init__(message, detail=detail, domain=ErrorDomain.SERVER, reason=reason)
+
+
+class OutOfRangeError(BgdError):
+    """ ByteStream service read data out of range
+    """
+
+    def __init__(self, message, detail=None, reason=None):
+        super().__init__(message, detail=detail, domain=ErrorDomain.SERVER, reason=reason)
