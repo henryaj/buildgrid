@@ -8,7 +8,7 @@ In one terminal, start a server:
 
 .. code-block:: sh
 
-   bgd server start
+   bgd server start --allow-insecure
 
 In another terminal, send a request for work:
 

@@ -27,7 +27,7 @@ Now start a BuildGrid server, passing it a directory it can write a CAS to:
 
 .. code-block:: sh
 
-   bgd server start --cas disk --cas-cache disk --cas-disk-directory /path/to/empty/directory
+   bgd server start --allow-insecure --cas disk --cas-cache disk --cas-disk-directory /path/to/empty/directory
 
 Start the following bot session:
 

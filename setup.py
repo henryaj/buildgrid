@@ -116,6 +116,7 @@ setup(
         'Click',
         'boto3 < 1.8.0',
         'botocore < 1.11.0',
+        'xdg',
     ],
     entry_points={
         'console_scripts': [

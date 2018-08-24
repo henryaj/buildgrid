@@ -22,6 +22,7 @@ Create a BuildGrid server.
 
 import asyncio
 import logging
+import sys
 
 import click
 
@@ -41,18 +42,25 @@ _SIZE_PREFIXES = {'k': 2 ** 10, 'm': 2 ** 20, 'g': 2 ** 30, 't': 2 ** 40}
 @pass_context
 def cli(context):
     context.logger = logging.getLogger(__name__)
-    context.logger.info("BuildGrid server booting up")
 
 
 @cli.command('start', short_help="Setup a new server instance.")
 @click.argument('instances', nargs=-1, type=click.STRING)
 @click.option('--port', type=click.INT, default='50051', show_default=True,
               help="The port number to be listened.")
-@click.option('--max-cached-actions', type=click.INT, default=50, show_default=True,
-              help="Maximum number of actions to keep in the ActionCache.")
+@click.option('--server-key', type=click.Path(exists=True, dir_okay=False), default=None,
+              help="Private server key for TLS (PEM-encoded)")
+@click.option('--server-cert', type=click.Path(exists=True, dir_okay=False), default=None,
+              help="Public server certificate for TLS (PEM-encoded)")
+@click.option('--client-certs', type=click.Path(exists=True, dir_okay=False), default=None,
+              help="Public client certificates for TLS (PEM-encoded, one single file)")
+@click.option('--allow-insecure', type=click.BOOL, is_flag=True,
+              help="Whether or not to allow unencrypted connections.")
 @click.option('--allow-update-action-result/--forbid-update-action-result',
               'allow_uar', default=True, show_default=True,
               help="Whether or not to allow clients to manually edit the action cache.")
+@click.option('--max-cached-actions', type=click.INT, default=50, show_default=True,
+              help="Maximum number of actions to keep in the ActionCache.")
 @click.option('--cas', type=click.Choice(('lru', 's3', 'disk', 'with-cache')),
               help="The CAS storage type to use.")
 @click.option('--cas-cache', type=click.Choice(('lru', 's3', 'disk')),
@@ -68,9 +76,21 @@ def cli(context):
 @click.option('--cas-disk-directory', type=click.Path(file_okay=False, dir_okay=True, writable=True),
               help="For --cas=disk, the folder to store CAS blobs in.")
 @pass_context
-def start(context, instances, port, max_cached_actions, allow_uar, cas, **cas_args):
-    """ Starts a BuildGrid server.
-    """
+def start(context, port, allow_insecure, server_key, server_cert, client_certs,
+          instances, max_cached_actions, allow_uar, cas, **cas_args):
+    """Setups a new server instance."""
+    credentials = None
+    if not allow_insecure:
+        credentials = context.load_server_credentials(server_key, server_cert, client_certs)
+    if not credentials and not allow_insecure:
+        click.echo("ERROR: no TLS keys were specified and no defaults could be found.\n" +
+                   "Use --allow-insecure in order to deactivate TLS encryption.\n", err=True)
+        sys.exit(-1)
+
+    context.credentials = credentials
+    context.port = port
+
+    context.logger.info("BuildGrid server booting up")
     context.logger.info("Starting on port {}".format(port))
 
     cas_storage = _make_cas_storage(context, cas, cas_args)
@@ -85,8 +105,9 @@ def start(context, instances, port, max_cached_actions, allow_uar, cas, **cas_ar
     if instances is None:
         instances = ['main']
 
-    server = buildgrid_server.BuildGridServer(port,
-                                              instances,
+    server = buildgrid_server.BuildGridServer(port=context.port,
+                                              credentials=context.credentials,
+                                              instances=instances,
                                               cas_storage=cas_storage,
                                               action_cache=action_cache)
     loop = asyncio.get_event_loop()

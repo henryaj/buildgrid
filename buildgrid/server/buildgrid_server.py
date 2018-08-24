@@ -40,11 +40,16 @@ from .worker.bots_service import BotsService
 
 class BuildGridServer:
 
-    def __init__(self, port='50051', instances=None, max_workers=10, action_cache=None, cas_storage=None):
-        port = '[::]:{0}'.format(port)
+    def __init__(self, port=50051, credentials=None, instances=None,
+                 max_workers=10, action_cache=None, cas_storage=None):
+        address = '[::]:{0}'.format(port)
 
         self._server = grpc.server(futures.ThreadPoolExecutor(max_workers))
-        self._server.add_insecure_port(port)
+
+        if credentials is not None:
+            self._server.add_secure_port(address, credentials)
+        else:
+            self._server.add_insecure_port(address)
 
         if cas_storage is not None:
             cas_service = ContentAddressableStorageService(cas_storage)
