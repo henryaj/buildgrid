@@ -21,16 +21,16 @@ import grpc
 from google.protobuf import any_pb2
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
-from buildgrid._protos.google.bytestream import bytestream_pb2, bytestream_pb2_grpc
-from buildgrid.utils import read_file
+from buildgrid._protos.google.bytestream import bytestream_pb2_grpc
+from buildgrid.utils import read_file, parse_to_pb2_from_fetch
 
 
 def work_buildbox(context, lease):
     logger = context.logger
 
-    digest_any = lease.payload
-    digest = remote_execution_pb2.Digest()
-    digest_any.Unpack(digest)
+    action_digest_any = lease.payload
+    action_digest = remote_execution_pb2.Digest()
+    action_digest_any.Unpack(action_digest)
 
     cert_server = read_file(context.server_cert)
     cert_client = read_file(context.client_cert)
@@ -45,10 +45,13 @@ def work_buildbox(context, lease):
 
     stub = bytestream_pb2_grpc.ByteStreamStub(channel)
 
-    casdir = context.local_cas
-    action = _buildstream_fetch_action(casdir, stub, digest)
+    action = remote_execution_pb2.Action()
+    parse_to_pb2_from_fetch(action, stub, action_digest)
 
-    remote_command = _buildstream_fetch_command(context.local_cas, stub, action.command_digest)
+    casdir = context.local_cas
+    remote_command = remote_execution_pb2.Command()
+    parse_to_pb2_from_fetch(remote_command, stub, action.command_digest)
+
     environment = dict((x.name, x.value) for x in remote_command.environment_variables)
     logger.debug("command hash: {}".format(action.command_digest.hash))
     logger.debug("vdir hash: {}".format(action.input_root_digest.hash))
@@ -103,33 +106,3 @@ def work_buildbox(context, lease):
     lease.result.CopyFrom(action_result_any)
 
     return lease
-
-
-def _buildstream_fetch_blob(remote, digest, out):
-    resource_name = os.path.join(digest.hash, str(digest.size_bytes))
-    request = bytestream_pb2.ReadRequest()
-    request.resource_name = resource_name
-    request.read_offset = 0
-    for response in remote.Read(request):
-        out.write(response.data)
-
-    out.flush()
-    assert digest.size_bytes == os.fstat(out.fileno()).st_size
-
-
-def _buildstream_fetch_command(casdir, remote, digest):
-    with tempfile.NamedTemporaryFile(dir=os.path.join(casdir, 'tmp')) as out:
-        _buildstream_fetch_blob(remote, digest, out)
-        remote_command = remote_execution_pb2.Command()
-        with open(out.name, 'rb') as f:
-            remote_command.ParseFromString(f.read())
-        return remote_command
-
-
-def _buildstream_fetch_action(casdir, remote, digest):
-    with tempfile.NamedTemporaryFile(dir=os.path.join(casdir, 'tmp')) as out:
-        _buildstream_fetch_blob(remote, digest, out)
-        remote_action = remote_execution_pb2.Action()
-        with open(out.name, 'rb') as f:
-            remote_action.ParseFromString(f.read())
-        return remote_action
