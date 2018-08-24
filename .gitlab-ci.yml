@@ -28,10 +28,10 @@ before_script:
 .run-dummy-job-template: &dummy-job
   stage: test
   script:
-    - ${BGD} server start &
+    - ${BGD} server start --allow-insecure &
     - sleep 1 # Allow server to boot
-    - ${BGD} bot --host=0.0.0.0 dummy &
-    - ${BGD} execute --host=0.0.0.0 request-dummy --wait-for-completion
+    - ${BGD} bot dummy &
+    - ${BGD} execute request-dummy --wait-for-completion
 
 tests-debian-stretch:
   <<: *linux-tests
