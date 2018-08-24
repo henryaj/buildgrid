@@ -22,8 +22,11 @@ Request work to be executed and monitor status of jobs.
 
 import errno
 import logging
-import stat
 import os
+import stat
+import sys
+from urllib.parse import urlparse
+
 import click
 import grpc
 
@@ -36,20 +39,36 @@ from ..cli import pass_context
 
 
 @click.group(name='execute', short_help="Execute simple operations.")
-@click.option('--instance-name', type=click.STRING, default='main',
-              show_default=True, help="Targeted farm instance name.")
-@click.option('--port', type=click.INT, default='50051', show_default=True,
-              help="Remote server's port number.")
-@click.option('--host', type=click.STRING, default='localhost', show_default=True,
-              help="Remote server's hostname.")
+@click.option('--remote', type=click.STRING, default='http://localhost:50051', show_default=True,
+              help="Remote execution server's URL (port defaults to 50051 if no specified).")
+@click.option('--client-key', type=click.Path(exists=True, dir_okay=False), default=None,
+              help="Private client key for TLS (PEM-encoded)")
+@click.option('--client-cert', type=click.Path(exists=True, dir_okay=False), default=None,
+              help="Public client certificate for TLS (PEM-encoded)")
+@click.option('--server-cert', type=click.Path(exists=True, dir_okay=False), default=None,
+              help="Public server certificate for TLS (PEM-encoded)")
+@click.option('--instance-name', type=click.STRING, default='main', show_default=True,
+              help="Targeted farm instance name.")
 @pass_context
-def cli(context, instance_name, host, port):
-    context.logger = logging.getLogger(__name__)
-    context.logger.info("Starting on port {}".format(port))
+def cli(context, remote, instance_name, client_key, client_cert, server_cert):
+    url = urlparse(remote)
 
+    context.remote = '{}:{}'.format(url.hostname, url.port or 50051)
     context.instance_name = instance_name
-    context.channel = grpc.insecure_channel('{}:{}'.format(host, port))
-    context.port = port
+
+    if url.scheme == 'http':
+        context.channel = grpc.insecure_channel(context.remote)
+    else:
+        credentials = context.load_client_credentials(client_key, client_cert, server_cert)
+        if not credentials:
+            click.echo("ERROR: no TLS keys were specified and no defaults could be found.\n" +
+                       "Use --allow-insecure in order to deactivate TLS encryption.\n", err=True)
+            sys.exit(-1)
+
+        context.channel = grpc.secure_channel(context.remote, credentials)
+
+    context.logger = logging.getLogger(__name__)
+    context.logger.debug("Starting for remote {}".format(context.remote))
 
 
 @cli.command('request-dummy', short_help="Send a dummy action.")

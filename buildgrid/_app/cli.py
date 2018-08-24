@@ -46,6 +46,52 @@ class Context:
         self.config_home = os.path.join(XDG_CONFIG_HOME, 'buildgrid')
         self.data_home = os.path.join(XDG_DATA_HOME, 'buildgrid')
 
+    def load_client_credentials(self, client_key=None, client_cert=None,
+                                server_cert=None, use_default_client_keys=False):
+        """Looks-up and loads TLS client gRPC credentials.
+
+        Args:
+            client_key(str): root certificate file path.
+            client_cert(str): private key file path.
+            server_cert(str): certificate chain file path.
+            use_default_client_keys(bool, optional): whether or not to try
+                loading client keys from default location. Defaults to False.
+
+        Returns:
+            :obj:`ChannelCredentials`: The credentials for use for a
+            TLS-encrypted gRPC client channel.
+        """
+        if not client_key or not os.path.exists(client_key):
+            if use_default_client_keys:
+                client_key = os.path.join(self.config_home, 'client.key')
+            else:
+                client_key = None
+
+        if not client_cert or not os.path.exists(client_cert):
+            if use_default_client_keys:
+                client_cert = os.path.join(self.config_home, 'client.crt')
+            else:
+                client_cert = None
+
+        if not server_cert or not os.path.exists(server_cert):
+            server_cert = os.path.join(self.config_home, 'server.crt')
+            if not os.path.exists(server_cert):
+                return None
+
+        server_cert_pem = read_file(server_cert)
+        if client_key and os.path.exists(client_key):
+            client_key_pem = read_file(client_key)
+        else:
+            client_key_pem = None
+        if client_key_pem and client_cert and os.path.exists(client_cert):
+            client_cert_pem = read_file(client_cert)
+        else:
+            client_cert_pem = None
+
+        return grpc.ssl_channel_credentials(root_certificates=server_cert_pem,
+                                            private_key=client_key_pem,
+                                            certificate_chain=client_cert_pem)
+
     def load_server_credentials(self, server_key=None, server_cert=None,
                                 client_certs=None, use_default_client_certs=False):
         """Looks-up and loads TLS server gRPC credentials.

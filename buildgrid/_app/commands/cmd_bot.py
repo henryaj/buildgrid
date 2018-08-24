@@ -21,8 +21,9 @@ Create a bot interface and request work
 """
 
 import logging
-
 from pathlib import Path, PurePath
+import sys
+from urllib.parse import urlparse
 
 import click
 import grpc
@@ -35,21 +36,38 @@ from ..cli import pass_context
 
 
 @click.group(name='bot', short_help="Create and register bot clients.")
+@click.option('--remote', type=click.STRING, default='http://localhost:50051', show_default=True,
+              help="Remote execution server's URL (port defaults to 50051 if not specified).")
+@click.option('--client-key', type=click.Path(exists=True, dir_okay=False), default=None,
+              help="Private client key for TLS (PEM-encoded)")
+@click.option('--client-cert', type=click.Path(exists=True, dir_okay=False), default=None,
+              help="Public client certificate for TLS (PEM-encoded)")
+@click.option('--server-cert', type=click.Path(exists=True, dir_okay=False), default=None,
+              help="Public server certificate for TLS (PEM-encoded)")
 @click.option('--parent', type=click.STRING, default='main', show_default=True,
               help="Targeted farm resource.")
-@click.option('--port', type=click.INT, default='50051', show_default=True,
-              help="Remote server's port number.")
-@click.option('--host', type=click.STRING, default='localhost', show_default=True,
-              help="Renote server's hostname.")
 @pass_context
-def cli(context, host, port, parent):
-    channel = grpc.insecure_channel('{}:{}'.format(host, port))
-    interface = bot_interface.BotInterface(channel)
+def cli(context, remote, parent, client_key, client_cert, server_cert):
+    url = urlparse(remote)
+
+    context.remote = '{}:{}'.format(url.hostname, url.port or 50051)
+    context.parent = parent
+
+    if url.scheme == 'http':
+        context.channel = grpc.insecure_channel(context.remote)
+    else:
+        credentials = context.load_client_credentials(client_key, client_cert, server_cert)
+        if not credentials:
+            click.echo("ERROR: no TLS keys were specified and no defaults could be found.\n" +
+                       "Use --allow-insecure in order to deactivate TLS encryption.\n", err=True)
+            sys.exit(-1)
+
+        context.channel = grpc.secure_channel(context.remote, credentials)
 
     context.logger = logging.getLogger(__name__)
-    context.logger.info("Starting on port {}".format(port))
-    context.channel = channel
-    context.parent = parent
+    context.logger.debug("Starting for remote {}".format(context.remote))
+
+    interface = bot_interface.BotInterface(context.channel)
 
     worker = Worker()
     worker.add_device(Device())
