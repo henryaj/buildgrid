@@ -90,7 +90,7 @@ class Scheduler:
         job.update_execute_stage(ExecuteStage.COMPLETED)
         self.jobs[name] = job
         if not job.do_not_cache and self._action_cache is not None:
-            self._action_cache.put_action_result(job.action_digest, result)
+            self._action_cache.update_action_result(job.action_digest, result)
 
     def get_operations(self):
         response = operations_pb2.ListOperationsResponse()
