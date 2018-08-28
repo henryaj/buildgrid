@@ -44,25 +44,78 @@ from ..cli import pass_context
               help="Public client certificate for TLS (PEM-encoded)")
 @click.option('--server-cert', type=click.Path(exists=True, dir_okay=False), default=None,
               help="Public server certificate for TLS (PEM-encoded)")
+@click.option('--remote-cas', type=click.STRING, default=None, show_default=True,
+              help="Remote CAS server's URL (port defaults to 11001 if not specified).")
+@click.option('--cas-client-key', type=click.Path(exists=True, dir_okay=False), default=None,
+              help="Private CAS client key for TLS (PEM-encoded)")
+@click.option('--cas-client-cert', type=click.Path(exists=True, dir_okay=False), default=None,
+              help="Public CAS client certificate for TLS (PEM-encoded)")
+@click.option('--cas-server-cert', type=click.Path(exists=True, dir_okay=False), default=None,
+              help="Public CAS server certificate for TLS (PEM-encoded)")
 @click.option('--parent', type=click.STRING, default='main', show_default=True,
               help="Targeted farm resource.")
 @pass_context
-def cli(context, remote, parent, client_key, client_cert, server_cert):
+def cli(context, parent, remote, client_key, client_cert, server_cert,
+        remote_cas, cas_client_key, cas_client_cert, cas_server_cert):
+    # Setup the remote execution server channel:
     url = urlparse(remote)
 
     context.remote = '{}:{}'.format(url.hostname, url.port or 50051)
+    context.remote_url = remote
     context.parent = parent
 
     if url.scheme == 'http':
         context.channel = grpc.insecure_channel(context.remote)
+
+        context.client_key = None
+        context.client_cert = None
+        context.server_cert = None
     else:
         credentials = context.load_client_credentials(client_key, client_cert, server_cert)
         if not credentials:
-            click.echo("ERROR: no TLS keys were specified and no defaults could be found.\n" +
-                       "Use --allow-insecure in order to deactivate TLS encryption.\n", err=True)
+            click.echo("ERROR: no TLS keys were specified and no defaults could be found.", err=True)
             sys.exit(-1)
 
         context.channel = grpc.secure_channel(context.remote, credentials)
+
+        context.client_key = credentials.client_key
+        context.client_cert = credentials.client_cert
+        context.server_cert = credentials.server_cert
+
+    # Setup the remote CAS server channel, if separated:
+    if remote_cas is not None and remote_cas != remote:
+        cas_url = urlparse(remote_cas)
+
+        context.remote_cas = '{}:{}'.format(cas_url.hostname, cas_url.port or 11001)
+        context.remote_cas_url = remote_cas
+
+        if cas_url.scheme == 'http':
+            context.cas_channel = grpc.insecure_channel(context.remote_cas)
+
+            context.cas_client_key = None
+            context.cas_client_cert = None
+            context.cas_server_cert = None
+        else:
+            cas_credentials = context.load_client_credentials(cas_client_key, cas_client_cert, cas_server_cert)
+            if not cas_credentials:
+                click.echo("ERROR: no TLS keys were specified and no defaults could be found.", err=True)
+                sys.exit(-1)
+
+            context.cas_channel = grpc.secure_channel(context.remote_cas, cas_credentials)
+
+            context.cas_client_key = cas_credentials.client_key
+            context.cas_client_cert = cas_credentials.client_cert
+            context.cas_server_cert = cas_credentials.server_cert
+
+    else:
+        context.remote_cas = context.remote
+        context.remote_cas_url = remote
+
+        context.cas_channel = context.channel
+
+        context.cas_client_key = context.client_key
+        context.cas_client_cert = context.client_cert
+        context.cas_server_cert = context.server_cert
 
     context.logger = logging.getLogger(__name__)
     context.logger.debug("Starting for remote {}".format(context.remote))
@@ -112,35 +165,17 @@ def run_temp_directory(context):
               help="Main mount-point location.")
 @click.option('--local-cas', type=click.Path(readable=False), default=str(PurePath(Path.home(), 'cas')),
               help="Local CAS cache directory.")
-@click.option('--client-cert', type=click.Path(readable=False), default=str(PurePath(Path.home(), 'client.crt')),
-              help="Public client certificate for TLS (PEM-encoded).")
-@click.option('--client-key', type=click.Path(readable=False), default=str(PurePath(Path.home(), 'client.key')),
-              help="Private client key for TLS (PEM-encoded).")
-@click.option('--server-cert', type=click.Path(readable=False), default=str(PurePath(Path.home(), 'server.crt')),
-              help="Public server certificate for TLS (PEM-encoded).")
-@click.option('--port', type=click.INT, default=11001, show_default=True,
-              help="Remote CAS server port.")
-@click.option('--remote', type=click.STRING, default='localhost', show_default=True,
-              help="Remote CAS server hostname.")
 @pass_context
-def run_buildbox(context, remote, port, server_cert, client_key, client_cert, local_cas, fuse_dir):
+def run_buildbox(context, local_cas, fuse_dir):
     """
     Uses BuildBox to run commands.
     """
-
-    context.logger.info("Creating a bot session")
-
-    context.remote = remote
-    context.port = port
-    context.server_cert = server_cert
-    context.client_key = client_key
-    context.client_cert = client_cert
     context.local_cas = local_cas
     context.fuse_dir = fuse_dir
 
     try:
         b = bot.Bot(context.bot_session)
-        b.session(work=buildbox.work_buildbox,
-                  context=context)
+        b.session(buildbox.work_buildbox,
+                  context)
     except KeyboardInterrupt:
         pass

@@ -83,14 +83,22 @@ class Context:
             client_key_pem = read_file(client_key)
         else:
             client_key_pem = None
+            client_key = None
         if client_key_pem and client_cert and os.path.exists(client_cert):
             client_cert_pem = read_file(client_cert)
         else:
             client_cert_pem = None
+            client_cert = None
 
-        return grpc.ssl_channel_credentials(root_certificates=server_cert_pem,
-                                            private_key=client_key_pem,
-                                            certificate_chain=client_cert_pem)
+        credentials = grpc.ssl_channel_credentials(root_certificates=server_cert_pem,
+                                                   private_key=client_key_pem,
+                                                   certificate_chain=client_cert_pem)
+
+        credentials.client_key = client_key
+        credentials.client_cert = client_cert
+        credentials.server_cert = server_cert
+
+        return credentials
 
     def load_server_credentials(self, server_key=None, server_cert=None,
                                 client_certs=None, use_default_client_certs=False):
@@ -132,10 +140,17 @@ class Context:
             client_certs_pem = read_file(client_certs)
         else:
             client_certs_pem = None
+            client_certs = None
 
-        return grpc.ssl_server_credentials([(server_key_pem, server_cert_pem)],
-                                           root_certificates=client_certs_pem,
-                                           require_client_auth=bool(client_certs))
+        credentials = grpc.ssl_server_credentials([(server_key_pem, server_cert_pem)],
+                                                  root_certificates=client_certs_pem,
+                                                  require_client_auth=bool(client_certs))
+
+        credentials.server_key = server_key
+        credentials.server_cert = server_cert
+        credentials.client_certs = client_certs
+
+        return credentials
 
 
 pass_context = click.make_pass_decorator(Context, ensure=True)

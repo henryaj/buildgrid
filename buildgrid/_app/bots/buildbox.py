@@ -16,13 +16,12 @@
 import os
 import subprocess
 import tempfile
-import grpc
 
 from google.protobuf import any_pb2
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.bytestream import bytestream_pb2_grpc
-from buildgrid.utils import read_file, parse_to_pb2_from_fetch
+from buildgrid.utils import parse_to_pb2_from_fetch
 
 
 def work_buildbox(context, lease):
@@ -32,18 +31,7 @@ def work_buildbox(context, lease):
     action_digest = remote_execution_pb2.Digest()
     action_digest_any.Unpack(action_digest)
 
-    cert_server = read_file(context.server_cert)
-    cert_client = read_file(context.client_cert)
-    key_client = read_file(context.client_key)
-
-    # create server credentials
-    credentials = grpc.ssl_channel_credentials(root_certificates=cert_server,
-                                               private_key=key_client,
-                                               certificate_chain=cert_client)
-
-    channel = grpc.secure_channel('{}:{}'.format(context.remote, context.port), credentials)
-
-    stub = bytestream_pb2_grpc.ByteStreamStub(channel)
+    stub = bytestream_pb2_grpc.ByteStreamStub(context.cas_channel)
 
     action = remote_execution_pb2.Action()
     parse_to_pb2_from_fetch(action, stub, action_digest)
@@ -66,13 +54,18 @@ def work_buildbox(context, lease):
 
         with tempfile.NamedTemporaryFile(dir=os.path.join(casdir, 'tmp')) as output_digest_file:
             command = ['buildbox',
-                       '--remote={}'.format('https://{}:{}'.format(context.remote, context.port)),
-                       '--server-cert={}'.format(context.server_cert),
-                       '--client-key={}'.format(context.client_key),
-                       '--client-cert={}'.format(context.client_cert),
+                       '--remote={}'.format(context.remote_cas_url),
                        '--input-digest={}'.format(input_digest_file.name),
                        '--output-digest={}'.format(output_digest_file.name),
                        '--local={}'.format(casdir)]
+
+            if context.cas_client_key:
+                command.append('--client-key={}'.format(context.cas_client_key))
+            if context.cas_client_cert:
+                command.append('--client-cert={}'.format(context.cas_client_cert))
+            if context.cas_server_cert:
+                command.append('--server-cert={}'.format(context.cas_server_cert))
+
             if 'PWD' in environment and environment['PWD']:
                 command.append('--chdir={}'.format(environment['PWD']))
 

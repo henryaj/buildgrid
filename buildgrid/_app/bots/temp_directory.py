@@ -30,7 +30,7 @@ def work_temp_directory(context, lease):
     """
 
     parent = context.parent
-    stub_bytestream = bytestream_pb2_grpc.ByteStreamStub(context.channel)
+    stub_bytestream = bytestream_pb2_grpc.ByteStreamStub(context.cas_channel)
 
     action_digest = remote_execution_pb2.Digest()
     lease.payload.Unpack(action_digest)
@@ -78,7 +78,7 @@ def work_temp_directory(context, lease):
         request = remote_execution_pb2.BatchUpdateBlobsRequest(instance_name=parent,
                                                                requests=requests)
 
-        stub_cas = remote_execution_pb2_grpc.ContentAddressableStorageStub(context.channel)
+        stub_cas = remote_execution_pb2_grpc.ContentAddressableStorageStub(context.cas_channel)
         stub_cas.BatchUpdateBlobs(request)
 
         result_any = any_pb2.Any()
