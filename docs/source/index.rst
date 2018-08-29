@@ -15,6 +15,7 @@ Remote execution service implementing Google's REAPI and RWAPI.
 
    about.rst
    installation.rst
+   configuration.rst
    using.rst
    reference.rst
    contributing.rst
