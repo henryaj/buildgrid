@@ -15,6 +15,7 @@
 
 from operator import attrgetter
 import os
+import uuid
 
 from buildgrid.settings import HASH
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
@@ -28,8 +29,35 @@ def gen_fetch_blob(stub, digest, instance_name=""):
     resource_name = os.path.join(instance_name, 'blobs', digest.hash, str(digest.size_bytes))
     request = bytestream_pb2.ReadRequest(resource_name=resource_name,
                                          read_offset=0)
+
     for response in stub.Read(request):
         yield response.data
+
+
+def gen_write_request_blob(digest_bytes, digest, instance_name=""):
+    """ Generates a bytestream write request
+    """
+    resource_name = os.path.join(instance_name, 'uploads', str(uuid.uuid4()),
+                                 'blobs', digest.hash, str(digest.size_bytes))
+
+    offset = 0
+    finished = False
+    remaining = digest.size_bytes
+
+    while not finished:
+        chunk_size = min(remaining, 64 * 1024)
+        remaining -= chunk_size
+        finished = remaining <= 0
+
+        request = bytestream_pb2.WriteRequest()
+        request.resource_name = resource_name
+        request.write_offset = offset
+        request.data = digest_bytes.read(chunk_size)
+        request.finish_write = finished
+
+        yield request
+
+        offset += chunk_size
 
 
 def write_fetch_directory(root_directory, stub, digest, instance_name=None):
@@ -41,6 +69,7 @@ def write_fetch_directory(root_directory, stub, digest, instance_name=None):
         digest (Digest): digest for the directory to fetch from CAS.
         instance_name (str, optional): farm instance name to query data from.
     """
+
     if not os.path.isabs(root_directory):
         root_directory = os.path.abspath(root_directory)
     if not os.path.exists(root_directory):
