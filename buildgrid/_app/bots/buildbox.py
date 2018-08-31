@@ -22,80 +22,91 @@ from google.protobuf import any_pb2
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.bytestream import bytestream_pb2_grpc
 from buildgrid.utils import parse_to_pb2_from_fetch
+from buildgrid.utils import read_file, write_file
 
 
 def work_buildbox(context, lease):
+    """Executes a lease for a build action, using buildbox.
+    """
+
+    stub_bytestream = bytestream_pb2_grpc.ByteStreamStub(context.cas_channel)
+    local_cas_directory = context.local_cas
     logger = context.logger
 
-    action_digest_any = lease.payload
     action_digest = remote_execution_pb2.Digest()
-    action_digest_any.Unpack(action_digest)
+    lease.payload.Unpack(action_digest)
 
-    stub = bytestream_pb2_grpc.ByteStreamStub(context.cas_channel)
+    action = parse_to_pb2_from_fetch(remote_execution_pb2.Action(),
+                                     stub_bytestream, action_digest)
 
-    action = remote_execution_pb2.Action()
-    parse_to_pb2_from_fetch(action, stub, action_digest)
+    command = parse_to_pb2_from_fetch(remote_execution_pb2.Command(),
+                                      stub_bytestream, action.command_digest)
 
-    casdir = context.local_cas
-    remote_command = remote_execution_pb2.Command()
-    parse_to_pb2_from_fetch(remote_command, stub, action.command_digest)
+    environment = dict()
+    for variable in command.environment_variables:
+        if variable.name not in ['PWD']:
+            environment[variable.name] = variable.value
 
-    environment = dict((x.name, x.value) for x in remote_command.environment_variables)
+    if command.working_directory:
+        working_directory = command.working_directory
+    else:
+        working_directory = '/'
+
     logger.debug("command hash: {}".format(action.command_digest.hash))
     logger.debug("vdir hash: {}".format(action.input_root_digest.hash))
-    logger.debug("\n{}".format(' '.join(remote_command.arguments)))
+    logger.debug("\n{}".format(' '.join(command.arguments)))
 
-    # Input hash must be written to disk for buildbox.
-    os.makedirs(os.path.join(casdir, 'tmp'), exist_ok=True)
-    with tempfile.NamedTemporaryFile(dir=os.path.join(casdir, 'tmp')) as input_digest_file:
-        with open(input_digest_file.name, 'wb') as f:
-            f.write(action.input_root_digest.SerializeToString())
-            f.flush()
+    os.makedirs(os.path.join(local_cas_directory, 'tmp'), exist_ok=True)
+    os.makedirs(context.fuse_dir, exist_ok=True)
 
-        with tempfile.NamedTemporaryFile(dir=os.path.join(casdir, 'tmp')) as output_digest_file:
-            command = ['buildbox',
-                       '--remote={}'.format(context.remote_cas_url),
-                       '--input-digest={}'.format(input_digest_file.name),
-                       '--output-digest={}'.format(output_digest_file.name),
-                       '--local={}'.format(casdir)]
+    with tempfile.NamedTemporaryFile(dir=os.path.join(local_cas_directory, 'tmp')) as input_digest_file:
+        # Input hash must be written to disk for BuildBox
+        write_file(input_digest_file.name, action.input_root_digest.SerializeToString())
+
+        with tempfile.NamedTemporaryFile(dir=os.path.join(local_cas_directory, 'tmp')) as output_digest_file:
+            command_line = ['buildbox',
+                            '--remote={}'.format(context.remote_cas_url),
+                            '--input-digest={}'.format(input_digest_file.name),
+                            '--output-digest={}'.format(output_digest_file.name),
+                            '--chdir={}'.format(working_directory),
+                            '--local={}'.format(local_cas_directory)]
 
             if context.cas_client_key:
-                command.append('--client-key={}'.format(context.cas_client_key))
+                command_line.append('--client-key={}'.format(context.cas_client_key))
             if context.cas_client_cert:
-                command.append('--client-cert={}'.format(context.cas_client_cert))
+                command_line.append('--client-cert={}'.format(context.cas_client_cert))
             if context.cas_server_cert:
-                command.append('--server-cert={}'.format(context.cas_server_cert))
+                command_line.append('--server-cert={}'.format(context.cas_server_cert))
 
-            if 'PWD' in environment and environment['PWD']:
-                command.append('--chdir={}'.format(environment['PWD']))
+            command_line.append(context.fuse_dir)
+            command_line.extend(command.arguments)
 
-            command.append(context.fuse_dir)
-            command.extend(remote_command.arguments)
-
-            logger.debug(' '.join(command))
+            logger.debug(' '.join(command_line))
             logger.debug("Input root digest:\n{}".format(action.input_root_digest))
             logger.info("Launching process")
 
-            proc = subprocess.Popen(command,
-                                    stdin=subprocess.PIPE,
-                                    stdout=subprocess.PIPE)
-            proc.communicate()
+            command_line = subprocess.Popen(command_line,
+                                            stdin=subprocess.PIPE,
+                                            stdout=subprocess.PIPE)
+            # TODO: Should return the stdout and stderr to the user.
+            command_line.communicate()
 
             output_root_digest = remote_execution_pb2.Digest()
-            with open(output_digest_file.name, 'rb') as f:
-                output_root_digest.ParseFromString(f.read())
+            output_root_digest.ParseFromString(read_file(output_digest_file.name))
+
             logger.debug("Output root digest: {}".format(output_root_digest))
 
             if len(output_root_digest.hash) < 64:
                 logger.warning("Buildbox command failed - no output root digest present.")
-            output_file = remote_execution_pb2.OutputDirectory(tree_digest=output_root_digest)
 
-    action_result = remote_execution_pb2.ActionResult()
-    action_result.output_directories.extend([output_file])
+            output_directory = remote_execution_pb2.OutputDirectory(tree_digest=output_root_digest)
 
-    action_result_any = any_pb2.Any()
-    action_result_any.Pack(action_result)
+            action_result = remote_execution_pb2.ActionResult()
+            action_result.output_directories.extend([output_directory])
 
-    lease.result.CopyFrom(action_result_any)
+            action_result_any = any_pb2.Any()
+            action_result_any.Pack(action_result)
+
+            lease.result.CopyFrom(action_result_any)
 
     return lease
