@@ -304,6 +304,21 @@ def read_file(file_path):
         return byte_file.read()
 
 
+def write_file(file_path, content):
+    """Dumps raw memory content to a file.
+
+    Args:
+        file_path (str): path to the target file.
+        content (bytes): raw file's content.
+
+    Raises:
+        OSError: If `file_path` does not exist or is not writable.
+    """
+    with open(file_path, 'wb') as byte_file:
+        byte_file.write(content)
+        byte_file.flush()
+
+
 def output_file_maker(file_path, input_path, cas=None):
     """Creates an :obj:`OutputFile` from a local file and possibly upload it.
 
