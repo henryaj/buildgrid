@@ -19,17 +19,25 @@
 
 import tempfile
 
-import boto3
-import pytest
+from unittest import mock
 
+import boto3
+from grpc._server import _Context
+import pytest
 from moto import mock_s3
 
 from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Digest
+from buildgrid.server.cas import service
+from buildgrid.server.cas.instance import ByteStreamInstance, ContentAddressableStorageInstance
+from buildgrid.server.cas.storage import remote
 from buildgrid.server.cas.storage.lru_memory_cache import LRUMemoryCache
 from buildgrid.server.cas.storage.disk import DiskStorage
 from buildgrid.server.cas.storage.s3 import S3Storage
 from buildgrid.server.cas.storage.with_cache import WithCacheStorage
 from buildgrid.settings import HASH
+
+
+context = mock.create_autospec(_Context)
 
 abc = b"abc"
 abc_digest = Digest(hash=HASH(abc).hexdigest(), size_bytes=3)
@@ -45,10 +53,62 @@ def write(storage, digest, blob):
     storage.commit_write(digest, session)
 
 
+class MockCASStorage(ByteStreamInstance, ContentAddressableStorageInstance):
+
+    def __init__(self):
+        storage = LRUMemoryCache(256)
+        super().__init__(storage)
+
+
+# Mock a CAS server with LRUStorage to return "calls" made to it
+class MockStubServer:
+
+    def __init__(self):
+        instances = {"": MockCASStorage(), "dna": MockCASStorage()}
+        self._requests = []
+        self._bs_service = service.ByteStreamService(instances)
+        self._cas_service = service.ContentAddressableStorageService(instances)
+
+    def Read(self, request):
+        yield from self._bs_service.Read(request, context)
+
+    def Write(self, request):
+        self._requests.append(request)
+        if request.finish_write:
+            response = self._bs_service.Write(self._requests, context)
+            self._requests = []
+            return response
+
+        return None
+
+    def FindMissingBlobs(self, request):
+        return self._cas_service.FindMissingBlobs(request, context)
+
+    def BatchUpdateBlobs(self, request):
+        return self._cas_service.BatchUpdateBlobs(request, context)
+
+
+# Instances of MockCASStorage
+@pytest.fixture(params=["", "dna"])
+def instance(params):
+    return {params, MockCASStorage()}
+
+
+@pytest.fixture()
+@mock.patch.object(remote, 'bytestream_pb2_grpc')
+@mock.patch.object(remote, 'remote_execution_pb2_grpc')
+def remote_storage(mock_bs_grpc, mock_re_pb2_grpc):
+    mock_server = MockStubServer()
+    storage = remote.RemoteStorage(instance)
+    storage._stub_bs = mock_server
+    storage._stub_cas = mock_server
+    yield storage
+
+
 # General tests for all storage providers
 
 
-@pytest.fixture(params=["lru", "disk", "s3", "lru_disk", "disk_s3"])
+@pytest.fixture(params=["lru", "disk", "s3", "lru_disk", "disk_s3", "remote"])
 def any_storage(request):
     if request.param == "lru":
         yield LRUMemoryCache(256)
@@ -70,6 +130,14 @@ def any_storage(request):
             with mock_s3():
                 boto3.resource('s3').create_bucket(Bucket="testing")
                 yield WithCacheStorage(DiskStorage(path), S3Storage("testing"))
+    elif request.param == "remote":
+        with mock.patch.object(remote, 'bytestream_pb2_grpc'):
+            with mock.patch.object(remote, 'remote_execution_pb2_grpc'):
+                mock_server = MockStubServer()
+                storage = remote.RemoteStorage(instance)
+                storage._stub_bs = mock_server
+                storage._stub_cas = mock_server
+                yield storage
 
 
 def test_initially_empty(any_storage):
