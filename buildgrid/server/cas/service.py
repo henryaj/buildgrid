@@ -27,17 +27,19 @@ import logging
 import grpc
 
 from buildgrid._protos.google.bytestream import bytestream_pb2, bytestream_pb2_grpc
-from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2 as re_pb2
-from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc as re_pb2_grpc
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc
 
 from .._exceptions import InvalidArgumentError, NotFoundError, OutOfRangeError
 
 
-class ContentAddressableStorageService(re_pb2_grpc.ContentAddressableStorageServicer):
+class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressableStorageServicer):
 
-    def __init__(self, instances):
+    def __init__(self, server, instances):
         self.logger = logging.getLogger(__name__)
         self._instances = instances
+
+        remote_execution_pb2_grpc.add_ContentAddressableStorageServicer_to_server(self, server)
 
     def FindMissingBlobs(self, request, context):
         try:
@@ -49,7 +51,7 @@ class ContentAddressableStorageService(re_pb2_grpc.ContentAddressableStorageServ
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
-        return re_pb2.FindMissingBlobsResponse()
+        return remote_execution_pb2.FindMissingBlobsResponse()
 
     def BatchUpdateBlobs(self, request, context):
         try:
@@ -61,7 +63,7 @@ class ContentAddressableStorageService(re_pb2_grpc.ContentAddressableStorageServ
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
-        return re_pb2.BatchReadBlobsResponse()
+        return remote_execution_pb2.BatchReadBlobsResponse()
 
     def _get_instance(self, instance_name):
         try:
@@ -73,9 +75,11 @@ class ContentAddressableStorageService(re_pb2_grpc.ContentAddressableStorageServ
 
 class ByteStreamService(bytestream_pb2_grpc.ByteStreamServicer):
 
-    def __init__(self, instances):
+    def __init__(self, server, instances):
         self.logger = logging.getLogger(__name__)
         self._instances = instances
+
+        bytestream_pb2_grpc.add_ByteStreamServicer_to_server(self, server)
 
     def Read(self, request, context):
         try:

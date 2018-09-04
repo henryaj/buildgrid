@@ -32,9 +32,11 @@ from .._exceptions import InvalidArgumentError
 
 class OperationsService(operations_pb2_grpc.OperationsServicer):
 
-    def __init__(self, instances):
+    def __init__(self, server, instances):
         self._instances = instances
         self.logger = logging.getLogger(__name__)
+
+        operations_pb2_grpc.add_OperationsServicer_to_server(self, server)
 
     def GetOperation(self, request, context):
         try:

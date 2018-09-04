@@ -33,7 +33,6 @@ import grpc
 from buildgrid.utils import merkle_maker, create_digest, write_fetch_blob
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
 from buildgrid._protos.google.bytestream import bytestream_pb2_grpc
-from buildgrid._protos.google.longrunning import operations_pb2, operations_pb2_grpc
 
 from ..cli import pass_context
 
@@ -62,7 +61,7 @@ def cli(context, remote, instance_name, client_key, client_cert, server_cert):
         credentials = context.load_client_credentials(client_key, client_cert, server_cert)
         if not credentials:
             click.echo("ERROR: no TLS keys were specified and no defaults could be found.\n" +
-                       "Use --allow-insecure in order to deactivate TLS encryption.\n", err=True)
+                       "Use `insecure-mode: false` in order to deactivate TLS encryption.\n", err=True)
             sys.exit(-1)
 
         context.channel = grpc.secure_channel(context.remote, credentials)

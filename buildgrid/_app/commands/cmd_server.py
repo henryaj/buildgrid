@@ -26,16 +26,14 @@ import sys
 
 import click
 
-from buildgrid.server import buildgrid_server
-from buildgrid.server.cas.storage.disk import DiskStorage
-from buildgrid.server.cas.storage.lru_memory_cache import LRUMemoryCache
-from buildgrid.server.cas.storage.s3 import S3Storage
-from buildgrid.server.cas.storage.with_cache import WithCacheStorage
+from buildgrid.server.controller import ExecutionController
 from buildgrid.server.actioncache.storage import ActionCache
+from buildgrid.server.cas.instance import ByteStreamInstance, ContentAddressableStorageInstance
+from buildgrid.server.referencestorage.storage import ReferenceCache
 
 from ..cli import pass_context
-
-_SIZE_PREFIXES = {'k': 2 ** 10, 'm': 2 ** 20, 'g': 2 ** 30, 't': 2 ** 40}
+from ..settings import parser
+from ..server import BuildGridServer
 
 
 @click.group(name='server', short_help="Start a local server instance.")
@@ -45,71 +43,58 @@ def cli(context):
 
 
 @cli.command('start', short_help="Setup a new server instance.")
-@click.argument('instances', nargs=-1, type=click.STRING)
-@click.option('--port', type=click.INT, default='50051', show_default=True,
-              help="The port number to be listened.")
-@click.option('--server-key', type=click.Path(exists=True, dir_okay=False), default=None,
-              help="Private server key for TLS (PEM-encoded)")
-@click.option('--server-cert', type=click.Path(exists=True, dir_okay=False), default=None,
-              help="Public server certificate for TLS (PEM-encoded)")
-@click.option('--client-certs', type=click.Path(exists=True, dir_okay=False), default=None,
-              help="Public client certificates for TLS (PEM-encoded, one single file)")
-@click.option('--allow-insecure', type=click.BOOL, is_flag=True,
-              help="Whether or not to allow unencrypted connections.")
-@click.option('--allow-update-action-result/--forbid-update-action-result',
-              'allow_uar', default=True, show_default=True,
-              help="Whether or not to allow clients to manually edit the action cache.")
-@click.option('--max-cached-actions', type=click.INT, default=50, show_default=True,
-              help="Maximum number of actions to keep in the ActionCache.")
-@click.option('--cas', type=click.Choice(('lru', 's3', 'disk', 'with-cache')),
-              help="The CAS storage type to use.")
-@click.option('--cas-cache', type=click.Choice(('lru', 's3', 'disk')),
-              help="For --cas=with-cache, the CAS storage to use as the cache.")
-@click.option('--cas-fallback', type=click.Choice(('lru', 's3', 'disk')),
-              help="For --cas=with-cache, the CAS storage to use as the fallback.")
-@click.option('--cas-lru-size', type=click.STRING,
-              help="For --cas=lru, the LRU cache's memory limit.")
-@click.option('--cas-s3-bucket', type=click.STRING,
-              help="For --cas=s3, the bucket name.")
-@click.option('--cas-s3-endpoint', type=click.STRING,
-              help="For --cas=s3, the endpoint URI.")
-@click.option('--cas-disk-directory', type=click.Path(file_okay=False, dir_okay=True, writable=True),
-              help="For --cas=disk, the folder to store CAS blobs in.")
+@click.argument('CONFIG', type=click.Path(file_okay=True, dir_okay=False, writable=False))
 @pass_context
-def start(context, port, allow_insecure, server_key, server_cert, client_certs,
-          instances, max_cached_actions, allow_uar, cas, **cas_args):
-    """Setups a new server instance."""
+def start(context, config):
+    with open(config) as f:
+        settings = parser.get_parser().safe_load(f)
+
+    server_settings = settings['server']
+    insecure_mode = server_settings['insecure-mode']
+
     credentials = None
-    if not allow_insecure:
+    if not insecure_mode:
+        server_key = server_settings['tls-server-key']
+        server_cert = server_settings['tls-server-cert']
+        client_certs = server_settings['tls-client-certs']
         credentials = context.load_server_credentials(server_key, server_cert, client_certs)
-    if not credentials and not allow_insecure:
-        click.echo("ERROR: no TLS keys were specified and no defaults could be found.\n" +
-                   "Use --allow-insecure in order to deactivate TLS encryption.\n", err=True)
-        sys.exit(-1)
 
-    context.credentials = credentials
-    context.port = port
+        if not credentials:
+            click.echo("ERROR: no TLS keys were specified and no defaults could be found.\n" +
+                       "Set `insecure-mode: false` in order to deactivate TLS encryption.\n", err=True)
+            sys.exit(-1)
 
-    context.logger.info("BuildGrid server booting up")
-    context.logger.info("Starting on port {}".format(port))
+    instances = settings['instances']
 
-    cas_storage = _make_cas_storage(context, cas, cas_args)
+    execution_controllers = _instance_maker(instances, ExecutionController)
 
-    if cas_storage is None:
-        context.logger.info("Running without CAS - action cache will be unavailable")
-        action_cache = None
+    execution_instances = {}
+    bots_interfaces = {}
+    operations_instances = {}
 
-    else:
-        action_cache = ActionCache(cas_storage, max_cached_actions, allow_uar)
+    # TODO: map properly in parser
+    for k, v in execution_controllers.items():
+        execution_instances[k] = v.execution_instance
+        bots_interfaces[k] = v.bots_interface
+        operations_instances[k] = v.operations_instance
 
-    if instances is None:
-        instances = ['main']
+    reference_caches = _instance_maker(instances, ReferenceCache)
+    action_caches = _instance_maker(instances, ActionCache)
+    cas = _instance_maker(instances, ContentAddressableStorageInstance)
+    bytestreams = _instance_maker(instances, ByteStreamInstance)
 
-    server = buildgrid_server.BuildGridServer(port=context.port,
-                                              credentials=context.credentials,
-                                              instances=instances,
-                                              cas_storage=cas_storage,
-                                              action_cache=action_cache)
+    port = server_settings['port']
+    server = BuildGridServer(port=port,
+                             credentials=credentials,
+                             execution_instances=execution_instances,
+                             bots_interfaces=bots_interfaces,
+                             operations_instances=operations_instances,
+                             reference_storage_instances=reference_caches,
+                             action_cache_instances=action_caches,
+                             cas_instances=cas,
+                             bytestream_instances=bytestreams)
+
+    context.logger.info("Starting server on port {}".format(port))
     loop = asyncio.get_event_loop()
     try:
         server.start()
@@ -119,57 +104,20 @@ def start(context, port, allow_insecure, server_key, server_cert, client_certs,
         pass
 
     finally:
+        context.logger.info("Stopping server")
         server.stop()
         loop.close()
 
 
-def _make_cas_storage(context, cas_type, cas_args):
-    """Returns the storage provider corresponding to the given `cas_type`,
-    or None if the provider cannot be created.
-    """
-    if cas_type == "lru":
-        if cas_args["cas_lru_size"] is None:
-            context.logger.error("--cas-lru-size is required for LRU CAS")
-            return None
-        try:
-            size = _parse_size(cas_args["cas_lru_size"])
-        except ValueError:
-            context.logger.error('Invalid LRU size "{0}"'.format(cas_args["cas_lru_size"]))
-            return None
-        return LRUMemoryCache(size)
-    elif cas_type == "s3":
-        if cas_args["cas_s3_bucket"] is None:
-            context.logger.error("--cas-s3-bucket is required for S3 CAS")
-            return None
-        if cas_args["cas_s3_endpoint"] is not None:
-            return S3Storage(cas_args["cas_s3_bucket"],
-                             endpoint_url=cas_args["cas_s3_endpoint"])
-        return S3Storage(cas_args["cas_s3_bucket"])
-    elif cas_type == "disk":
-        if cas_args["cas_disk_directory"] is None:
-            context.logger.error("--cas-disk-directory is required for disk CAS")
-            return None
-        return DiskStorage(cas_args["cas_disk_directory"])
-    elif cas_type == "with-cache":
-        cache = _make_cas_storage(context, cas_args["cas_cache"], cas_args)
-        fallback = _make_cas_storage(context, cas_args["cas_fallback"], cas_args)
-        if cache is None:
-            context.logger.error("Missing cache provider for --cas=with-cache")
-            return None
-        elif fallback is None:
-            context.logger.error("Missing fallback provider for --cas=with-cache")
-            return None
-        return WithCacheStorage(cache, fallback)
-    elif cas_type is None:
-        return None
-    return None
+# Turn away now if you want to keep your eyes
+def _instance_maker(instances, service_type):
+    # TODO get this mapped in parser
+    made = {}
 
-
-def _parse_size(size):
-    """Convert a string containing a size in bytes (e.g. '2GB') to a number."""
-    size = size.lower()
-    if size[-1] == 'b':
-        size = size[:-1]
-    if size[-1] in _SIZE_PREFIXES:
-        return int(size[:-1]) * _SIZE_PREFIXES[size[-1]]
-    return int(size)
+    for instance in instances:
+        services = instance['services']
+        instance_name = instance['name']
+        for service in services:
+            if isinstance(service, service_type):
+                made[instance_name] = service
+    return made

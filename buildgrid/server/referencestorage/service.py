@@ -20,34 +20,70 @@ import grpc
 from buildgrid._protos.buildstream.v2 import buildstream_pb2
 from buildgrid._protos.buildstream.v2 import buildstream_pb2_grpc
 
-from .._exceptions import NotFoundError
+from .._exceptions import InvalidArgumentError, NotFoundError
 
 
 class ReferenceStorageService(buildstream_pb2_grpc.ReferenceStorageServicer):
 
-    def __init__(self, reference_cache):
-        self._reference_cache = reference_cache
+    def __init__(self, server, instances):
         self.logger = logging.getLogger(__name__)
+
+        self._instances = instances
+
+        buildstream_pb2_grpc.add_ReferenceStorageServicer_to_server(self, server)
 
     def GetReference(self, request, context):
         try:
+            instance = self._get_instance(request.instance_name)
+            digest = instance.get_digest_reference(request.key)
             response = buildstream_pb2.GetReferenceResponse()
-            response.digest.CopyFrom(self._reference_cache.get_digest_reference(request.key))
+            response.digest.CopyFrom(digest)
             return response
+
+        except InvalidArgumentError as e:
+            self.logger.error(e)
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
         except NotFoundError:
             context.set_code(grpc.StatusCode.NOT_FOUND)
 
+        return buildstream_pb2.GetReferenceResponse()
+
     def UpdateReference(self, request, context):
         try:
-            for key in request.keys:
-                self._reference_cache.update_reference(key, request.digest)
+            instance = self._get_instance(request.instance_name)
+            digest = request.digest
 
-            return buildstream_pb2.UpdateReferenceResponse()
+            for key in request.keys:
+                instance.update_reference(key, digest)
+
+        except InvalidArgumentError as e:
+            self.logger.error(e)
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
         except NotImplementedError:
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
 
+        return buildstream_pb2.UpdateReferenceResponse()
+
     def Status(self, request, context):
-        allow_updates = self._reference_cache.allow_updates
-        return buildstream_pb2.StatusResponse(allow_updates=allow_updates)
+        try:
+            instance = self._get_instance(request.instance_name)
+            allow_updates = instance.allow_updates
+            return buildstream_pb2.StatusResponse(allow_updates=allow_updates)
+
+        except InvalidArgumentError as e:
+            self.logger.error(e)
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+
+        return buildstream_pb2.StatusResponse()
+
+    def _get_instance(self, instance_name):
+        try:
+            return self._instances[instance_name]
+
+        except KeyError:
+            raise InvalidArgumentError("Invalid instance name: {}".format(instance_name))

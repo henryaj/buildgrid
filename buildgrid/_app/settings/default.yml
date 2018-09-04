@@ -1,0 +1,34 @@
+server:
+  port: 50051
+  tls-server-key: null
+  tls-server-cert: null
+  tls-client-certs: null
+  insecure-mode: true
+
+description: |
+  A single default instance
+
+instances:
+  - name: main
+    description: |
+      The main server
+
+    storages:
+        - !disk-storage &main-storage
+          path: ~/cas/
+
+    services:
+      - !action-cache &main-action
+        storage: *main-storage
+        max_cached_refs: 256
+        allow_updates: true
+
+      - !execution
+        storage: *main-storage
+        action_cache: *main-action
+
+      - !cas
+        storage: *main-storage
+
+      - !bytestream
+        storage: *main-storage

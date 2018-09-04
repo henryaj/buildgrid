@@ -14,31 +14,36 @@
 
 
 """
-BuildGrid Instance
+Execution Controller
 ==================
 
-An instance of the BuildGrid server.
+An instance of the Execution controller.
 
-Contains scheduler, execution instance and an interface to the bots.
+All this stuff you need to make the execution service work.
+
+Contains scheduler, execution instance, an interface to the bots
+and an operations instance.
 """
 
 
 import logging
 
-from .execution.instance import ExecutionInstance
 from .scheduler import Scheduler
 from .bots.instance import BotsInterface
+from .execution.instance import ExecutionInstance
+from .operations.instance import OperationsInstance
 
 
-class BuildGridInstance(ExecutionInstance, BotsInterface):
+class ExecutionController:
 
-    def __init__(self, action_cache=None, cas_storage=None):
+    def __init__(self, action_cache=None, storage=None):
         scheduler = Scheduler(action_cache)
 
         self.logger = logging.getLogger(__name__)
 
-        ExecutionInstance.__init__(self, scheduler, cas_storage)
-        BotsInterface.__init__(self, scheduler)
+        self._execution_instance = ExecutionInstance(scheduler, storage)
+        self._bots_interface = BotsInterface(scheduler)
+        self._operations_instance = OperationsInstance(scheduler)
 
     def stream_operation_updates(self, message_queue, operation_name):
         operation = message_queue.get()
@@ -50,3 +55,15 @@ class BuildGridInstance(ExecutionInstance, BotsInterface):
     def cancel_operation(self, name):
         # TODO: Cancel leases
         raise NotImplementedError("Cancelled operations not supported")
+
+    @property
+    def execution_instance(self):
+        return self._execution_instance
+
+    @property
+    def bots_interface(self):
+        return self._bots_interface
+
+    @property
+    def operations_instance(self):
+        return self._operations_instance

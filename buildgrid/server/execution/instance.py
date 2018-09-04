@@ -24,6 +24,7 @@ import logging
 from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Action
 
 from ..job import Job
+from .._exceptions import InvalidArgumentError
 
 
 class ExecutionInstance:
@@ -51,3 +52,24 @@ class ExecutionInstance:
         self._scheduler.append_job(job, skip_cache_lookup)
 
         return job.get_operation()
+
+    def register_message_client(self, name, queue):
+        try:
+            self._scheduler.register_client(name, queue)
+
+        except KeyError:
+            raise InvalidArgumentError("Operation name does not exist: {}".format(name))
+
+    def unregister_message_client(self, name, queue):
+        try:
+            self._scheduler.unregister_client(name, queue)
+
+        except KeyError:
+            raise InvalidArgumentError("Operation name does not exist: {}".format(name))
+
+    def stream_operation_updates(self, message_queue, operation_name):
+        operation = message_queue.get()
+        while not operation.done:
+            yield operation
+            operation = message_queue.get()
+        yield operation

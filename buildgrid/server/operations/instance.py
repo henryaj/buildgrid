@@ -64,3 +64,14 @@ class OperationsInstance:
 
         except KeyError:
             raise InvalidArgumentError("Operation name does not exist: {}".format(name))
+
+    def stream_operation_updates(self, message_queue, operation_name):
+        operation = message_queue.get()
+        while not operation.done:
+            yield operation
+            operation = message_queue.get()
+        yield operation
+
+    def cancel_operation(self, name):
+        # TODO: Cancel leases
+        raise NotImplementedError("Cancelled operations not supported")

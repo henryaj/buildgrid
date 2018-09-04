@@ -27,18 +27,27 @@ import grpc
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc
 
-from .._exceptions import NotFoundError
+from .._exceptions import InvalidArgumentError, NotFoundError
 
 
 class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
 
-    def __init__(self, action_cache):
-        self._action_cache = action_cache
+    def __init__(self, server, instances):
+        self._instances = instances
+
         self.logger = logging.getLogger(__name__)
+
+        remote_execution_pb2_grpc.add_ActionCacheServicer_to_server(self, server)
 
     def GetActionResult(self, request, context):
         try:
-            return self._action_cache.get_action_result(request.action_digest)
+            instance = self._get_instance(request.instance_name)
+            return instance.get_action_result(request.action_digest)
+
+        except InvalidArgumentError as e:
+            self.logger.error(e)
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
         except NotFoundError as e:
             self.logger.error(e)
@@ -48,11 +57,24 @@ class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
 
     def UpdateActionResult(self, request, context):
         try:
-            self._action_cache.update_action_result(request.action_digest, request.action_result)
+            instance = self._get_instance(request.instance_name)
+            instance.update_action_result(request.action_digest, request.action_result)
             return request.action_result
+
+        except InvalidArgumentError as e:
+            self.logger.error(e)
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
         except NotImplementedError as e:
             self.logger.error(e)
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
 
         return remote_execution_pb2.ActionResult()
+
+    def _get_instance(self, instance_name):
+        try:
+            return self._instances[instance_name]
+
+        except KeyError:
+            raise InvalidArgumentError("Invalid instance name: {}".format(instance_name))
