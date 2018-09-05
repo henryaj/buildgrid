@@ -19,10 +19,10 @@ import tempfile
 
 from google.protobuf import any_pb2
 
+from buildgrid.client.cas import upload
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.bytestream import bytestream_pb2_grpc
-from buildgrid.utils import parse_to_pb2_from_fetch
-from buildgrid.utils import read_file, write_file
+from buildgrid.utils import read_file, write_file, parse_to_pb2_from_fetch
 
 
 def work_buildbox(context, lease):
@@ -91,15 +91,24 @@ def work_buildbox(context, lease):
             # TODO: Should return the stdout and stderr to the user.
             command_line.communicate()
 
-            output_root_digest = remote_execution_pb2.Digest()
-            output_root_digest.ParseFromString(read_file(output_digest_file.name))
+            output_digest = remote_execution_pb2.Digest()
+            output_digest.ParseFromString(read_file(output_digest_file.name))
 
-            logger.debug("Output root digest: {}".format(output_root_digest))
+            logger.debug("Output root digest: {}".format(output_digest))
 
-            if len(output_root_digest.hash) < 64:
+            if len(output_digest.hash) < 64:
                 logger.warning("Buildbox command failed - no output root digest present.")
 
-            output_directory = remote_execution_pb2.OutputDirectory(tree_digest=output_root_digest)
+            # TODO: Have BuildBox helping us creating the Tree instance here
+            # See https://gitlab.com/BuildStream/buildbox/issues/7 for details
+            output_tree = _cas_tree_maker(stub_bytestream, output_digest)
+
+            with upload(context.cas_channel) as cas:
+                output_tree_digest = cas.send_message(output_tree)
+
+            output_directory = remote_execution_pb2.OutputDirectory()
+            output_directory.tree_digest.CopyFrom(output_tree_digest)
+            output_directory.path = os.path.relpath(working_directory, start='/')
 
             action_result = remote_execution_pb2.ActionResult()
             action_result.output_directories.extend([output_directory])
@@ -110,3 +119,26 @@ def work_buildbox(context, lease):
             lease.result.CopyFrom(action_result_any)
 
     return lease
+
+
+def _cas_tree_maker(stub_bytestream, directory_digest):
+    # Generates and stores a Tree for a given Directory. This is very inefficient
+    # and only temporary. See https://gitlab.com/BuildStream/buildbox/issues/7.
+    output_tree = remote_execution_pb2.Tree()
+
+    def list_directories(parent_directory):
+        directory_list = list()
+        for directory_node in parent_directory.directories:
+            directory = parse_to_pb2_from_fetch(remote_execution_pb2.Directory(),
+                                                stub_bytestream, directory_node.digest)
+            directory_list.extend(list_directories(directory))
+            directory_list.append(directory)
+
+        return directory_list
+
+    root_directory = parse_to_pb2_from_fetch(remote_execution_pb2.Directory(),
+                                             stub_bytestream, directory_digest)
+    output_tree.children.extend(list_directories(root_directory))
+    output_tree.root.CopyFrom(root_directory)
+
+    return output_tree
