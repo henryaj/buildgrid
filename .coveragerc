@@ -1,5 +1,6 @@
 [run]
 concurrency = multiprocessing
+data_file = .coverage
 include =
   */buildgrid/*
 

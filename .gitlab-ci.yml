@@ -9,9 +9,9 @@ stages:
   - post
 
 before_script:
-  - pip3 install setuptools
+  - python3 -m pip install --upgrade setuptools pip
   - export PATH=~/.local/bin:${PATH}
-  - pip3 install --user -e .
+  - python3 -m pip install --user --editable ".[tests]"
 
 .tests-template: &linux-tests
   stage: test
@@ -20,7 +20,7 @@ before_script:
   script:
     - python3 setup.py test
     - mkdir -p coverage/
-    - cp .coverage.* coverage/coverage."${CI_JOB_NAME}"
+    - cp .coverage coverage/coverage."${CI_JOB_NAME}"
   artifacts:
     paths:
     - coverage/
@@ -43,7 +43,7 @@ run-dummy-job-debian:
 build-docs:
   stage: test
   script:
-    - pip3 install --editable ".[docs]"
+    - python3 -m pip install --user --editable ".[docs]"
     - make -C docs html
     - mkdir -p documentation/
     - cp -a docs/build/html/. documentation/
@@ -56,7 +56,7 @@ coverage:
   stage: post
   coverage: '/TOTAL +\d+ +\d+ +(\d+\.\d+)%/'
   script:
-    - pip3 install coverage==4.4.0
+    - python3 -m pip install --user --editable ".[tests]"
     - mkdir report
     - cd report
     - cp ../coverage/coverage.* .
@@ -74,7 +74,7 @@ pages:
   - tests-debian-stretch
   - build-docs
   script:
-  - cp -a coverage/. public/
+  - cp -a coverage/* public/
   - cp -a documentation/* public/
   artifacts:
     paths:

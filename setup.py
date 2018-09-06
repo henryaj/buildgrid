@@ -90,7 +90,7 @@ tests_require = [
     'moto',
     'pep8',
     'pytest == 3.6.4',
-    'pytest-cov >= 2.5.0',
+    'pytest-cov >= 2.6.0',
     'pytest-pep8',
     'pytest-pylint',
 ]
