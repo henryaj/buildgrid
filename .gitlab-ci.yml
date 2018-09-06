@@ -7,6 +7,8 @@ variables:
 stages:
   - test
   - post
+  - deploy
+
 
 before_script:
   - python3 -m pip install --upgrade setuptools pip
@@ -33,6 +35,9 @@ before_script:
     - ${BGD} bot dummy &
     - ${BGD} execute request-dummy --wait-for-completion
 
+
+# Test stage, build and test the code.
+#
 tests-debian-stretch:
   <<: *linux-tests
 
@@ -40,8 +45,11 @@ run-dummy-job-debian:
   image: buildstream/buildstream-debian
   <<: *dummy-job
 
-build-docs:
-  stage: test
+
+# Post-build stage, documentation, coverage report...
+#
+documentation:
+  stage: post
   script:
     - python3 -m pip install --user --editable ".[docs]"
     - make -C docs html
@@ -51,31 +59,36 @@ build-docs:
     paths:
     - documentation/
 
-
 coverage:
   stage: post
+  dependencies:
+  - tests-debian-stretch
   coverage: '/TOTAL +\d+ +\d+ +(\d+\.\d+)%/'
   script:
     - python3 -m pip install --user --editable ".[tests]"
-    - mkdir report
-    - cd report
-    - cp ../coverage/coverage.* .
-    - ls coverage.*
-    - coverage combine --rcfile=../.coveragerc -a coverage.*
-    - coverage report --rcfile=../.coveragerc -m
-  dependencies:
-  - tests-debian-stretch
+    - cd coverage/
+    - ls -l .
+    - python3 -m coverage combine --rcfile=../.coveragerc --append coverage.*
+    - python3 -m coverage html --rcfile=../.coveragerc --directory .
+    - python3 -m coverage report --rcfile=../.coveragerc --show-missing
+    - python3 -m coverage erase --rcfile=../.coveragerc
+  artifacts:
+    paths:
+    - coverage/
 
-# Deploy, only for merges which land on master branch.
+# Deployement stage, only for merges which land on master branch.
 #
 pages:
-  stage: post
+  stage: deploy
   dependencies:
-  - tests-debian-stretch
-  - build-docs
+  - coverage
+  - documentation
   script:
-  - cp -a coverage/* public/
+  - mkdir -p public/coverage/
+  - cp -a coverage/* public/coverage/
+  - ls -la public/coverage/
   - cp -a documentation/* public/
+  - ls -la public/
   artifacts:
     paths:
     - public/

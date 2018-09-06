@@ -8,7 +8,7 @@ About
    :target: https://gitlab.com/BuildStream/buildstream/commits/master
 
 .. image:: https://gitlab.com/BuildGrid/buildgrid/badges/master/coverage.svg?job=coverage
-   :target: https://gitlab.com/BuildGrid/buildgrid/commits/master
+   :target: https://buildgrid.gitlab.io/buildgrid/coverage
 
 BuildGrid is a Python remote execution service which implements Google's
 `Remote Execution API`_ and the `Remote Workers API`_. The project's goal is to
