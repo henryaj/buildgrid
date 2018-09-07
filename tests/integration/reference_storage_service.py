@@ -25,8 +25,13 @@ from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_p
 from buildgrid._protos.buildstream.v2 import buildstream_pb2
 
 from buildgrid.server.cas.storage import lru_memory_cache
+from buildgrid.server.referencestorage import service
 from buildgrid.server.referencestorage.service import ReferenceStorageService
 from buildgrid.server.referencestorage.storage import ReferenceCache
+
+
+server = mock.create_autospec(grpc.server)
+instance_name = ''
 
 
 # Can mock this
@@ -45,41 +50,49 @@ def cache(cas):
     yield ReferenceCache(cas, 50)
 
 
-def test_simple_result(cache, context):
+@pytest.fixture
+def instance(cache):
+    instances = {instance_name: cache}
+    with mock.patch.object(service, 'buildstream_pb2_grpc'):
+        yield ReferenceStorageService(server, instances)
+
+
+def test_simple_result(instance, context):
     keys = ["rick", "roy", "rach"]
-    service = ReferenceStorageService(cache)
 
     # Check that before adding the ReferenceResult, attempting to fetch it fails
     request = buildstream_pb2.GetReferenceRequest(key=keys[0])
-    service.GetReference(request, context)
+    instance.GetReference(request, context)
     context.set_code.assert_called_once_with(grpc.StatusCode.NOT_FOUND)
 
     # Add an ReferenceResult to the cache
     reference_result = remote_execution_pb2.Digest(hash='deckard')
     request = buildstream_pb2.UpdateReferenceRequest(keys=keys,
                                                      digest=reference_result)
-    service.UpdateReference(request, context)
+    instance.UpdateReference(request, context)
 
     # Check that fetching it now works
     for key in keys:
         request = buildstream_pb2.GetReferenceRequest(key=key)
-        fetched_result = service.GetReference(request, context)
+        fetched_result = instance.GetReference(request, context)
         assert fetched_result.digest == reference_result
 
 
-def test_disabled_update_result(cache, context):
+def test_disabled_update_result(context):
     disabled_push = ReferenceCache(cas, 50, False)
     keys = ["rick", "roy", "rach"]
-    service = ReferenceStorageService(disabled_push)
+
+    with mock.patch.object(service, 'buildstream_pb2_grpc'):
+        instance = ReferenceStorageService(server, {'': disabled_push})
 
     # Add an ReferenceResult to the cache
     reference_result = remote_execution_pb2.Digest(hash='deckard')
     request = buildstream_pb2.UpdateReferenceRequest(keys=keys,
                                                      digest=reference_result)
-    service.UpdateReference(request, context)
+    instance.UpdateReference(request, context)
 
     request = buildstream_pb2.UpdateReferenceRequest()
-    service.UpdateReference(request, context)
+    instance.UpdateReference(request, context)
 
     context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
 
@@ -87,9 +100,10 @@ def test_disabled_update_result(cache, context):
 @pytest.mark.parametrize("allow_updates", [True, False])
 def test_status(allow_updates, context):
     cache = ReferenceCache(cas, 5, allow_updates)
-    service = ReferenceStorageService(cache)
+    with mock.patch.object(service, 'buildstream_pb2_grpc'):
+        instance = ReferenceStorageService(server, {'': cache})
 
     request = buildstream_pb2.StatusRequest()
-    response = service.Status(request, context)
+    response = instance.Status(request, context)
 
     assert response.allow_updates == allow_updates

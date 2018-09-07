@@ -27,23 +27,19 @@ import pytest
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid.server import job
-from buildgrid.server.instance import BuildGridInstance
+from buildgrid.server.controller import ExecutionController
 from buildgrid.server.job import LeaseState
-from buildgrid.server.bots.instance import BotsInterface
+from buildgrid.server.bots import service
 from buildgrid.server.bots.service import BotsService
+
+
+server = mock.create_autospec(grpc.server)
 
 
 # GRPC context
 @pytest.fixture
 def context():
     yield mock.MagicMock(spec=_Context)
-
-
-@pytest.fixture
-def action_job():
-    action_digest = remote_execution_pb2.Digest()
-    j = job.Job(action_digest, None)
-    yield j
 
 
 @pytest.fixture
@@ -54,20 +50,16 @@ def bot_session():
 
 
 @pytest.fixture
-def buildgrid():
-    yield BuildGridInstance()
-
-
-@pytest.fixture
-def bots(schedule):
-    yield BotsInterface(schedule)
+def controller():
+    yield ExecutionController()
 
 
 # Instance to test
 @pytest.fixture
-def instance(buildgrid):
-    instances = {"": buildgrid}
-    yield BotsService(instances)
+def instance(controller):
+    instances = {"": controller.bots_interface}
+    with mock.patch.object(service, 'bots_pb2_grpc'):
+        yield BotsService(server, instances)
 
 
 def test_create_bot_session(bot_session, context, instance):
@@ -127,12 +119,11 @@ def test_update_bot_session_bot_id_fail(bot_session, context, instance):
 
 @pytest.mark.parametrize("number_of_jobs", [0, 1, 3, 500])
 def test_number_of_leases(number_of_jobs, bot_session, context, instance):
-    request = bots_pb2.CreateBotSessionRequest(bot_session=bot_session)
-    # Inject work
-    for _ in range(0, number_of_jobs):
-        action_digest = remote_execution_pb2.Digest()
-        instance._instances[""].execute(action_digest, True)
 
+    for _ in range(0, number_of_jobs):
+        _inject_work(instance._instances[""]._scheduler)
+
+    request = bots_pb2.CreateBotSessionRequest(bot_session=bot_session)
     response = instance.CreateBotSession(request, context)
 
     assert len(response.leases) == number_of_jobs
@@ -141,9 +132,9 @@ def test_number_of_leases(number_of_jobs, bot_session, context, instance):
 def test_update_leases_with_work(bot_session, context, instance):
     request = bots_pb2.CreateBotSessionRequest(parent='',
                                                bot_session=bot_session)
-    # Inject work
+
     action_digest = remote_execution_pb2.Digest(hash='gaff')
-    instance._instances[""].execute(action_digest, True)
+    _inject_work(instance._instances[""]._scheduler, action_digest)
 
     response = instance.CreateBotSession(request, context)
 
@@ -165,7 +156,7 @@ def test_update_leases_work_complete(bot_session, context, instance):
 
     # Inject work
     action_digest = remote_execution_pb2.Digest(hash='gaff')
-    instance._instances[""].execute(action_digest, True)
+    _inject_work(instance._instances[""]._scheduler, action_digest)
 
     request = bots_pb2.UpdateBotSessionRequest(name=response.name,
                                                bot_session=response)
@@ -193,7 +184,7 @@ def test_work_rejected_by_bot(bot_session, context, instance):
                                                bot_session=bot_session)
     # Inject work
     action_digest = remote_execution_pb2.Digest(hash='gaff')
-    instance._instances[""].execute(action_digest, True)
+    _inject_work(instance._instances[""]._scheduler, action_digest)
 
     # Simulated the severed binding between client and server
     response = copy.deepcopy(instance.CreateBotSession(request, context))
@@ -215,7 +206,7 @@ def test_work_out_of_sync_from_pending(state, bot_session, context, instance):
                                                bot_session=bot_session)
     # Inject work
     action_digest = remote_execution_pb2.Digest(hash='gaff')
-    instance._instances[""].execute(action_digest, True)
+    _inject_work(instance._instances[""]._scheduler, action_digest)
 
     # Simulated the severed binding between client and server
     response = copy.deepcopy(instance.CreateBotSession(request, context))
@@ -236,7 +227,7 @@ def test_work_out_of_sync_from_active(state, bot_session, context, instance):
                                                bot_session=bot_session)
     # Inject work
     action_digest = remote_execution_pb2.Digest(hash='gaff')
-    instance._instances[""].execute(action_digest, True)
+    _inject_work(instance._instances[""]._scheduler, action_digest)
 
     # Simulated the severed binding between client and server
     response = copy.deepcopy(instance.CreateBotSession(request, context))
@@ -263,7 +254,7 @@ def test_work_active_to_active(bot_session, context, instance):
                                                bot_session=bot_session)
     # Inject work
     action_digest = remote_execution_pb2.Digest(hash='gaff')
-    instance._instances[""].execute(action_digest, True)
+    _inject_work(instance._instances[""]._scheduler, action_digest)
 
     # Simulated the severed binding between client and server
     response = copy.deepcopy(instance.CreateBotSession(request, context))
@@ -283,3 +274,10 @@ def test_post_bot_event_temp(context, instance):
     instance.PostBotEventTemp(request, context)
 
     context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
+
+
+def _inject_work(scheduler, action_digest=None):
+    if not action_digest:
+        action_digest = remote_execution_pb2.Digest()
+    j = job.Job(action_digest, False)
+    scheduler.append_job(j, True)

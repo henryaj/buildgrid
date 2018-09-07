@@ -26,8 +26,12 @@ import pytest
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid.server.cas.storage import lru_memory_cache
+from buildgrid.server.actioncache import service
 from buildgrid.server.actioncache.storage import ActionCache
 from buildgrid.server.actioncache.service import ActionCacheService
+
+
+server = mock.create_autospec(grpc.server)
 
 
 # Can mock this
@@ -42,36 +46,41 @@ def cas():
 
 
 @pytest.fixture
-def cache(cas):
-    yield ActionCache(cas, 50)
+def cache_instances(cas):
+    yield {"": ActionCache(cas, 50)}
 
 
-def test_simple_action_result(cache, context):
-    service = ActionCacheService(cache)
+def test_simple_action_result(cache_instances, context):
+    with mock.patch.object(service, 'remote_execution_pb2_grpc'):
+        ac_service = ActionCacheService(server, cache_instances)
+
+    print(cache_instances)
     action_digest = remote_execution_pb2.Digest(hash='sample', size_bytes=4)
 
     # Check that before adding the ActionResult, attempting to fetch it fails
-    request = remote_execution_pb2.GetActionResultRequest(action_digest=action_digest)
-    service.GetActionResult(request, context)
+    request = remote_execution_pb2.GetActionResultRequest(instance_name="",
+                                                          action_digest=action_digest)
+    ac_service.GetActionResult(request, context)
     context.set_code.assert_called_once_with(grpc.StatusCode.NOT_FOUND)
 
     # Add an ActionResult to the cache
     action_result = remote_execution_pb2.ActionResult(stdout_raw=b'example output')
     request = remote_execution_pb2.UpdateActionResultRequest(action_digest=action_digest,
                                                              action_result=action_result)
-    service.UpdateActionResult(request, context)
+    ac_service.UpdateActionResult(request, context)
 
     # Check that fetching it now works
     request = remote_execution_pb2.GetActionResultRequest(action_digest=action_digest)
-    fetched_result = service.GetActionResult(request, context)
+    fetched_result = ac_service.GetActionResult(request, context)
     assert fetched_result.stdout_raw == action_result.stdout_raw
 
 
-def test_disabled_update_action_result(cache, context):
+def test_disabled_update_action_result(context):
     disabled_push = ActionCache(cas, 50, False)
-    service = ActionCacheService(disabled_push)
+    with mock.patch.object(service, 'remote_execution_pb2_grpc'):
+        ac_service = ActionCacheService(server, {"": disabled_push})
 
-    request = remote_execution_pb2.UpdateActionResultRequest()
-    service.UpdateActionResult(request, context)
+    request = remote_execution_pb2.UpdateActionResultRequest(instance_name='')
+    ac_service.UpdateActionResult(request, context)
 
     context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)

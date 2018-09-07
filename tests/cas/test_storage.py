@@ -22,6 +22,7 @@ import tempfile
 from unittest import mock
 
 import boto3
+import grpc
 from grpc._server import _Context
 import pytest
 from moto import mock_s3
@@ -38,6 +39,7 @@ from buildgrid.settings import HASH
 
 
 context = mock.create_autospec(_Context)
+server = mock.create_autospec(grpc.server)
 
 abc = b"abc"
 abc_digest = Digest(hash=HASH(abc).hexdigest(), size_bytes=3)
@@ -66,8 +68,10 @@ class MockStubServer:
     def __init__(self):
         instances = {"": MockCASStorage(), "dna": MockCASStorage()}
         self._requests = []
-        self._bs_service = service.ByteStreamService(instances)
-        self._cas_service = service.ContentAddressableStorageService(instances)
+        with mock.patch.object(service, 'bytestream_pb2_grpc'):
+            self._bs_service = service.ByteStreamService(server, instances)
+        with mock.patch.object(service, 'remote_execution_pb2_grpc'):
+            self._cas_service = service.ContentAddressableStorageService(server, instances)
 
     def Read(self, request):
         yield from self._bs_service.Read(request, context)

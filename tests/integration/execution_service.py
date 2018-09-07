@@ -20,19 +20,23 @@
 import uuid
 from unittest import mock
 
+from google.protobuf import any_pb2
 import grpc
 from grpc._server import _Context
 import pytest
-from google.protobuf import any_pb2
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 
 from buildgrid.server import job
-from buildgrid.server.instance import BuildGridInstance
+from buildgrid.server.controller import ExecutionController
 from buildgrid.server.cas.storage import lru_memory_cache
 from buildgrid.server.actioncache.storage import ActionCache
+from buildgrid.server.execution import service
 from buildgrid.server.execution.service import ExecutionService
+
+
+server = mock.create_autospec(grpc.server)
 
 
 @pytest.fixture
@@ -42,21 +46,21 @@ def context():
 
 
 @pytest.fixture(params=["action-cache", "no-action-cache"])
-def buildgrid(request):
+def controller(request):
     if request.param == "action-cache":
         storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
         cache = ActionCache(storage, 50)
-
-        return BuildGridInstance(action_cache=cache,
-                                 cas_storage=storage)
-    return BuildGridInstance()
+        yield ExecutionController(cache, storage)
+    else:
+        yield ExecutionController()
 
 
 # Instance to test
 @pytest.fixture
-def instance(buildgrid):
-    instances = {"": buildgrid}
-    yield ExecutionService(instances)
+def instance(controller):
+    instances = {"": controller.execution_instance}
+    with mock.patch.object(service, 'remote_execution_pb2_grpc'):
+        yield ExecutionService(server, instances)
 
 
 @pytest.mark.parametrize("skip_cache_lookup", [True, False])
@@ -86,7 +90,7 @@ def test_wrong_execute_instance(instance, context):
     context.set_code.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT)
 
 
-def test_wait_execution(instance, buildgrid, context):
+def test_wait_execution(instance, controller, context):
     action_digest = remote_execution_pb2.Digest()
     action_digest.hash = 'zhora'
 
@@ -95,7 +99,7 @@ def test_wait_execution(instance, buildgrid, context):
 
     request = remote_execution_pb2.WaitExecutionRequest(name="{}/{}".format('', j.name))
 
-    buildgrid._scheduler.jobs[j.name] = j
+    controller.execution_instance._scheduler.jobs[j.name] = j
 
     action_result_any = any_pb2.Any()
     action_result = remote_execution_pb2.ActionResult()
@@ -115,7 +119,7 @@ def test_wait_execution(instance, buildgrid, context):
     assert result.done is True
 
 
-def test_wrong_instance_wait_execution(instance, buildgrid, context):
+def test_wrong_instance_wait_execution(instance, context):
     request = remote_execution_pb2.WaitExecutionRequest(name="blade")
     next(instance.WaitExecution(request, context))
 

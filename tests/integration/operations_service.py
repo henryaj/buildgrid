@@ -19,21 +19,22 @@
 
 from unittest import mock
 
+from google.protobuf import any_pb2
 import grpc
 from grpc._server import _Context
 import pytest
 
-from google.protobuf import any_pb2
-
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 
-from buildgrid.server.instance import BuildGridInstance
+from buildgrid.server.controller import ExecutionController
 from buildgrid.server._exceptions import InvalidArgumentError
 
+from buildgrid.server.operations import service
 from buildgrid.server.operations.service import OperationsService
 
 
+server = mock.create_autospec(grpc.server)
 instance_name = "blade"
 
 
@@ -55,21 +56,22 @@ def execute_request():
 
 
 @pytest.fixture
-def buildgrid():
-    yield BuildGridInstance()
+def controller():
+    yield ExecutionController()
 
 
 # Instance to test
 @pytest.fixture
-def instance(buildgrid):
-    instances = {instance_name: buildgrid}
-    yield OperationsService(instances)
+def instance(controller):
+    instances = {instance_name: controller.operations_instance}
+    with mock.patch.object(service, 'operations_pb2_grpc'):
+        yield OperationsService(server, instances)
 
 
 # Queue an execution, get operation corresponding to that request
-def test_get_operation(instance, buildgrid, execute_request, context):
-    response_execute = buildgrid.execute(execute_request.action_digest,
-                                         execute_request.skip_cache_lookup)
+def test_get_operation(instance, controller, execute_request, context):
+    response_execute = controller.execution_instance.execute(execute_request.action_digest,
+                                                             execute_request.skip_cache_lookup)
 
     request = operations_pb2.GetOperationRequest()
 
@@ -94,9 +96,9 @@ def test_get_operation_instance_fail(instance, context):
     context.set_code.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT)
 
 
-def test_list_operations(instance, buildgrid, execute_request, context):
-    response_execute = buildgrid.execute(execute_request.action_digest,
-                                         execute_request.skip_cache_lookup)
+def test_list_operations(instance, controller, execute_request, context):
+    response_execute = controller.execution_instance.execute(execute_request.action_digest,
+                                                             execute_request.skip_cache_lookup)
 
     request = operations_pb2.ListOperationsRequest(name=instance_name)
     response = instance.ListOperations(request, context)
@@ -104,9 +106,9 @@ def test_list_operations(instance, buildgrid, execute_request, context):
     assert response.operations[0].name.split('/')[-1] == response_execute.name
 
 
-def test_list_operations_instance_fail(instance, buildgrid, execute_request, context):
-    buildgrid.execute(execute_request.action_digest,
-                      execute_request.skip_cache_lookup)
+def test_list_operations_instance_fail(instance, controller, execute_request, context):
+    controller.execution_instance.execute(execute_request.action_digest,
+                                          execute_request.skip_cache_lookup)
 
     request = operations_pb2.ListOperationsRequest()
     instance.ListOperations(request, context)
@@ -114,16 +116,16 @@ def test_list_operations_instance_fail(instance, buildgrid, execute_request, con
     context.set_code.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT)
 
 
-def test_list_operations_with_result(instance, buildgrid, execute_request, context):
-    response_execute = buildgrid.execute(execute_request.action_digest,
-                                         execute_request.skip_cache_lookup)
+def test_list_operations_with_result(instance, controller, execute_request, context):
+    response_execute = controller.execution_instance.execute(execute_request.action_digest,
+                                                             execute_request.skip_cache_lookup)
 
     action_result = remote_execution_pb2.ActionResult()
     output_file = remote_execution_pb2.OutputFile(path='unicorn')
     action_result.output_files.extend([output_file])
 
-    buildgrid._scheduler.job_complete(response_execute.name,
-                                      _pack_any(action_result))
+    controller.operations_instance._scheduler.job_complete(response_execute.name,
+                                                           _pack_any(action_result))
 
     request = operations_pb2.ListOperationsRequest(name=instance_name)
     response = instance.ListOperations(request, context)
@@ -144,9 +146,9 @@ def test_list_operations_empty(instance, context):
 
 
 # Send execution off, delete, try to find operation should fail
-def test_delete_operation(instance, buildgrid, execute_request, context):
-    response_execute = buildgrid.execute(execute_request.action_digest,
-                                         execute_request.skip_cache_lookup)
+def test_delete_operation(instance, controller, execute_request, context):
+    response_execute = controller.execution_instance.execute(execute_request.action_digest,
+                                                             execute_request.skip_cache_lookup)
     request = operations_pb2.DeleteOperationRequest()
     request.name = "{}/{}".format(instance_name, response_execute.name)
     instance.DeleteOperation(request, context)
@@ -155,7 +157,7 @@ def test_delete_operation(instance, buildgrid, execute_request, context):
     request.name = "{}/{}".format(instance_name, response_execute.name)
 
     with pytest.raises(InvalidArgumentError):
-        buildgrid.get_operation(response_execute.name)
+        controller.operations_instance.get_operation(response_execute.name)
 
 
 def test_delete_operation_fail(instance, context):
