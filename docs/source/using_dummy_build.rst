@@ -1,4 +1,3 @@
-
 .. _dummy-build:
 
 Dummy build
@@ -8,7 +7,7 @@ In one terminal, start a server:
 
 .. code-block:: sh
 
-   bgd server start --allow-insecure
+   bgd server start buildgrid/_app/settings/default.yml
 
 In another terminal, send a request for work:
 
