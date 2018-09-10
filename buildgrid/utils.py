@@ -145,6 +145,120 @@ def file_maker(file_path, file_digest):
                                          is_executable=os.access(file_path, os.X_OK))
 
 
+def directory_maker(directory_path, child_directories=None, cas=None, upload_directories=True):
+    """Creates a :obj:`Directory` from a local directory and possibly upload it.
+
+    Args:
+        directory_path (str): absolute or relative path to a local directory.
+        child_directories (list): output list of of children :obj:`Directory`
+            objects.
+        cas (:obj:`Uploader`): a CAS client uploader.
+        upload_directories (bool): wheter or not to upload the :obj:`Directory`
+            objects along with the files.
+
+    Returns:
+        :obj:`Directory`, :obj:`Digest`: Tuple of a new gRPC :obj:`Directory`
+        for the local directory pointed by `directory_path` and the digest
+        for that object.
+    """
+    if not os.path.isabs(directory_path):
+        directory_path = os.path.abspath(directory_path)
+
+    files, directories, symlinks = list(), list(), list()
+    for directory_entry in os.scandir(directory_path):
+        # Create a FileNode and corresponding BatchUpdateBlobsRequest:
+        if directory_entry.is_file(follow_symlinks=False):
+            if cas is not None:
+                node_digest = cas.upload_file(directory_entry.path)
+            else:
+                node_digest = create_digest(read_file(directory_entry.path))
+
+            node = remote_execution_pb2.FileNode()
+            node.name = directory_entry.name
+            node.digest.CopyFrom(node_digest)
+            node.is_executable = os.access(directory_entry.path, os.X_OK)
+
+            files.append(node)
+
+        # Create a DirectoryNode and corresponding BatchUpdateBlobsRequest:
+        elif directory_entry.is_dir(follow_symlinks=False):
+            _, node_digest = directory_maker(directory_entry.path,
+                                             child_directories=child_directories,
+                                             upload_directories=upload_directories,
+                                             cas=cas)
+
+            node = remote_execution_pb2.DirectoryNode()
+            node.name = directory_entry.name
+            node.digest.CopyFrom(node_digest)
+
+            directories.append(node)
+
+        # Create a SymlinkNode if necessary;
+        elif os.path.islink(directory_entry.path):
+            node_target = os.readlink(directory_entry.path)
+
+            node = remote_execution_pb2.SymlinkNode()
+            node.name = directory_entry.name
+            node.target = node_target
+
+            symlinks.append(node)
+
+    files.sort(key=attrgetter('name'))
+    directories.sort(key=attrgetter('name'))
+    symlinks.sort(key=attrgetter('name'))
+
+    directory = remote_execution_pb2.Directory()
+    directory.files.extend(files)
+    directory.directories.extend(directories)
+    directory.symlinks.extend(symlinks)
+
+    if child_directories is not None:
+        child_directories.append(directory)
+
+    if cas is not None and upload_directories:
+        directory_digest = cas.upload_directory(directory)
+    else:
+        directory_digest = create_digest(directory.SerializeToString())
+
+    return directory, directory_digest
+
+
+def tree_maker(directory_path, cas=None):
+    """Creates a :obj:`Tree` from a local directory and possibly upload it.
+
+    If `cas` is specified, the local directory content will be uploded/stored
+    in remote CAS (the :obj:`Tree` message won't).
+
+    Args:
+        directory_path (str): absolute or relative path to a local directory.
+        cas (:obj:`Uploader`): a CAS client uploader.
+
+    Returns:
+        :obj:`Tree`, :obj:`Digest`: Tuple of a new gRPC :obj:`Tree` for the
+        local directory pointed by `directory_path` and the digest for that
+        object.
+    """
+    if not os.path.isabs(directory_path):
+        directory_path = os.path.abspath(directory_path)
+
+    child_directories = list()
+    directory, _ = directory_maker(directory_path,
+                                   child_directories=child_directories,
+                                   upload_directories=False,
+                                   cas=cas)
+
+    tree = remote_execution_pb2.Tree()
+    tree.children.extend(child_directories)
+    tree.root.CopyFrom(directory)
+
+    if cas is not None:
+        tree_digest = cas.send_message(tree)
+    else:
+        tree_digest = create_digest(tree.SerializeToString())
+
+    return tree, tree_digest
+
+
 def read_file(file_path):
     """Loads raw file content in memory.
 
@@ -196,3 +310,35 @@ def output_file_maker(file_path, input_path, cas=None):
     output_file.is_executable = os.access(file_path, os.X_OK)
 
     return output_file
+
+
+def output_directory_maker(directory_path, working_path, cas=None):
+    """Creates an :obj:`OutputDirectory` from a local directory.
+
+    If `cas` is specified, the local directory content will be uploded/stored
+    in remote CAS (the :obj:`OutputDirectory` message won't).
+
+    Note:
+        `directory_path` **must** point inside or be relative to `input_path`.
+
+    Args:
+        directory_path (str): absolute or relative path to a local directory.
+        working_path (str): absolute or relative path to the working directory.
+        cas (:obj:`Uploader`): a CAS client uploader.
+
+    Returns:
+        :obj:`OutputDirectory`: a new gRPC :obj:`OutputDirectory` for the
+        directory pointed by `directory_path`.
+    """
+    if not os.path.isabs(directory_path):
+        directory_path = os.path.abspath(directory_path)
+    if not os.path.isabs(working_path):
+        working_path = os.path.abspath(working_path)
+
+    _, tree_digest = tree_maker(directory_path, cas=cas)
+
+    output_directory = remote_execution_pb2.OutputDirectory()
+    output_directory.tree_digest.CopyFrom(tree_digest)
+    output_directory.path = os.path.relpath(directory_path, start=working_path)
+
+    return output_directory
