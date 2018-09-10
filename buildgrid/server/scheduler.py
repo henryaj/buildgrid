@@ -82,13 +82,10 @@ class Scheduler:
                 job.n_tries += 1
                 self.queue.appendleft(job)
 
-            self.jobs[name] = job
-
     def job_complete(self, name, result):
         job = self.jobs[name]
         job.result = result
         job.update_execute_stage(ExecuteStage.COMPLETED)
-        self.jobs[name] = job
         if not job.do_not_cache and self._action_cache is not None:
             self._action_cache.update_action_result(job.action_digest, result)
 
@@ -101,7 +98,6 @@ class Scheduler:
     def update_job_lease_state(self, name, state):
         job = self.jobs[name]
         job.lease.state = state
-        self.jobs[name] = job
 
     def get_job_lease(self, name):
         return self.jobs[name].lease
@@ -118,5 +114,4 @@ class Scheduler:
             job.update_execute_stage(ExecuteStage.EXECUTING)
             job.lease = job.create_lease()
             job.lease.state = LeaseState.PENDING.value
-            self.jobs[job.name] = job
             yield job.lease
