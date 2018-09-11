@@ -19,10 +19,8 @@ import tempfile
 
 from google.protobuf import any_pb2
 
-from buildgrid.client.cas import upload
+from buildgrid.client.cas import download, upload
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
-from buildgrid._protos.google.bytestream import bytestream_pb2_grpc
-from buildgrid.utils import write_fetch_directory, parse_to_pb2_from_fetch
 from buildgrid.utils import output_file_maker, output_directory_maker
 
 
@@ -30,29 +28,30 @@ def work_temp_directory(context, lease):
     """Executes a lease for a build action, using host tools.
     """
 
-    stub_bytestream = bytestream_pb2_grpc.ByteStreamStub(context.cas_channel)
     instance_name = context.parent
     logger = context.logger
 
     action_digest = remote_execution_pb2.Digest()
     lease.payload.Unpack(action_digest)
 
-    action = parse_to_pb2_from_fetch(remote_execution_pb2.Action(),
-                                     stub_bytestream, action_digest, instance_name)
-
     with tempfile.TemporaryDirectory() as temp_directory:
-        command = parse_to_pb2_from_fetch(remote_execution_pb2.Command(),
-                                          stub_bytestream, action.command_digest, instance_name)
+        with download(context.cas_channel, instance=instance_name) as downloader:
+            action = downloader.get_message(action_digest,
+                                            remote_execution_pb2.Action())
 
-        write_fetch_directory(temp_directory, stub_bytestream,
-                              action.input_root_digest, instance_name)
+            assert action.command_digest.hash
+
+            command = downloader.get_message(action.command_digest,
+                                             remote_execution_pb2.Command())
+
+            downloader.download_directory(action.input_root_digest, temp_directory)
 
         environment = os.environ.copy()
         for variable in command.environment_variables:
             if variable.name not in ['PATH', 'PWD']:
                 environment[variable.name] = variable.value
 
-        command_line = list()
+        command_line = []
         for argument in command.arguments:
             command_line.append(argument.strip())
 
