@@ -19,32 +19,34 @@ import tempfile
 
 from google.protobuf import any_pb2
 
-from buildgrid.settings import HASH_LENGTH
-from buildgrid.client.cas import upload
-from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
-from buildgrid._protos.google.bytestream import bytestream_pb2_grpc
+from buildgrid.client.cas import download, upload
 from buildgrid._exceptions import BotError
-from buildgrid.utils import read_file, write_file, parse_to_pb2_from_fetch
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
+from buildgrid.settings import HASH_LENGTH
+from buildgrid.utils import read_file, write_file
 
 
 def work_buildbox(context, lease):
     """Executes a lease for a build action, using buildbox.
     """
 
-    stub_bytestream = bytestream_pb2_grpc.ByteStreamStub(context.cas_channel)
     local_cas_directory = context.local_cas
+    # instance_name = context.parent
     logger = context.logger
 
     action_digest = remote_execution_pb2.Digest()
     lease.payload.Unpack(action_digest)
 
-    action = parse_to_pb2_from_fetch(remote_execution_pb2.Action(),
-                                     stub_bytestream, action_digest)
+    with download(context.cas_channel) as downloader:
+        action = downloader.get_message(action_digest,
+                                        remote_execution_pb2.Action())
 
-    command = parse_to_pb2_from_fetch(remote_execution_pb2.Command(),
-                                      stub_bytestream, action.command_digest)
+        assert action.command_digest.hash
 
-    environment = dict()
+        command = downloader.get_message(action.command_digest,
+                                         remote_execution_pb2.Command())
+
+    environment = {}
     for variable in command.environment_variables:
         if variable.name not in ['PWD']:
             environment[variable.name] = variable.value
@@ -116,10 +118,11 @@ def work_buildbox(context, lease):
 
             # TODO: Have BuildBox helping us creating the Tree instance here
             # See https://gitlab.com/BuildStream/buildbox/issues/7 for details
-            output_tree = _cas_tree_maker(stub_bytestream, output_digest)
+            with download(context.cas_channel) as downloader:
+                output_tree = _cas_tree_maker(downloader, output_digest)
 
-            with upload(context.cas_channel) as cas:
-                output_tree_digest = cas.put_message(output_tree)
+            with upload(context.cas_channel) as uploader:
+                output_tree_digest = uploader.put_message(output_tree)
 
             output_directory = remote_execution_pb2.OutputDirectory()
             output_directory.tree_digest.CopyFrom(output_tree_digest)
@@ -135,24 +138,28 @@ def work_buildbox(context, lease):
     return lease
 
 
-def _cas_tree_maker(stub_bytestream, directory_digest):
+def _cas_tree_maker(cas, directory_digest):
     # Generates and stores a Tree for a given Directory. This is very inefficient
     # and only temporary. See https://gitlab.com/BuildStream/buildbox/issues/7.
     output_tree = remote_execution_pb2.Tree()
 
-    def list_directories(parent_directory):
-        directory_list = list()
+    def __cas_tree_maker(cas, parent_directory):
+        digests, directories = [], []
         for directory_node in parent_directory.directories:
-            directory = parse_to_pb2_from_fetch(remote_execution_pb2.Directory(),
-                                                stub_bytestream, directory_node.digest)
-            directory_list.extend(list_directories(directory))
-            directory_list.append(directory)
+            directories.append(remote_execution_pb2.Directory())
+            digests.append(directory_node.digest)
 
-        return directory_list
+        cas.get_messages(digests, directories)
 
-    root_directory = parse_to_pb2_from_fetch(remote_execution_pb2.Directory(),
-                                             stub_bytestream, directory_digest)
-    output_tree.children.extend(list_directories(root_directory))
+        for directory in directories[:]:
+            directories.extend(__cas_tree_maker(cas, directory))
+
+        return directories
+
+    root_directory = cas.get_message(directory_digest,
+                                     remote_execution_pb2.Directory())
+
+    output_tree.children.extend(__cas_tree_maker(cas, root_directory))
     output_tree.root.CopyFrom(root_directory)
 
     return output_tree
