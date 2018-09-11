@@ -119,7 +119,7 @@ def work_buildbox(context, lease):
             output_tree = _cas_tree_maker(stub_bytestream, output_digest)
 
             with upload(context.cas_channel) as cas:
-                output_tree_digest = cas.send_message(output_tree)
+                output_tree_digest = cas.put_message(output_tree)
 
             output_directory = remote_execution_pb2.OutputDirectory()
             output_directory.tree_digest.CopyFrom(output_tree_digest)

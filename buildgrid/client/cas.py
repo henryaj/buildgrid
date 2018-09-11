@@ -126,8 +126,10 @@ class Uploader:
         else:
             return self._queue_blob(directory.SerializeToString())
 
-    def send_message(self, message):
+    def put_message(self, message):
         """Stores a message into the remote CAS storage.
+
+        Message is send immediately, upload is never be deferred.
 
         Args:
             message (:obj:`Message`): a protobuf message object.

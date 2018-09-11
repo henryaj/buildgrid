@@ -280,8 +280,10 @@ def tree_maker(directory_path, cas=None):
     tree.children.extend(child_directories)
     tree.root.CopyFrom(directory)
 
+    # Ensure that we've uploded the tree structure first
     if cas is not None:
-        tree_digest = cas.send_message(tree)
+        cas.flush()
+        tree_digest = cas.put_message(tree)
     else:
         tree_digest = create_digest(tree.SerializeToString())
 
