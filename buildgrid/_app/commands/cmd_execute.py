@@ -60,8 +60,7 @@ def cli(context, remote, instance_name, client_key, client_cert, server_cert):
     else:
         credentials = context.load_client_credentials(client_key, client_cert, server_cert)
         if not credentials:
-            click.echo("ERROR: no TLS keys were specified and no defaults could be found.\n" +
-                       "Use `insecure-mode: false` in order to deactivate TLS encryption.\n", err=True)
+            click.echo("ERROR: no TLS keys were specified and no defaults could be found.", err=True)
             sys.exit(-1)
 
         context.channel = grpc.secure_channel(context.remote, credentials)
@@ -96,37 +95,6 @@ def request_dummy(context, number, wait_for_completion):
                 context.logger.info(stream)
         else:
             context.logger.info(next(response))
-
-
-@cli.command('status', short_help="Get the status of an operation.")
-@click.argument('operation-name', nargs=1, type=click.STRING, required=True)
-@pass_context
-def operation_status(context, operation_name):
-    context.logger.info("Getting operation status...")
-    stub = operations_pb2_grpc.OperationsStub(context.channel)
-
-    request = operations_pb2.GetOperationRequest(name=operation_name)
-
-    response = stub.GetOperation(request)
-    context.logger.info(response)
-
-
-@cli.command('list', short_help="List operations.")
-@pass_context
-def list_operations(context):
-    context.logger.info("Getting list of operations")
-    stub = operations_pb2_grpc.OperationsStub(context.channel)
-
-    request = operations_pb2.ListOperationsRequest(name=context.instance_name)
-
-    response = stub.ListOperations(request)
-
-    if not response.operations:
-        context.logger.warning("No operations to list")
-        return
-
-    for op in response.operations:
-        context.logger.info(op)
 
 
 @cli.command('wait', short_help="Streams an operation until it is complete.")
