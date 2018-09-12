@@ -23,6 +23,8 @@ Forwwards storage requests to a remote storage.
 import io
 import logging
 
+import grpc
+
 from buildgrid.utils import gen_fetch_blob, gen_write_request_blob
 from buildgrid._protos.google.bytestream import bytestream_pb2_grpc
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
@@ -44,18 +46,29 @@ class RemoteStorage(StorageABC):
         return False
 
     def get_blob(self, digest):
-        fetched_data = io.BytesIO()
-        length = 0
-        for data in gen_fetch_blob(self._stub_bs, digest, self._instance_name):
-            length += fetched_data.write(data)
+        try:
+            fetched_data = io.BytesIO()
+            length = 0
 
-        if length:
-            assert digest.size_bytes == length
-            fetched_data.seek(0)
-            return fetched_data
+            for data in gen_fetch_blob(self._stub_bs, digest, self._instance_name):
+                length += fetched_data.write(data)
 
-        else:
-            return None
+            if length:
+                assert digest.size_bytes == length
+                fetched_data.seek(0)
+                return fetched_data
+
+            else:
+                return None
+
+        except grpc.RpcError as e:
+            if e.code() == grpc.StatusCode.NOT_FOUND:
+                pass
+            else:
+                self.logger.error(e.details())
+                raise
+
+        return None
 
     def begin_write(self, digest):
         return io.BytesIO(digest.SerializeToString())
