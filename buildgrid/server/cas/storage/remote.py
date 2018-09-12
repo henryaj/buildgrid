@@ -32,7 +32,7 @@ from .storage_abc import StorageABC
 
 class RemoteStorage(StorageABC):
 
-    def __init__(self, channel, instance_name=""):
+    def __init__(self, channel, instance_name):
         self.logger = logging.getLogger(__name__)
         self._instance_name = instance_name
         self._stub_bs = bytestream_pb2_grpc.ByteStreamStub(channel)

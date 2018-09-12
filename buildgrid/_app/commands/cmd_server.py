@@ -73,6 +73,7 @@ def start(context, config):
     operations_instances = {}
 
     # TODO: map properly in parser
+    # Issue 82
     for k, v in execution_controllers.items():
         execution_instances[k] = v.execution_instance
         bots_interfaces[k] = v.bots_interface

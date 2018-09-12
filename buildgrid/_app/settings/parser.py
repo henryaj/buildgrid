@@ -14,7 +14,11 @@
 
 
 import os
+import sys
+from urllib.parse import urlparse
 
+import click
+import grpc
 import yaml
 
 from buildgrid.server.controller import ExecutionController
@@ -22,8 +26,11 @@ from buildgrid.server.actioncache.storage import ActionCache
 from buildgrid.server.cas.instance import ByteStreamInstance, ContentAddressableStorageInstance
 from buildgrid.server.cas.storage.disk import DiskStorage
 from buildgrid.server.cas.storage.lru_memory_cache import LRUMemoryCache
+from buildgrid.server.cas.storage.remote import RemoteStorage
 from buildgrid.server.cas.storage.s3 import S3Storage
 from buildgrid.server.cas.storage.with_cache import WithCacheStorage
+
+from ..cli import Context
 
 
 class YamlFactory(yaml.YAMLObject):
@@ -56,6 +63,47 @@ class S3(YamlFactory):
 
     def __new__(cls, bucket, endpoint):
         return S3Storage(bucket, endpoint_url=endpoint)
+
+
+class Remote(YamlFactory):
+
+    yaml_tag = u'!remote-storage'
+
+    def __new__(cls, url, instance_name, credentials=None):
+        # TODO: Context could be passed into the parser.
+        # Also find way to get instance_name from parent
+        # Issue 82
+        context = Context()
+
+        url = urlparse(url)
+        remote = '{}:{}'.format(url.hostname, url.port or 50051)
+
+        channel = None
+        if url.scheme == 'http':
+            channel = grpc.insecure_channel(remote)
+
+        else:
+            if not credentials:
+                click.echo("ERROR: no TLS keys were specified and no defaults could be found.\n" +
+                           "Set remote url scheme to `http` in order to deactivate" +
+                           "TLS encryption.\n", err=True)
+                sys.exit(-1)
+
+            client_key = credentials['tls-client-key']
+            client_cert = credentials['tls-client-cert']
+            server_cert = credentials['tls-server-cert']
+            credentials = context.load_client_credentials(client_key,
+                                                          client_cert,
+                                                          server_cert)
+            if not credentials:
+                click.echo("ERROR: no TLS keys were specified and no defaults could be found.\n" +
+                           "Set remote url scheme to `http` in order to deactivate" +
+                           "TLS encryption.\n", err=True)
+                sys.exit(-1)
+
+            channel = grpc.secure_channel(remote, credentials)
+
+        return RemoteStorage(channel, instance_name)
 
 
 class WithCache(YamlFactory):
@@ -118,6 +166,7 @@ def get_parser():
     yaml.SafeLoader.add_constructor(Disk.yaml_tag, Disk.from_yaml)
     yaml.SafeLoader.add_constructor(LRU.yaml_tag, LRU.from_yaml)
     yaml.SafeLoader.add_constructor(S3.yaml_tag, S3.from_yaml)
+    yaml.SafeLoader.add_constructor(Remote.yaml_tag, Remote.from_yaml)
     yaml.SafeLoader.add_constructor(WithCache.yaml_tag, WithCache.from_yaml)
     yaml.SafeLoader.add_constructor(CAS.yaml_tag, CAS.from_yaml)
     yaml.SafeLoader.add_constructor(ByteStream.yaml_tag, ByteStream.from_yaml)

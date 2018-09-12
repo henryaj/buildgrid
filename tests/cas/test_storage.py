@@ -98,17 +98,6 @@ def instance(params):
     return {params, MockCASStorage()}
 
 
-@pytest.fixture()
-@mock.patch.object(remote, 'bytestream_pb2_grpc')
-@mock.patch.object(remote, 'remote_execution_pb2_grpc')
-def remote_storage(mock_bs_grpc, mock_re_pb2_grpc):
-    mock_server = MockStubServer()
-    storage = remote.RemoteStorage(instance)
-    storage._stub_bs = mock_server
-    storage._stub_cas = mock_server
-    yield storage
-
-
 # General tests for all storage providers
 
 
@@ -138,7 +127,7 @@ def any_storage(request):
         with mock.patch.object(remote, 'bytestream_pb2_grpc'):
             with mock.patch.object(remote, 'remote_execution_pb2_grpc'):
                 mock_server = MockStubServer()
-                storage = remote.RemoteStorage(instance)
+                storage = remote.RemoteStorage(instance, "")
                 storage._stub_bs = mock_server
                 storage._stub_cas = mock_server
                 yield storage
