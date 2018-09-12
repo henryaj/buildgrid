@@ -1,4 +1,3 @@
-
 .. _internal-client:
 
 Internal client
@@ -19,7 +18,13 @@ In one terminal, start a server:
 
    bgd server start buildgrid/_app/settings/default.yml
 
-In another terminal, send a request for work:
+In another terminal, upload an action to CAS:
+
+.. code-block::sh
+
+   bgd cas upload-dummy
+
+Then send a request for work:
 
 .. code-block:: sh
 
