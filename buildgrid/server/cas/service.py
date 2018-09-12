@@ -89,15 +89,15 @@ class ByteStreamService(bytestream_pb2_grpc.ByteStreamServicer):
             # TODO: Decide on default instance name
             if path[0] == "blobs":
                 if len(path) < 3 or not path[2].isdigit():
-                    raise InvalidArgumentError("Invalid resource name: {}".format(context.resource_name))
+                    raise InvalidArgumentError("Invalid resource name: {}".format(request.resource_name))
                 instance_name = ""
 
             elif path[1] == "blobs":
                 if len(path) < 4 or not path[3].isdigit():
-                    raise InvalidArgumentError("Invalid resource name: {}".format(context.resource_name))
+                    raise InvalidArgumentError("Invalid resource name: {}".format(request.resource_name))
 
             else:
-                raise InvalidArgumentError("Invalid resource name: {}".format(context.resource_name))
+                raise InvalidArgumentError("Invalid resource name: {}".format(request.resource_name))
 
             instance = self._get_instance(instance_name)
             yield from instance.read(path,
@@ -134,15 +134,15 @@ class ByteStreamService(bytestream_pb2_grpc.ByteStreamServicer):
             # TODO: Sort out no instance name
             if path[0] == "uploads":
                 if len(path) < 5 or path[2] != "blobs" or not path[4].isdigit():
-                    raise InvalidArgumentError("Invalid resource name: {}".format(context.resource_name))
+                    raise InvalidArgumentError("Invalid resource name: {}".format(first_request.resource_name))
                 instance_name = ""
 
             elif path[1] == "uploads":
                 if len(path) < 6 or path[3] != "blobs" or not path[5].isdigit():
-                    raise InvalidArgumentError("Invalid resource name: {}".format(context.resource_name))
+                    raise InvalidArgumentError("Invalid resource name: {}".format(first_request.resource_name))
 
             else:
-                raise InvalidArgumentError("Invalid resource name: {}".format(context.resource_name))
+                raise InvalidArgumentError("Invalid resource name: {}".format(first_request.resource_name))
 
             instance = self._get_instance(instance_name)
             return instance.write(requests)
