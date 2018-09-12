@@ -65,6 +65,23 @@ def cli(context, remote, instance_name, client_key, client_cert, server_cert):
     context.logger.debug("Starting for remote {}".format(context.remote))
 
 
+@cli.command('upload-dummy', short_help="Upload a dummy action. Should be used with `execute dummy-request`")
+@pass_context
+def upload_dummy(context):
+    context.logger.info("Uploading dummy action...")
+    action = remote_execution_pb2.Action(do_not_cache=True)
+    action_digest = create_digest(action.SerializeToString())
+
+    request = remote_execution_pb2.BatchUpdateBlobsRequest(instance_name=context.instance_name)
+    request.requests.add(digest=action_digest,
+                         data=action.SerializeToString())
+
+    stub = remote_execution_pb2_grpc.ContentAddressableStorageStub(context.channel)
+    response = stub.BatchUpdateBlobs(request)
+
+    context.logger.info(response)
+
+
 @cli.command('upload-files', short_help="Upload files to the CAS server.")
 @click.argument('files', nargs=-1, type=click.File('rb'), required=True)
 @pass_context

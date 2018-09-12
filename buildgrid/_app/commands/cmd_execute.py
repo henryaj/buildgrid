@@ -76,9 +76,11 @@ def cli(context, remote, instance_name, client_key, client_cert, server_cert):
               help="Stream updates until jobs are completed.")
 @pass_context
 def request_dummy(context, number, wait_for_completion):
-    action_digest = remote_execution_pb2.Digest()
 
     context.logger.info("Sending execution request...")
+    action = remote_execution_pb2.Action(do_not_cache=True)
+    action_digest = create_digest(action.SerializeToString())
+
     stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
 
     request = remote_execution_pb2.ExecuteRequest(instance_name=context.instance_name,
@@ -90,9 +92,18 @@ def request_dummy(context, number, wait_for_completion):
         responses.append(stub.Execute(request))
 
     for response in responses:
+
         if wait_for_completion:
+            result = None
             for stream in response:
-                context.logger.info(stream)
+                result = stream
+                context.logger.info(result)
+
+            if not result.done:
+                click.echo("Result did not return True." +
+                           "Was the action uploaded to CAS?", err=True)
+                sys.exit(-1)
+
         else:
             context.logger.info(next(response))
 
