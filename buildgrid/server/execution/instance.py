@@ -24,12 +24,12 @@ import logging
 from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Action
 
 from ..job import Job
-from .._exceptions import InvalidArgumentError
+from .._exceptions import InvalidArgumentError, FailedPreconditionError
 
 
 class ExecutionInstance:
 
-    def __init__(self, scheduler, storage=None):
+    def __init__(self, scheduler, storage):
         self.logger = logging.getLogger(__name__)
         self._storage = storage
         self._scheduler = scheduler
@@ -43,13 +43,12 @@ class ExecutionInstance:
         this action.
         """
 
-        do_not_cache = False
-        if self._storage is not None:
-            action = self._storage.get_message(action_digest, Action)
-            if action is not None:
-                do_not_cache = action.do_not_cache
+        action = self._storage.get_message(action_digest, Action)
 
-        job = Job(action_digest, do_not_cache, message_queue)
+        if not action:
+            raise FailedPreconditionError("Could not get action from storage.")
+
+        job = Job(action_digest, action.do_not_cache, message_queue)
         self.logger.info("Operation name: [{}]".format(job.name))
 
         self._scheduler.append_job(job, skip_cache_lookup)

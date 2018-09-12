@@ -30,7 +30,7 @@ from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_p
 
 from buildgrid._protos.google.longrunning import operations_pb2
 
-from .._exceptions import InvalidArgumentError
+from .._exceptions import InvalidArgumentError, FailedPreconditionError
 
 
 class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
@@ -61,6 +61,12 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             self.logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            yield operations_pb2.Operation()
+
+        except FailedPreconditionError as e:
+            self.logger.error(e)
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
             yield operations_pb2.Operation()
 
     def WaitExecution(self, request, context):

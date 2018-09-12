@@ -46,3 +46,12 @@ class OutOfRangeError(BgdError):
 
     def __init__(self, message, detail=None, reason=None):
         super().__init__(message, detail=detail, domain=ErrorDomain.SERVER, reason=reason)
+
+
+class FailedPreconditionError(BgdError):
+    """ One or more errors occurred in setting up the action requested, such as a missing input
+    or command or no worker being available. The client may be able to fix the errors and retry.
+    """
+
+    def __init__(self, message, detail=None, reason=None):
+        super().__init__(message, detail=detail, domain=ErrorDomain.SERVER, reason=reason)
