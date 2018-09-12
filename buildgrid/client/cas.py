@@ -28,7 +28,7 @@ def upload(channel, instance=None, u_uid=None):
     try:
         yield uploader
     finally:
-        uploader.flush()
+        uploader.close()
 
 
 class Uploader:
@@ -143,6 +143,18 @@ class Uploader:
         """Ensures any queued request gets sent."""
         if self.__requests:
             self._send_batch()
+
+    def close(self):
+        """Closes the underlying connection stubs.
+
+        Note:
+            This will always send pending requests before closing connections,
+            if any.
+        """
+        self.flush()
+
+        self.__bytestream_stub = None
+        self.__cas_stub = None
 
     def _queue_blob(self, blob):
         """Queues a memory block for later batch upload"""
