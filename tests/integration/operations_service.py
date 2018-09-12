@@ -24,18 +24,21 @@ import grpc
 from grpc._server import _Context
 import pytest
 
-from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
-from buildgrid._protos.google.longrunning import operations_pb2
-
+from buildgrid.utils import create_digest
 from buildgrid.server.controller import ExecutionController
-from buildgrid.server._exceptions import InvalidArgumentError
-
+from buildgrid.server.cas.storage import lru_memory_cache
 from buildgrid.server.operations import service
 from buildgrid.server.operations.service import OperationsService
+from buildgrid.server._exceptions import InvalidArgumentError
+
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
+from buildgrid._protos.google.longrunning import operations_pb2
 
 
 server = mock.create_autospec(grpc.server)
 instance_name = "blade"
+action = remote_execution_pb2.Action(do_not_cache=True)
+action_digest = create_digest(action.SerializeToString())
 
 
 # Can mock this
@@ -47,9 +50,6 @@ def context():
 # Requests to make
 @pytest.fixture
 def execute_request():
-    action_digest = remote_execution_pb2.Digest()
-    action_digest.hash = 'zhora'
-
     yield remote_execution_pb2.ExecuteRequest(instance_name='',
                                               action_digest=action_digest,
                                               skip_cache_lookup=True)
@@ -57,7 +57,11 @@ def execute_request():
 
 @pytest.fixture
 def controller():
-    yield ExecutionController()
+    storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
+    write_session = storage.begin_write(action_digest)
+    storage.commit_write(action_digest, write_session)
+
+    yield ExecutionController(None, storage)
 
 
 # Instance to test

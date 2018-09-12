@@ -28,6 +28,7 @@ import pytest
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 
+from buildgrid.utils import create_digest
 from buildgrid.server import job
 from buildgrid.server.controller import ExecutionController
 from buildgrid.server.cas.storage import lru_memory_cache
@@ -37,6 +38,8 @@ from buildgrid.server.execution.service import ExecutionService
 
 
 server = mock.create_autospec(grpc.server)
+action = remote_execution_pb2.Action(do_not_cache=True)
+action_digest = create_digest(action.SerializeToString())
 
 
 @pytest.fixture
@@ -47,12 +50,16 @@ def context():
 
 @pytest.fixture(params=["action-cache", "no-action-cache"])
 def controller(request):
+    storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
+    write_session = storage.begin_write(action_digest)
+    storage.commit_write(action_digest, write_session)
+
     if request.param == "action-cache":
-        storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
         cache = ActionCache(storage, 50)
         yield ExecutionController(cache, storage)
+
     else:
-        yield ExecutionController()
+        yield ExecutionController(None, storage)
 
 
 # Instance to test
@@ -66,9 +73,6 @@ def instance(controller):
 
 @pytest.mark.parametrize("skip_cache_lookup", [True, False])
 def test_execute(skip_cache_lookup, instance, context):
-    action_digest = remote_execution_pb2.Digest()
-    action_digest.hash = 'zhora'
-
     request = remote_execution_pb2.ExecuteRequest(instance_name='',
                                                   action_digest=action_digest,
                                                   skip_cache_lookup=skip_cache_lookup)
@@ -91,10 +95,16 @@ def test_wrong_execute_instance(instance, context):
     context.set_code.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT)
 
 
-def test_wait_execution(instance, controller, context):
-    action_digest = remote_execution_pb2.Digest()
-    action_digest.hash = 'zhora'
+def test_no_action_digest_in_storage(instance, context):
+    request = remote_execution_pb2.ExecuteRequest(instance_name='',
+                                                  skip_cache_lookup=True)
+    response = instance.Execute(request, context)
 
+    next(response)
+    context.set_code.assert_called_once_with(grpc.StatusCode.FAILED_PRECONDITION)
+
+
+def test_wait_execution(instance, controller, context):
     j = job.Job(action_digest, None)
     j._operation.done = True
 
