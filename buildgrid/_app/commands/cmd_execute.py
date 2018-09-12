@@ -20,7 +20,6 @@ Execute command
 Request work to be executed and monitor status of jobs.
 """
 
-import errno
 import logging
 import os
 import stat
@@ -30,10 +29,9 @@ from urllib.parse import urlparse
 import click
 import grpc
 
-from buildgrid.client.cas import upload
+from buildgrid.client.cas import download, upload
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
-from buildgrid._protos.google.bytestream import bytestream_pb2_grpc
-from buildgrid.utils import create_digest, write_fetch_blob
+from buildgrid.utils import create_digest
 
 from ..cli import pass_context
 
@@ -154,8 +152,6 @@ def run_command(context, input_root, commands, output_file, output_directory):
                                                   skip_cache_lookup=True)
     response = stub.Execute(request)
 
-    stub = bytestream_pb2_grpc.ByteStreamStub(context.channel)
-
     stream = None
     for stream in response:
         context.logger.info(stream)
@@ -163,21 +159,16 @@ def run_command(context, input_root, commands, output_file, output_directory):
     execute_response = remote_execution_pb2.ExecuteResponse()
     stream.response.Unpack(execute_response)
 
-    for output_file_response in execute_response.result.output_files:
-        path = os.path.join(output_directory, output_file_response.path)
+    with download(context.channel, instance=context.instance_name) as downloader:
 
-        if not os.path.exists(os.path.dirname(path)):
+        for output_file_response in execute_response.result.output_files:
+            path = os.path.join(output_directory, output_file_response.path)
 
-            try:
-                os.makedirs(os.path.dirname(path))
+            if not os.path.exists(os.path.dirname(path)):
+                os.makedirs(os.path.dirname(path), exist_ok=True)
 
-            except OSError as exc:
-                if exc.errno != errno.EEXIST:
-                    raise
+            downloader.download_file(output_file_response.digest, path)
 
-        with open(path, 'wb+') as f:
-            write_fetch_blob(f, stub, output_file_response.digest, context.instance_name)
-
-        if output_file_response.path in output_executeables:
-            st = os.stat(path)
-            os.chmod(path, st.st_mode | stat.S_IXUSR)
+            if output_file_response.path in output_executeables:
+                st = os.stat(path)
+                os.chmod(path, st.st_mode | stat.S_IXUSR)
