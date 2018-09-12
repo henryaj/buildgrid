@@ -49,42 +49,48 @@ def start(context, config):
     with open(config) as f:
         settings = parser.get_parser().safe_load(f)
 
-    server_settings = settings['server']
-    insecure_mode = server_settings['insecure-mode']
+    try:
+        server_settings = settings['server']
+        insecure_mode = server_settings['insecure-mode']
 
-    credentials = None
-    if not insecure_mode:
-        server_key = server_settings['tls-server-key']
-        server_cert = server_settings['tls-server-cert']
-        client_certs = server_settings['tls-client-certs']
-        credentials = context.load_server_credentials(server_key, server_cert, client_certs)
+        credentials = None
+        if not insecure_mode:
+            credential_settings = server_settings['credentials']
+            server_key = credential_settings['tls-server-key']
+            server_cert = credential_settings['tls-server-cert']
+            client_certs = credential_settings['tls-client-certs']
+            credentials = context.load_server_credentials(server_key, server_cert, client_certs)
 
-        if not credentials:
-            click.echo("ERROR: no TLS keys were specified and no defaults could be found.\n" +
-                       "Set `insecure-mode: false` in order to deactivate TLS encryption.\n", err=True)
-            sys.exit(-1)
+            if not credentials:
+                click.echo("ERROR: no TLS keys were specified and no defaults could be found.\n" +
+                           "Set `insecure-mode: false` in order to deactivate TLS encryption.\n", err=True)
+                sys.exit(-1)
 
-    instances = settings['instances']
+        port = server_settings['port']
+        instances = settings['instances']
 
-    execution_controllers = _instance_maker(instances, ExecutionController)
+        execution_controllers = _instance_maker(instances, ExecutionController)
 
-    execution_instances = {}
-    bots_interfaces = {}
-    operations_instances = {}
+        execution_instances = {}
+        bots_interfaces = {}
+        operations_instances = {}
 
-    # TODO: map properly in parser
-    # Issue 82
-    for k, v in execution_controllers.items():
-        execution_instances[k] = v.execution_instance
-        bots_interfaces[k] = v.bots_interface
-        operations_instances[k] = v.operations_instance
+        # TODO: map properly in parser
+        # Issue 82
+        for k, v in execution_controllers.items():
+            execution_instances[k] = v.execution_instance
+            bots_interfaces[k] = v.bots_interface
+            operations_instances[k] = v.operations_instance
 
-    reference_caches = _instance_maker(instances, ReferenceCache)
-    action_caches = _instance_maker(instances, ActionCache)
-    cas = _instance_maker(instances, ContentAddressableStorageInstance)
-    bytestreams = _instance_maker(instances, ByteStreamInstance)
+        reference_caches = _instance_maker(instances, ReferenceCache)
+        action_caches = _instance_maker(instances, ActionCache)
+        cas = _instance_maker(instances, ContentAddressableStorageInstance)
+        bytestreams = _instance_maker(instances, ByteStreamInstance)
 
-    port = server_settings['port']
+    except KeyError as e:
+        click.echo("ERROR: Could not parse config: {}.\n".format(str(e)), err=True)
+        sys.exit(-1)
+
     server = BuildGridServer(port=port,
                              credentials=credentials,
                              execution_instances=execution_instances,

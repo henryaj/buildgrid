@@ -1,9 +1,10 @@
 server:
   port: 50051
   insecure-mode: true
-  tls-server-key: null
-  tls-server-cert: null
-  tls-client-certs: null
+  credentials:
+    tls-server-key: null
+    tls-server-cert: null
+    tls-client-certs: null
 
 
 description: |
