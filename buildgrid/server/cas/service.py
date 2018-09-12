@@ -26,11 +26,10 @@ import logging
 
 import grpc
 
+from buildgrid._exceptions import InvalidArgumentError, NotFoundError, OutOfRangeError
 from buildgrid._protos.google.bytestream import bytestream_pb2, bytestream_pb2_grpc
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc
-
-from .._exceptions import InvalidArgumentError, NotFoundError, OutOfRangeError
 
 
 class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressableStorageServicer):

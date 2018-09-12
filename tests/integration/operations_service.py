@@ -24,16 +24,15 @@ import grpc
 from grpc._server import _Context
 import pytest
 
-from buildgrid.utils import create_digest
-from buildgrid.server.controller import ExecutionController
-from buildgrid.server.cas.storage import lru_memory_cache
-from buildgrid.server.operations import service
-from buildgrid.server.operations.service import OperationsService
-from buildgrid.server._exceptions import InvalidArgumentError
-
+from buildgrid._exceptions import InvalidArgumentError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 from buildgrid._protos.google.rpc import status_pb2
+from buildgrid.server.cas.storage import lru_memory_cache
+from buildgrid.server.controller import ExecutionController
+from buildgrid.server.operations import service
+from buildgrid.server.operations.service import OperationsService
+from buildgrid.utils import create_digest
 
 
 server = mock.create_autospec(grpc.server)

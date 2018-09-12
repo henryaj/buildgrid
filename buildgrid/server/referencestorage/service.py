@@ -17,10 +17,9 @@ import logging
 
 import grpc
 
+from buildgrid._exceptions import InvalidArgumentError, NotFoundError
 from buildgrid._protos.buildstream.v2 import buildstream_pb2
 from buildgrid._protos.buildstream.v2 import buildstream_pb2_grpc
-
-from .._exceptions import InvalidArgumentError, NotFoundError
 
 
 class ReferenceStorageService(buildstream_pb2_grpc.ReferenceStorageServicer):

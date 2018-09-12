@@ -23,7 +23,8 @@ Instance of the Remote Workers interface.
 import logging
 import uuid
 
-from .._exceptions import InvalidArgumentError, OutofSyncError
+from buildgrid._exceptions import InvalidArgumentError, OutOfSyncError
+
 from ..job import LeaseState
 
 
@@ -108,7 +109,7 @@ class BotsInterface:
                 # TODO: Lease was rejected
                 raise NotImplementedError("'Not Accepted' is unsupported")
             else:
-                raise OutofSyncError("Server lease: [{}]. Client lease: [{}]".format(server_lease, client_lease))
+                raise OutOfSyncError("Server lease: [{}]. Client lease: [{}]".format(server_lease, client_lease))
 
         elif server_state == LeaseState.ACTIVE:
 
@@ -121,17 +122,17 @@ class BotsInterface:
                 return None
 
             else:
-                raise OutofSyncError("Server lease: [{}]. Client lease: [{}]".format(server_lease, client_lease))
+                raise OutOfSyncError("Server lease: [{}]. Client lease: [{}]".format(server_lease, client_lease))
 
         elif server_state == LeaseState.COMPLETED:
-            raise OutofSyncError("Server lease: [{}]. Client lease: [{}]".format(server_lease, client_lease))
+            raise OutOfSyncError("Server lease: [{}]. Client lease: [{}]".format(server_lease, client_lease))
 
         elif server_state == LeaseState.CANCELLED:
             raise NotImplementedError("Cancelled states not supported yet")
 
         else:
             # Sould never get here
-            raise OutofSyncError("State now allowed: {}".format(server_state))
+            raise OutOfSyncError("State now allowed: {}".format(server_state))
 
         return client_lease
 

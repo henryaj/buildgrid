@@ -24,9 +24,8 @@ For a given key, it
 
 import collections
 
+from buildgrid._exceptions import NotFoundError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
-
-from .._exceptions import NotFoundError
 
 
 class ReferenceCache:

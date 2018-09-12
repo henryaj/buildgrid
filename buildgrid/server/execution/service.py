@@ -26,11 +26,9 @@ from functools import partial
 
 import grpc
 
+from buildgrid._exceptions import FailedPreconditionError, InvalidArgumentError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc
-
 from buildgrid._protos.google.longrunning import operations_pb2
-
-from .._exceptions import InvalidArgumentError, FailedPreconditionError
 
 
 class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):

@@ -19,11 +19,10 @@ Storage Instances
 Instances of CAS and ByteStream
 """
 
+from buildgrid._exceptions import InvalidArgumentError, NotFoundError, OutOfRangeError
 from buildgrid._protos.google.bytestream import bytestream_pb2
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2 as re_pb2
-
-from .._exceptions import InvalidArgumentError, NotFoundError, OutOfRangeError
-from ...settings import HASH
+from buildgrid.settings import HASH
 
 
 class ContentAddressableStorageInstance:

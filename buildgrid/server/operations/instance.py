@@ -21,7 +21,7 @@ An instance of the LongRunningOperations Service.
 
 import logging
 
-from .._exceptions import InvalidArgumentError
+from buildgrid._exceptions import InvalidArgumentError
 
 
 class OperationsInstance:

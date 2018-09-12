@@ -24,10 +24,9 @@ import logging
 
 import grpc
 
+from buildgrid._exceptions import InvalidArgumentError, NotFoundError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc
-
-from .._exceptions import InvalidArgumentError, NotFoundError
 
 
 class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):

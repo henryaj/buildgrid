@@ -50,3 +50,36 @@ class ServerError(BgdError):
 class BotError(BgdError):
     def __init__(self, message, detail=None, reason=None):
         super().__init__(message, detail=detail, domain=ErrorDomain.BOT, reason=reason)
+
+
+class InvalidArgumentError(BgdError):
+    """A bad argument was passed, such as a name which doesn't exist."""
+    def __init__(self, message, detail=None, reason=None):
+        super().__init__(message, detail=detail, domain=ErrorDomain.SERVER, reason=reason)
+
+
+class NotFoundError(BgdError):
+    """Requested resource not found."""
+    def __init__(self, message, detail=None, reason=None):
+        super().__init__(message, detail=detail, domain=ErrorDomain.SERVER, reason=reason)
+
+
+class OutOfSyncError(BgdError):
+    """The worker is out of sync with the server, such as having a differing
+    number of leases."""
+    def __init__(self, message, detail=None, reason=None):
+        super().__init__(message, detail=detail, domain=ErrorDomain.SERVER, reason=reason)
+
+
+class OutOfRangeError(BgdError):
+    """ByteStream service read data out of range."""
+    def __init__(self, message, detail=None, reason=None):
+        super().__init__(message, detail=detail, domain=ErrorDomain.SERVER, reason=reason)
+
+
+class FailedPreconditionError(BgdError):
+    """One or more errors occurred in setting up the action requested, such as
+    a missing input or command or no worker being available. The client may be
+    able to fix the errors and retry."""
+    def __init__(self, message, detail=None, reason=None):
+        super().__init__(message, detail=detail, domain=ErrorDomain.SERVER, reason=reason)

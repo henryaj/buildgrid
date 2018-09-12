@@ -21,10 +21,10 @@ An instance of the Remote Execution Service.
 
 import logging
 
+from buildgrid._exceptions import FailedPreconditionError, InvalidArgumentError
 from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Action
 
 from ..job import Job
-from .._exceptions import InvalidArgumentError, FailedPreconditionError
 
 
 class ExecutionInstance:

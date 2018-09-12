@@ -17,10 +17,10 @@
 
 import pytest
 
+from buildgrid._exceptions import NotFoundError
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid.server.actioncache.storage import ActionCache
 from buildgrid.server.cas.storage import lru_memory_cache
-from buildgrid.server._exceptions import NotFoundError
-from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 
 
 @pytest.fixture
