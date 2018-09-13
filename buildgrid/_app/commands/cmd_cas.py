@@ -21,14 +21,16 @@ Request work to be executed and monitor status of jobs.
 """
 
 import logging
+import os
 import sys
 from urllib.parse import urlparse
 
 import click
 import grpc
 
-from buildgrid.utils import merkle_maker, create_digest
-from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
+from buildgrid.client.cas import upload
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
+from buildgrid.utils import merkle_tree_maker
 
 from ..cli import pass_context
 
@@ -68,56 +70,62 @@ def cli(context, remote, instance_name, client_key, client_cert, server_cert):
 @cli.command('upload-dummy', short_help="Upload a dummy action. Should be used with `execute dummy-request`")
 @pass_context
 def upload_dummy(context):
-    context.logger.info("Uploading dummy action...")
     action = remote_execution_pb2.Action(do_not_cache=True)
-    action_digest = create_digest(action.SerializeToString())
+    with upload(context.channel, instance=context.instance_name) as uploader:
+        action_digest = uploader.put_message(action)
 
-    request = remote_execution_pb2.BatchUpdateBlobsRequest(instance_name=context.instance_name)
-    request.requests.add(digest=action_digest,
-                         data=action.SerializeToString())
-
-    stub = remote_execution_pb2_grpc.ContentAddressableStorageStub(context.channel)
-    response = stub.BatchUpdateBlobs(request)
-
-    context.logger.info(response)
+    if action_digest.ByteSize():
+        click.echo('Success: Pushed digest "{}/{}"'
+                   .format(action_digest.hash, action_digest.size_bytes))
+    else:
+        click.echo("Error: Failed pushing empty message.", err=True)
 
 
 @cli.command('upload-files', short_help="Upload files to the CAS server.")
-@click.argument('files', nargs=-1, type=click.File('rb'), required=True)
+@click.argument('files', nargs=-1, type=click.Path(exists=True, dir_okay=False), required=True)
 @pass_context
 def upload_files(context, files):
-    stub = remote_execution_pb2_grpc.ContentAddressableStorageStub(context.channel)
+    sent_digests, files_map = [], {}
+    with upload(context.channel, instance=context.instance_name) as uploader:
+        for file_path in files:
+            context.logger.debug("Queueing {}".format(file_path))
 
-    requests = []
-    for file in files:
-        chunk = file.read()
-        requests.append(remote_execution_pb2.BatchUpdateBlobsRequest.Request(
-            digest=create_digest(chunk), data=chunk))
+            file_digest = uploader.upload_file(file_path, queue=True)
 
-    request = remote_execution_pb2.BatchUpdateBlobsRequest(instance_name=context.instance_name,
-                                                           requests=requests)
+            files_map[file_digest.hash] = file_path
+            sent_digests.append(file_digest)
 
-    context.logger.info("Sending: {}".format(request))
-    response = stub.BatchUpdateBlobs(request)
-    context.logger.info("Response: {}".format(response))
+    for file_digest in sent_digests:
+        file_path = files_map[file_digest.hash]
+        if os.path.isabs(file_path):
+            file_path = os.path.relpath(file_path)
+        if file_digest.ByteSize():
+            click.echo('Success: Pushed "{}" with digest "{}/{}"'
+                       .format(file_path, file_digest.hash, file_digest.size_bytes))
+        else:
+            click.echo('Error: Failed to push "{}"'.format(file_path), err=True)
 
 
 @cli.command('upload-dir', short_help="Upload a directory to the CAS server.")
-@click.argument('directory', nargs=1, type=click.Path(), required=True)
+@click.argument('directory', nargs=1, type=click.Path(exists=True, file_okay=False), required=True)
 @pass_context
 def upload_dir(context, directory):
-    context.logger.info("Uploading directory to cas")
-    stub = remote_execution_pb2_grpc.ContentAddressableStorageStub(context.channel)
+    sent_digests, nodes_map = [], {}
+    with upload(context.channel, instance=context.instance_name) as uploader:
+        for node, blob, path in merkle_tree_maker(directory):
+            context.logger.debug("Queueing {}".format(path))
 
-    requests = []
+            node_digest = uploader.put_blob(blob, digest=node.digest, queue=True)
 
-    for chunk, file_digest in merkle_maker(directory):
-        requests.append(remote_execution_pb2.BatchUpdateBlobsRequest.Request(
-            digest=file_digest, data=chunk))
+            nodes_map[node.digest.hash] = path
+            sent_digests.append(node_digest)
 
-    request = remote_execution_pb2.BatchUpdateBlobsRequest(instance_name=context.instance_name,
-                                                           requests=requests)
-
-    context.logger.info("Request:\n{}".format(request))
-    response = stub.BatchUpdateBlobs(request)
-    context.logger.info("Response:\n{}".format(response))
+    for node_digest in sent_digests:
+        node_path = nodes_map[node_digest.hash]
+        if os.path.isabs(node_path):
+            node_path = os.path.relpath(node_path, start=directory)
+        if node_digest.ByteSize():
+            click.echo('Success: Pushed "{}" with digest "{}/{}"'
+                       .format(node_path, node_digest.hash, node_digest.size_bytes))
+        else:
+            click.echo('Error: Failed to push "{}"'.format(node_path), err=True)
