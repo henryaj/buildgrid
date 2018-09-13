@@ -25,9 +25,13 @@ import logging
 
 import grpc
 
-from buildgrid.utils import gen_fetch_blob, gen_write_request_blob
+from buildgrid.client.cas import upload
 from buildgrid._protos.google.bytestream import bytestream_pb2_grpc
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
+from buildgrid._protos.google.rpc import code_pb2
+from buildgrid._protos.google.rpc import status_pb2
+from buildgrid.utils import gen_fetch_blob
+from buildgrid.settings import HASH
 
 from .storage_abc import StorageABC
 
@@ -36,7 +40,10 @@ class RemoteStorage(StorageABC):
 
     def __init__(self, channel, instance_name):
         self.logger = logging.getLogger(__name__)
-        self._instance_name = instance_name
+
+        self.instance_name = instance_name
+        self.channel = channel
+
         self._stub_bs = bytestream_pb2_grpc.ByteStreamStub(channel)
         self._stub_cas = remote_execution_pb2_grpc.ContentAddressableStorageStub(channel)
 
@@ -50,16 +57,12 @@ class RemoteStorage(StorageABC):
             fetched_data = io.BytesIO()
             length = 0
 
-            for data in gen_fetch_blob(self._stub_bs, digest, self._instance_name):
+            for data in gen_fetch_blob(self._stub_bs, digest, self.instance_name):
                 length += fetched_data.write(data)
 
-            if length:
-                assert digest.size_bytes == length
-                fetched_data.seek(0)
-                return fetched_data
-
-            else:
-                return None
+            assert digest.size_bytes == length
+            fetched_data.seek(0)
+            return fetched_data
 
         except grpc.RpcError as e:
             if e.code() == grpc.StatusCode.NOT_FOUND:
@@ -71,16 +74,14 @@ class RemoteStorage(StorageABC):
         return None
 
     def begin_write(self, digest):
-        return io.BytesIO(digest.SerializeToString())
+        return io.BytesIO()
 
     def commit_write(self, digest, write_session):
-        write_session.seek(0)
-
-        for request in gen_write_request_blob(write_session, digest, self._instance_name):
-            self._stub_bs.Write(request)
+        with upload(self.channel, instance=self.instance_name) as uploader:
+            uploader.put_blob(write_session.getvalue())
 
     def missing_blobs(self, blobs):
-        request = remote_execution_pb2.FindMissingBlobsRequest(instance_name=self._instance_name)
+        request = remote_execution_pb2.FindMissingBlobsRequest(instance_name=self.instance_name)
 
         for blob in blobs:
             request_digest = request.blob_digests.add()
@@ -92,19 +93,15 @@ class RemoteStorage(StorageABC):
         return [x for x in response.missing_blob_digests]
 
     def bulk_update_blobs(self, blobs):
-        request = remote_execution_pb2.BatchUpdateBlobsRequest(instance_name=self._instance_name)
+        sent_digests = []
+        with upload(self.channel, instance=self.instance_name) as uploader:
+            for digest, blob in blobs:
+                if len(blob) != digest.size_bytes or HASH(blob).hexdigest() != digest.hash:
+                    sent_digests.append(remote_execution_pb2.Digest())
+                else:
+                    sent_digests.append(uploader.put_blob(blob, digest=digest, queue=True))
 
-        for digest, data in blobs:
-            reqs = request.requests.add()
-            reqs.digest.CopyFrom(digest)
-            reqs.data = data
+        assert len(sent_digests) == len(blobs)
 
-        response = self._stub_cas.BatchUpdateBlobs(request)
-
-        responses = response.responses
-
-        # Check everything was sent back, even if order changed
-        assert ([x.digest for x in request.requests].sort(key=lambda x: x.hash)) == \
-            ([x.digest for x in responses].sort(key=lambda x: x.hash))
-
-        return [x.status for x in responses]
+        return [status_pb2.Status(code=code_pb2.OK) if d.ByteSize() > 0
+                else status_pb2.Status(code=code_pb2.UNKNOWN) for d in sent_digests]
