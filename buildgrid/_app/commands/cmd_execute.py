@@ -30,9 +30,10 @@ from urllib.parse import urlparse
 import click
 import grpc
 
-from buildgrid.utils import merkle_maker, create_digest, write_fetch_blob
+from buildgrid.client.cas import upload
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
 from buildgrid._protos.google.bytestream import bytestream_pb2_grpc
+from buildgrid.utils import create_digest, write_fetch_blob
 
 from ..cli import pass_context
 
@@ -87,7 +88,7 @@ def request_dummy(context, number, wait_for_completion):
                                                   action_digest=action_digest,
                                                   skip_cache_lookup=True)
 
-    responses = list()
+    responses = []
     for _ in range(0, number):
         responses.append(stub.Execute(request))
 
@@ -116,46 +117,37 @@ def request_dummy(context, number, wait_for_completion):
 @click.argument('input-root', nargs=1, type=click.Path(), required=True)
 @click.argument('commands', nargs=-1, type=click.STRING, required=True)
 @pass_context
-def command(context, input_root, commands, output_file, output_directory):
+def run_command(context, input_root, commands, output_file, output_directory):
     stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
 
-    execute_command = remote_execution_pb2.Command()
-
-    for arg in commands:
-        execute_command.arguments.extend([arg])
-
     output_executeables = []
-    for file, is_executeable in output_file:
-        execute_command.output_files.extend([file])
-        if is_executeable:
-            output_executeables.append(file)
+    with upload(context.channel, instance=context.instance_name) as uploader:
+        command = remote_execution_pb2.Command()
 
-    command_digest = create_digest(execute_command.SerializeToString())
-    context.logger.info(command_digest)
+        for arg in commands:
+            command.arguments.extend([arg])
 
-    # TODO: Check for missing blobs
-    digest = None
-    for _, digest in merkle_maker(input_root):
-        pass
+        for file, is_executeable in output_file:
+            command.output_files.extend([file])
+            if is_executeable:
+                output_executeables.append(file)
 
-    action = remote_execution_pb2.Action(command_digest=command_digest,
-                                         input_root_digest=digest,
-                                         do_not_cache=True)
+        command_digest = uploader.put_message(command, queue=True)
 
-    action_digest = create_digest(action.SerializeToString())
+        context.logger.info('Sent command: {}'.format(command_digest))
 
-    context.logger.info("Sending execution request...")
+        # TODO: Check for missing blobs
+        input_root_digest = uploader.upload_directory(input_root)
 
-    requests = []
-    requests.append(remote_execution_pb2.BatchUpdateBlobsRequest.Request(
-        digest=command_digest, data=execute_command.SerializeToString()))
+        context.logger.info('Sent input: {}'.format(input_root_digest))
 
-    requests.append(remote_execution_pb2.BatchUpdateBlobsRequest.Request(
-        digest=action_digest, data=action.SerializeToString()))
+        action = remote_execution_pb2.Action(command_digest=command_digest,
+                                             input_root_digest=input_root_digest,
+                                             do_not_cache=True)
 
-    request = remote_execution_pb2.BatchUpdateBlobsRequest(instance_name=context.instance_name,
-                                                           requests=requests)
-    remote_execution_pb2_grpc.ContentAddressableStorageStub(context.channel).BatchUpdateBlobs(request)
+        action_digest = uploader.put_message(action, queue=True)
+
+        context.logger.info("Sent action: {}".format(action_digest))
 
     request = remote_execution_pb2.ExecuteRequest(instance_name=context.instance_name,
                                                   action_digest=action_digest,
