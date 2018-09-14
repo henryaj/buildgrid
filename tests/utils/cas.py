@@ -30,6 +30,7 @@ from buildgrid.server.cas.service import ContentAddressableStorageService
 from buildgrid.server.cas.instance import ByteStreamInstance
 from buildgrid.server.cas.instance import ContentAddressableStorageInstance
 from buildgrid.server.cas.storage.disk import DiskStorage
+from buildgrid.utils import create_digest, merkle_tree_maker
 
 
 @contextmanager
@@ -124,6 +125,15 @@ class Server:
     def get(self, digest):
         return self.__storage.get_blob(digest).read()
 
+    def store_blob(self, blob):
+        digest = create_digest(blob)
+        write_buffer = self.__storage.begin_write(digest)
+        write_buffer.write(blob)
+
+        self.__storage.commit_write(digest, write_buffer)
+
+        return digest
+
     def compare_blobs(self, digest, blob):
         if not self.__storage.has_blob(digest):
             return False
@@ -132,6 +142,16 @@ class Server:
         stored_blob = stored_blob.read()
 
         return blob == stored_blob
+
+    def store_message(self, message):
+        message_blob = message.SerializeToString()
+        message_digest = create_digest(message_blob)
+        write_buffer = self.__storage.begin_write(message_digest)
+        write_buffer.write(message_blob)
+
+        self.__storage.commit_write(message_digest, write_buffer)
+
+        return message_digest
 
     def compare_messages(self, digest, message):
         if not self.__storage.has_blob(digest):
@@ -144,6 +164,17 @@ class Server:
 
         return message_blob == stored_blob
 
+    def store_file(self, file_path):
+        with open(file_path, 'rb') as file_bytes:
+            file_blob = file_bytes.read()
+        file_digest = create_digest(file_blob)
+        write_buffer = self.__storage.begin_write(file_digest)
+        write_buffer.write(file_blob)
+
+        self.__storage.commit_write(file_digest, write_buffer)
+
+        return file_digest
+
     def compare_files(self, digest, file_path):
         if not self.__storage.has_blob(digest):
             return False
@@ -155,6 +186,17 @@ class Server:
         stored_blob = stored_blob.read()
 
         return file_blob == stored_blob
+
+    def store_folder(self, folder_path):
+        last_digest = None
+        for node, blob, _ in merkle_tree_maker(folder_path):
+            write_buffer = self.__storage.begin_write(node.digest)
+            write_buffer.write(blob)
+
+            self.__storage.commit_write(node.digest, write_buffer)
+            last_digest = node.digest
+
+        return last_digest
 
     def compare_directories(self, digest, directory_path):
         if not self.__storage.has_blob(digest):
