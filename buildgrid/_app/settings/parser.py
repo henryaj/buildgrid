@@ -23,6 +23,7 @@ import yaml
 
 from buildgrid.server.controller import ExecutionController
 from buildgrid.server.actioncache.storage import ActionCache
+from buildgrid.server.referencestorage.storage import ReferenceCache
 from buildgrid.server.cas.instance import ByteStreamInstance, ContentAddressableStorageInstance
 from buildgrid.server.cas.storage.disk import DiskStorage
 from buildgrid.server.cas.storage.lru_memory_cache import LRUMemoryCache
@@ -126,8 +127,16 @@ class Action(YamlFactory):
 
     yaml_tag = u'!action-cache'
 
-    def __new__(cls, storage, max_cached_refs=0, allow_updates=True):
+    def __new__(cls, storage, max_cached_refs, allow_updates=True):
         return ActionCache(storage, max_cached_refs, allow_updates)
+
+
+class Reference(YamlFactory):
+
+    yaml_tag = u'!reference-cache'
+
+    def __new__(cls, storage, max_cached_refs, allow_updates=True):
+        return ReferenceCache(storage, max_cached_refs, allow_updates)
 
 
 class CAS(YamlFactory):
@@ -161,8 +170,8 @@ def _parse_size(size):
 def get_parser():
 
     yaml.SafeLoader.add_constructor(Execution.yaml_tag, Execution.from_yaml)
-    yaml.SafeLoader.add_constructor(Execution.yaml_tag, Execution.from_yaml)
     yaml.SafeLoader.add_constructor(Action.yaml_tag, Action.from_yaml)
+    yaml.SafeLoader.add_constructor(Reference.yaml_tag, Reference.from_yaml)
     yaml.SafeLoader.add_constructor(Disk.yaml_tag, Disk.from_yaml)
     yaml.SafeLoader.add_constructor(LRU.yaml_tag, LRU.from_yaml)
     yaml.SafeLoader.add_constructor(S3.yaml_tag, S3.from_yaml)

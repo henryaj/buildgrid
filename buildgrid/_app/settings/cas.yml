@@ -7,7 +7,7 @@ server:
     tls-client-certs: null
 
 description: |
-  Just a CAS.
+  Just a CAS with some reference storage.
 
 instances:
   - name: main
@@ -24,3 +24,8 @@ instances:
 
       - !bytestream
         storage: *main-storage
+
+      - !reference-cache
+        storage: *main-storage
+        max_cached_refs: 256
+        allow_updates: true
