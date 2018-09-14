@@ -89,6 +89,7 @@ tests_require = [
     'coverage == 4.4.0',
     'moto',
     'pep8',
+    'psutil',
     'pytest == 3.6.4',
     'pytest-cov >= 2.6.0',
     'pytest-pep8',
