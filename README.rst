@@ -1,25 +1,30 @@
-
 .. _about:
 
-About
-=====
+
 
 .. image:: https://gitlab.com/Buildgrid/buildgrid/badges/master/pipeline.svg
    :target: https://gitlab.com/BuildStream/buildstream/commits/master
 
 .. image:: https://gitlab.com/BuildGrid/buildgrid/badges/master/coverage.svg?job=coverage
    :target: https://buildgrid.gitlab.io/buildgrid/coverage
+   
+About BuildGrid
+===============
+
+What is BuildGrid?
+------------------
 
 BuildGrid is a Python remote execution service which implements Google's
 `Remote Execution API`_ and the `Remote Workers API`_. The project's goal is to
 be able to execute build jobs remotely on a grid of computers in order to
 massively speed up build times. Workers on the grid should be able to run with
-different environments. It is designed to work with but not exclusively
+different environments. It is designed to work with clients such as `Bazel`_ and 
 `BuildStream`_.
 
 .. _Remote Execution API: https://github.com/bazelbuild/remote-apis
 .. _Remote Workers API: https://docs.google.com/document/d/1s_AzRRD2mdyktKUj2HWBn99rMg_3tcPvdjx3MPbFidU/edit#heading=h.1u2taqr2h940
 .. _BuildStream: https://wiki.gnome.org/Projects/BuildStream
+.. _Bazel: https://bazel.build
 
 
 .. _getting-started:
