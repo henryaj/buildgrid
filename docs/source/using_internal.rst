@@ -1,7 +1,50 @@
+
+.. _internal-builds:
+
+Internal builds
+===============
+
+
+.. _dummy-test:
+
+Dummy test
+----------
+
+In one terminal, start a server:
+
+.. code-block:: sh
+
+   bgd server start buildgrid/_app/settings/default.yml
+
+In another terminal, send a request for work:
+
+.. code-block:: sh
+
+   bgd execute request-dummy
+
+The stage should show as ``QUEUED`` as it awaits a bot to pick up the work:
+
+.. code-block:: sh
+
+   bgd execute list
+
+Create a bot session:
+
+.. code-block:: sh
+
+   bgd bot dummy
+
+Show the work as completed:
+
+.. code-block:: sh
+
+   bgd execute list
+
+
 .. _simple-build:
 
 Simple build
-============
+------------
 
 This example covers a simple build. The user will upload a directory containing
 a C file and a command to the CAS. The bot will then fetch the uploaded
