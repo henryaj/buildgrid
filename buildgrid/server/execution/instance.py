@@ -47,7 +47,7 @@ class ExecutionInstance:
                 do_not_cache = action.do_not_cache
 
         job = Job(action_digest, do_not_cache, message_queue)
-        self.logger.info("Operation name: {}".format(job.name))
+        self.logger.info("Operation name: [{}]".format(job.name))
 
         self._scheduler.append_job(job, skip_cache_lookup)
 
@@ -58,14 +58,14 @@ class ExecutionInstance:
             self._scheduler.register_client(name, queue)
 
         except KeyError:
-            raise InvalidArgumentError("Operation name does not exist: {}".format(name))
+            raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
 
     def unregister_message_client(self, name, queue):
         try:
             self._scheduler.unregister_client(name, queue)
 
         except KeyError:
-            raise InvalidArgumentError("Operation name does not exist: {}".format(name))
+            raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
 
     def stream_operation_updates(self, message_queue, operation_name):
         operation = message_queue.get()

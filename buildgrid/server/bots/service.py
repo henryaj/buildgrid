@@ -90,4 +90,4 @@ class BotsService(bots_pb2_grpc.BotsServicer):
             return self._instances[name]
 
         except KeyError:
-            raise InvalidArgumentError("Instance doesn't exist on server: {}".format(name))
+            raise InvalidArgumentError("Instance doesn't exist on server: [{}]".format(name))

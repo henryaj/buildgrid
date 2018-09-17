@@ -92,4 +92,4 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             return self._instances[name]
 
         except KeyError:
-            raise InvalidArgumentError("Instance doesn't exist on server: {}".format(name))
+            raise InvalidArgumentError("Instance doesn't exist on server: [{}]".format(name))

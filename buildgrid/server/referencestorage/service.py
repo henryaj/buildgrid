@@ -86,4 +86,4 @@ class ReferenceStorageService(buildstream_pb2_grpc.ReferenceStorageServicer):
             return self._instances[instance_name]
 
         except KeyError:
-            raise InvalidArgumentError("Invalid instance name: {}".format(instance_name))
+            raise InvalidArgumentError("Invalid instance name: [{}]".format(instance_name))

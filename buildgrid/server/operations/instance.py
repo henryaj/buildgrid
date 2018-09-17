@@ -34,7 +34,7 @@ class OperationsInstance:
         operation = self._scheduler.jobs.get(name)
 
         if operation is None:
-            raise InvalidArgumentError("Operation name does not exist: {}".format(name))
+            raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
 
         else:
             return operation.get_operation()
@@ -49,21 +49,21 @@ class OperationsInstance:
             self._scheduler.jobs.pop(name)
 
         except KeyError:
-            raise InvalidArgumentError("Operation name does not exist: {}".format(name))
+            raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
 
     def register_message_client(self, name, queue):
         try:
             self._scheduler.register_client(name, queue)
 
         except KeyError:
-            raise InvalidArgumentError("Operation name does not exist: {}".format(name))
+            raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
 
     def unregister_message_client(self, name, queue):
         try:
             self._scheduler.unregister_client(name, queue)
 
         except KeyError:
-            raise InvalidArgumentError("Operation name does not exist: {}".format(name))
+            raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
 
     def stream_operation_updates(self, message_queue, operation_name):
         operation = message_queue.get()

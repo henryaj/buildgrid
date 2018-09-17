@@ -60,7 +60,7 @@ class BotsInterface:
 
         self._bot_ids[name] = bot_id
         self._bot_sessions[name] = bot_session
-        self.logger.info("Created bot session name={} with bot_id={}".format(name, bot_id))
+        self.logger.info("Created bot session name=[{}] with bot_id=[{}]".format(name, bot_id))
 
         for lease in self._scheduler.create_leases():
             bot_session.leases.extend([lease])
@@ -92,7 +92,7 @@ class BotsInterface:
         try:
             server_lease = self._scheduler.get_job_lease(client_lease.id)
         except KeyError:
-            raise InvalidArgumentError("Lease not found on server: {}".format(client_lease))
+            raise InvalidArgumentError("Lease not found on server: [{}]".format(client_lease))
 
         server_state = LeaseState(server_lease.state)
         client_state = LeaseState(client_lease.state)
@@ -105,7 +105,7 @@ class BotsInterface:
                 # TODO: Lease was rejected
                 raise NotImplementedError("'Not Accepted' is unsupported")
             else:
-                raise OutofSyncError("Server lease: {}. Client lease: {}".format(server_lease, client_lease))
+                raise OutofSyncError("Server lease: [{}]. Client lease: [{}]".format(server_lease, client_lease))
 
         elif server_state == LeaseState.ACTIVE:
 
@@ -118,10 +118,10 @@ class BotsInterface:
                 return None
 
             else:
-                raise OutofSyncError("Server lease: {}. Client lease: {}".format(server_lease, client_lease))
+                raise OutofSyncError("Server lease: [{}]. Client lease: [{}]".format(server_lease, client_lease))
 
         elif server_state == LeaseState.COMPLETED:
-            raise OutofSyncError("Server lease: {}. Client lease: {}".format(server_lease, client_lease))
+            raise OutofSyncError("Server lease: [{}]. Client lease: [{}]".format(server_lease, client_lease))
 
         elif server_state == LeaseState.CANCELLED:
             raise NotImplementedError("Cancelled states not supported yet")
@@ -138,19 +138,19 @@ class BotsInterface:
         if name is not None:
             _bot_id = self._bot_ids.get(name)
             if _bot_id is None:
-                raise InvalidArgumentError('Name not registered on server: {}'.format(name))
+                raise InvalidArgumentError('Name not registered on server: [{}]'.format(name))
             elif _bot_id != bot_id:
                 self._close_bot_session(name)
                 raise InvalidArgumentError(
-                    'Bot id invalid. ID sent: {} with name: {}.'
-                    'ID registered: {} for that name'.format(bot_id, name, _bot_id))
+                    'Bot id invalid. ID sent: [{}] with name: [{}].'
+                    'ID registered: [{}] for that name'.format(bot_id, name, _bot_id))
         else:
             for _name, _bot_id in self._bot_ids.items():
                 if bot_id == _bot_id:
                     self._close_bot_session(_name)
                     raise InvalidArgumentError(
-                        'Bot id already registered. ID sent: {}.'
-                        'Id registered: {} with name: {}'.format(bot_id, _bot_id, _name))
+                        'Bot id already registered. ID sent: [{}].'
+                        'Id registered: [{}] with name: [{}]'.format(bot_id, _bot_id, _name))
 
     def _close_bot_session(self, name):
         """ Before removing the session, close any leases and
@@ -159,14 +159,14 @@ class BotsInterface:
         bot_id = self._bot_ids.get(name)
 
         if bot_id is None:
-            raise InvalidArgumentError("Bot id does not exist: {}".format(name))
+            raise InvalidArgumentError("Bot id does not exist: [{}]".format(name))
 
-        self.logger.debug("Attempting to close {} with name: {}".format(bot_id, name))
+        self.logger.debug("Attempting to close [{}] with name: [{}]".format(bot_id, name))
         for lease in self._bot_sessions[name].leases:
             if lease.state != LeaseState.COMPLETED.value:
                 # TODO: Be wary here, may need to handle rejected leases in future
                 self._scheduler.retry_job(lease.id)
 
-        self.logger.debug("Closing bot session: {}".format(name))
+        self.logger.debug("Closing bot session: [{}]".format(name))
         self._bot_ids.pop(name)
-        self.logger.info("Closed bot {} with name: {}".format(bot_id, name))
+        self.logger.info("Closed bot [{}] with name: [{}]".format(bot_id, name))

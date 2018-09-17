@@ -99,13 +99,13 @@ class BotSession:
         session = self._interface.create_bot_session(self._parent, self.get_pb2())
         self._name = session.name
 
-        self.logger.info("Created bot session with name: {}".format(self._name))
+        self.logger.info("Created bot session with name: [{}]".format(self._name))
 
         for lease in session.leases:
             self._update_lease_from_server(lease)
 
     def update_bot_session(self):
-        self.logger.debug("Updating bot session: {}".format(self._bot_id))
+        self.logger.debug("Updating bot session: [{}]".format(self._bot_id))
         session = self._interface.update_bot_session(self.get_pb2())
         for k, v in list(self._leases.items()):
             if v.state == LeaseState.COMPLETED.value:
@@ -141,12 +141,12 @@ class BotSession:
             asyncio.ensure_future(self.create_work(lease))
 
     async def create_work(self, lease):
-        self.logger.debug("Work created: {}".format(lease.id))
+        self.logger.debug("Work created: [{}]".format(lease.id))
 
         loop = asyncio.get_event_loop()
         lease = await loop.run_in_executor(None, self._work, self._context, lease)
 
-        self.logger.debug("Work complete: {}".format(lease.id))
+        self.logger.debug("Work complete: [{}]".format(lease.id))
         self.lease_completed(lease)
 
 
@@ -161,14 +161,14 @@ class Worker:
                 if k == 'pool':
                     self.properties[k] = v
                 else:
-                    raise KeyError('Key not supported: {}'.format(k))
+                    raise KeyError('Key not supported: [{}]'.format(k))
 
         if configs:
             for k, v in configs.items():
                 if k == 'DockerImage':
                     self.configs[k] = v
                 else:
-                    raise KeyError('Key not supported: {}'.format(k))
+                    raise KeyError('Key not supported: [{}]'.format(k))
 
     @property
     def configs(self):
@@ -214,11 +214,11 @@ class Device:
 
                 elif k == 'docker':
                     if v not in ('True', 'False'):
-                        raise ValueError('Value not supported: {}'.format(v))
+                        raise ValueError('Value not supported: [{}]'.format(v))
                     self._properties[k] = v
 
                 else:
-                    raise KeyError('Key not supported: {}'.format(k))
+                    raise KeyError('Key not supported: [{}]'.format(k))
 
     @property
     def name(self):

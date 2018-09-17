@@ -132,4 +132,4 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
             return self._instances[instance_name]
 
         except KeyError:
-            raise InvalidArgumentError("Instance doesn't exist on server: {}".format(name))
+            raise InvalidArgumentError("Instance doesn't exist on server: [{}]".format(name))
