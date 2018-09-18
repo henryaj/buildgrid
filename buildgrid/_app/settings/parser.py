@@ -37,8 +37,35 @@ from ..cli import Context
 class YamlFactory(yaml.YAMLObject):
     @classmethod
     def from_yaml(cls, loader, node):
-        values = loader.construct_mapping(node, deep=True)
-        return cls(**values)
+        if isinstance(node, yaml.ScalarNode):
+            value = loader.construct_scalar(node)
+            return cls(value)
+
+        else:
+            values = loader.construct_mapping(node, deep=True)
+            return cls(**values)
+
+
+class Channel(YamlFactory):
+
+    yaml_tag = u'!channel'
+
+    def __init__(self, port, insecure_mode, credentials=None):
+        self.address = '[::]:{0}'.format(port)
+        self.credentials = None
+
+        context = Context()
+
+        if not insecure_mode:
+            server_key = credentials['tls-server-key']
+            server_cert = credentials['tls-server-cert']
+            client_certs = credentials['tls-client-certs']
+            self.credentials = context.load_server_credentials(server_key, server_cert, client_certs)
+
+            if not credentials:
+                click.echo("ERROR: no TLS keys were specified and no defaults could be found.\n" +
+                           "Set `insecure-mode: false` in order to deactivate TLS encryption.\n", err=True)
+                sys.exit(-1)
 
 
 class Disk(YamlFactory):
@@ -169,6 +196,7 @@ def _parse_size(size):
 
 def get_parser():
 
+    yaml.SafeLoader.add_constructor(Channel.yaml_tag, Channel.from_yaml)
     yaml.SafeLoader.add_constructor(Execution.yaml_tag, Execution.from_yaml)
     yaml.SafeLoader.add_constructor(Action.yaml_tag, Action.from_yaml)
     yaml.SafeLoader.add_constructor(Reference.yaml_tag, Reference.from_yaml)
