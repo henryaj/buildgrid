@@ -44,6 +44,9 @@ class ReferenceCache:
         self._max_cached_refs = max_cached_refs
         self._digest_map = collections.OrderedDict()
 
+    def register_instance_with_server(self, instance_name, server):
+        server.add_reference_storage_instance(self, instance_name)
+
     @property
     def allow_updates(self):
         return self._allow_updates

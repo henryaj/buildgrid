@@ -36,6 +36,9 @@ class BotsInterface:
         self._bot_sessions = {}
         self._scheduler = scheduler
 
+    def register_instance_with_server(self, instance_name, server):
+        server.add_bots_interface(self, instance_name)
+
     def create_bot_session(self, parent, bot_session):
         """ Creates a new bot session. Server should assign a unique
         name to the session. If a bot with the same bot id tries to

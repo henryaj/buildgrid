@@ -45,6 +45,11 @@ class ExecutionController:
         self._bots_interface = BotsInterface(scheduler)
         self._operations_instance = OperationsInstance(scheduler)
 
+    def register_instance_with_server(self, instance_name, server):
+        server.add_execution_instance(self._execution_instance, instance_name)
+        server.add_bots_interface(self._bots_interface, instance_name)
+        server.add_operations_instance(self._operations_instance, instance_name)
+
     def stream_operation_updates(self, message_queue, operation_name):
         operation = message_queue.get()
         while not operation.done:

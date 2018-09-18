@@ -30,6 +30,9 @@ class OperationsInstance:
         self.logger = logging.getLogger(__name__)
         self._scheduler = scheduler
 
+    def register_instance_with_server(self, instance_name, server):
+        server.add_operations_instance(self, instance_name)
+
     def get_operation(self, name):
         operation = self._scheduler.jobs.get(name)
 

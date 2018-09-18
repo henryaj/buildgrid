@@ -31,6 +31,9 @@ class ContentAddressableStorageInstance:
     def __init__(self, storage):
         self._storage = storage
 
+    def register_instance_with_server(self, instance_name, server):
+        server.add_cas_instance(self, instance_name)
+
     def find_missing_blobs(self, blob_digests):
         storage = self._storage
         return re_pb2.FindMissingBlobsResponse(
@@ -59,6 +62,9 @@ class ByteStreamInstance:
 
     def __init__(self, storage):
         self._storage = storage
+
+    def register_instance_with_server(self, instance_name, server):
+        server.add_bytestream_instance(self, instance_name)
 
     def read(self, path, read_offset, read_limit):
         storage = self._storage

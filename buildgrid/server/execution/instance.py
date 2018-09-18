@@ -34,6 +34,9 @@ class ExecutionInstance:
         self._storage = storage
         self._scheduler = scheduler
 
+    def register_instance_with_server(self, instance_name, server):
+        server.add_execution_instance(self, instance_name)
+
     def execute(self, action_digest, skip_cache_lookup, message_queue=None):
         """ Sends a job for execution.
         Queues an action and creates an Operation instance to be associated with

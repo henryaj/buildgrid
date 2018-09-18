@@ -26,6 +26,9 @@ from ..referencestorage.storage import ReferenceCache
 
 class ActionCache(ReferenceCache):
 
+    def register_instance_with_server(self, instance_name, server):
+        server.add_action_cache_instance(self, instance_name)
+
     def get_action_result(self, action_digest):
         key = self._get_key(action_digest)
         return self.get_action_reference(key)
