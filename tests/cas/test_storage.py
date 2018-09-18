@@ -69,9 +69,13 @@ class MockStubServer:
         instances = {"": MockCASStorage(), "dna": MockCASStorage()}
         self._requests = []
         with mock.patch.object(service, 'bytestream_pb2_grpc'):
-            self._bs_service = service.ByteStreamService(server, instances)
+            self._bs_service = service.ByteStreamService(server)
+            for k, v in instances.items():
+                self._bs_service.add_instance(k, v)
         with mock.patch.object(service, 'remote_execution_pb2_grpc'):
-            self._cas_service = service.ContentAddressableStorageService(server, instances)
+            self._cas_service = service.ContentAddressableStorageService(server)
+            for k, v in instances.items():
+                self._cas_service.add_instance(k, v)
 
     def Read(self, request):
         yield from self._bs_service.Read(request, context)
@@ -127,7 +131,7 @@ def any_storage(request):
         with mock.patch.object(remote, 'bytestream_pb2_grpc'):
             with mock.patch.object(remote, 'remote_execution_pb2_grpc'):
                 mock_server = MockStubServer()
-                storage = remote.RemoteStorage(instance, "")
+                storage = remote.RemoteStorage(None, "")
                 storage._stub_bs = mock_server
                 storage._stub_cas = mock_server
                 yield storage

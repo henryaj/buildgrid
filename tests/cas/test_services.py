@@ -80,7 +80,8 @@ def test_bytestream_read(mocked, data_to_read, instance):
     storage = SimpleStorage([b"abc", b"defg", data_to_read])
 
     bs_instance = ByteStreamInstance(storage)
-    servicer = ByteStreamService(server, {instance: bs_instance})
+    servicer = ByteStreamService(server)
+    servicer.add_instance(instance, bs_instance)
 
     request = bytestream_pb2.ReadRequest()
     if instance != "":
@@ -99,8 +100,10 @@ def test_bytestream_read_many(mocked, instance):
     data_to_read = b"testing" * 10000
 
     storage = SimpleStorage([b"abc", b"defg", data_to_read])
+
     bs_instance = ByteStreamInstance(storage)
-    servicer = ByteStreamService(server, {instance: bs_instance})
+    servicer = ByteStreamService(server)
+    servicer.add_instance(instance, bs_instance)
 
     request = bytestream_pb2.ReadRequest()
     if instance != "":
@@ -118,8 +121,10 @@ def test_bytestream_read_many(mocked, instance):
 @mock.patch.object(service, 'bytestream_pb2_grpc', autospec=True)
 def test_bytestream_write(mocked, instance, extra_data):
     storage = SimpleStorage()
+
     bs_instance = ByteStreamInstance(storage)
-    servicer = ByteStreamService(server, {instance: bs_instance})
+    servicer = ByteStreamService(server)
+    servicer.add_instance(instance, bs_instance)
 
     resource_name = ""
     if instance != "":
@@ -142,8 +147,10 @@ def test_bytestream_write(mocked, instance, extra_data):
 @mock.patch.object(service, 'bytestream_pb2_grpc', autospec=True)
 def test_bytestream_write_rejects_wrong_hash(mocked):
     storage = SimpleStorage()
+
     bs_instance = ByteStreamInstance(storage)
-    servicer = ByteStreamService(server, {"": bs_instance})
+    servicer = ByteStreamService(server)
+    servicer.add_instance("", bs_instance)
 
     data = b'some data'
     wrong_hash = HASH(b'incorrect').hexdigest()
@@ -163,7 +170,9 @@ def test_bytestream_write_rejects_wrong_hash(mocked):
 def test_cas_find_missing_blobs(mocked, instance):
     storage = SimpleStorage([b'abc', b'def'])
     cas_instance = ContentAddressableStorageInstance(storage)
-    servicer = ContentAddressableStorageService(server, {instance: cas_instance})
+    servicer = ContentAddressableStorageService(server)
+    servicer.add_instance(instance, cas_instance)
+
     digests = [
         re_pb2.Digest(hash=HASH(b'def').hexdigest(), size_bytes=3),
         re_pb2.Digest(hash=HASH(b'ghij').hexdigest(), size_bytes=4)
@@ -178,8 +187,10 @@ def test_cas_find_missing_blobs(mocked, instance):
 @mock.patch.object(service, 'remote_execution_pb2_grpc', autospec=True)
 def test_cas_batch_update_blobs(mocked, instance):
     storage = SimpleStorage()
+
     cas_instance = ContentAddressableStorageInstance(storage)
-    servicer = ContentAddressableStorageService(server, {instance: cas_instance})
+    servicer = ContentAddressableStorageService(server)
+    servicer.add_instance(instance, cas_instance)
 
     update_requests = [
         re_pb2.BatchUpdateBlobsRequest.Request(

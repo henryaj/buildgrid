@@ -58,9 +58,10 @@ def controller(request):
 # Instance to test
 @pytest.fixture
 def instance(controller):
-    instances = {"": controller.execution_instance}
     with mock.patch.object(service, 'remote_execution_pb2_grpc'):
-        yield ExecutionService(server, instances)
+        execution_service = ExecutionService(server)
+        execution_service.add_instance("", controller.execution_instance)
+        yield execution_service
 
 
 @pytest.mark.parametrize("skip_cache_lookup", [True, False])

@@ -59,7 +59,10 @@ def controller():
 def instance(controller):
     instances = {"": controller.bots_interface}
     with mock.patch.object(service, 'bots_pb2_grpc'):
-        yield BotsService(server, instances)
+        bots_service = BotsService(server)
+        for k, v in instances.items():
+            bots_service.add_instance(k, v)
+        yield bots_service
 
 
 def test_create_bot_session(bot_session, context, instance):

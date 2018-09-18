@@ -52,9 +52,11 @@ def cache_instances(cas):
 
 def test_simple_action_result(cache_instances, context):
     with mock.patch.object(service, 'remote_execution_pb2_grpc'):
-        ac_service = ActionCacheService(server, cache_instances)
+        ac_service = ActionCacheService(server)
 
-    print(cache_instances)
+    for k, v in cache_instances.items():
+        ac_service.add_instance(k, v)
+
     action_digest = remote_execution_pb2.Digest(hash='sample', size_bytes=4)
 
     # Check that before adding the ActionResult, attempting to fetch it fails
@@ -78,7 +80,8 @@ def test_simple_action_result(cache_instances, context):
 def test_disabled_update_action_result(context):
     disabled_push = ActionCache(cas, 50, False)
     with mock.patch.object(service, 'remote_execution_pb2_grpc'):
-        ac_service = ActionCacheService(server, {"": disabled_push})
+        ac_service = ActionCacheService(server)
+        ac_service.add_instance("", disabled_push)
 
     request = remote_execution_pb2.UpdateActionResultRequest(instance_name='')
     ac_service.UpdateActionResult(request, context)

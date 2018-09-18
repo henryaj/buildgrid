@@ -52,9 +52,10 @@ def cache(cas):
 
 @pytest.fixture
 def instance(cache):
-    instances = {instance_name: cache}
     with mock.patch.object(service, 'buildstream_pb2_grpc'):
-        yield ReferenceStorageService(server, instances)
+        ref_service = ReferenceStorageService(server)
+        ref_service.add_instance(instance_name, cache)
+        yield ref_service
 
 
 def test_simple_result(instance, context):
@@ -83,7 +84,8 @@ def test_disabled_update_result(context):
     keys = ["rick", "roy", "rach"]
 
     with mock.patch.object(service, 'buildstream_pb2_grpc'):
-        instance = ReferenceStorageService(server, {'': disabled_push})
+        instance = ReferenceStorageService(server)
+        instance.add_instance(instance_name, disabled_push)
 
     # Add an ReferenceResult to the cache
     reference_result = remote_execution_pb2.Digest(hash='deckard')
@@ -101,7 +103,8 @@ def test_disabled_update_result(context):
 def test_status(allow_updates, context):
     cache = ReferenceCache(cas, 5, allow_updates)
     with mock.patch.object(service, 'buildstream_pb2_grpc'):
-        instance = ReferenceStorageService(server, {'': cache})
+        instance = ReferenceStorageService(server)
+        instance.add_instance("", cache)
 
     request = buildstream_pb2.StatusRequest()
     response = instance.Status(request, context)

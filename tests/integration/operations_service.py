@@ -63,9 +63,11 @@ def controller():
 # Instance to test
 @pytest.fixture
 def instance(controller):
-    instances = {instance_name: controller.operations_instance}
     with mock.patch.object(service, 'operations_pb2_grpc'):
-        yield OperationsService(server, instances)
+        operation_service = OperationsService(server)
+        operation_service.add_instance(instance_name, controller.operations_instance)
+
+        yield operation_service
 
 
 # Queue an execution, get operation corresponding to that request
