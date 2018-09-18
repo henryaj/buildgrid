@@ -1,10 +1,11 @@
 server:
-  port: 50051
-  insecure-mode: true
-  credentials:
-    tls-server-key: null
-    tls-server-cert: null
-    tls-client-certs: null
+  - !channel
+    port: 50051
+    insecure_mode: true
+#    credentials:
+#      tls-server-key: null
+#      tls-server-cert: null
+#      tls-client-certs: null
 
 description: |
   A single default instance
