@@ -32,12 +32,15 @@ from .._exceptions import InvalidArgumentError, NotFoundError
 
 class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
 
-    def __init__(self, server, instances):
-        self._instances = instances
-
+    def __init__(self, server):
         self.logger = logging.getLogger(__name__)
 
+        self._instances = {}
+
         remote_execution_pb2_grpc.add_ActionCacheServicer_to_server(self, server)
+
+    def add_instance(self, name, instance):
+        self._instances[name] = instance
 
     def GetActionResult(self, request, context):
         try:

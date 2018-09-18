@@ -33,11 +33,15 @@ from .._exceptions import InvalidArgumentError, OutofSyncError
 
 class BotsService(bots_pb2_grpc.BotsServicer):
 
-    def __init__(self, server, instances):
-        self._instances = instances
+    def __init__(self, server):
         self.logger = logging.getLogger(__name__)
 
+        self._instances = {}
+
         bots_pb2_grpc.add_BotsServicer_to_server(self, server)
+
+    def add_instance(self, name, instance):
+        self._instances[name] = instance
 
     def CreateBotSession(self, request, context):
         try:

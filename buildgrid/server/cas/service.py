@@ -35,11 +35,15 @@ from .._exceptions import InvalidArgumentError, NotFoundError, OutOfRangeError
 
 class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressableStorageServicer):
 
-    def __init__(self, server, instances):
+    def __init__(self, server):
         self.logger = logging.getLogger(__name__)
-        self._instances = instances
+
+        self._instances = {}
 
         remote_execution_pb2_grpc.add_ContentAddressableStorageServicer_to_server(self, server)
+
+    def add_instance(self, name, instance):
+        self._instances[name] = instance
 
     def FindMissingBlobs(self, request, context):
         try:
@@ -75,11 +79,15 @@ class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressa
 
 class ByteStreamService(bytestream_pb2_grpc.ByteStreamServicer):
 
-    def __init__(self, server, instances):
+    def __init__(self, server):
         self.logger = logging.getLogger(__name__)
-        self._instances = instances
+
+        self._instances = {}
 
         bytestream_pb2_grpc.add_ByteStreamServicer_to_server(self, server)
+
+    def add_instance(self, name, instance):
+        self._instances[name] = instance
 
     def Read(self, request, context):
         try:

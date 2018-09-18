@@ -25,12 +25,15 @@ from .._exceptions import InvalidArgumentError, NotFoundError
 
 class ReferenceStorageService(buildstream_pb2_grpc.ReferenceStorageServicer):
 
-    def __init__(self, server, instances):
+    def __init__(self, server):
         self.logger = logging.getLogger(__name__)
 
-        self._instances = instances
+        self._instances = {}
 
         buildstream_pb2_grpc.add_ReferenceStorageServicer_to_server(self, server)
+
+    def add_instance(self, name, instance):
+        self._instances[name] = instance
 
     def GetReference(self, request, context):
         try:

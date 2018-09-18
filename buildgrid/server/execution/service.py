@@ -35,11 +35,13 @@ from .._exceptions import InvalidArgumentError
 
 class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
-    def __init__(self, server, instances):
+    def __init__(self, server):
         self.logger = logging.getLogger(__name__)
-        self._instances = instances
-
+        self._instances = {}
         remote_execution_pb2_grpc.add_ExecutionServicer_to_server(self, server)
+
+    def add_instance(self, name, instance):
+        self._instances[name] = instance
 
     def Execute(self, request, context):
         try:
