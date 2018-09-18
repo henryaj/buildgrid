@@ -26,14 +26,10 @@ import sys
 
 import click
 
-from buildgrid.server.controller import ExecutionController
-from buildgrid.server.actioncache.storage import ActionCache
-from buildgrid.server.cas.instance import ByteStreamInstance, ContentAddressableStorageInstance
-from buildgrid.server.referencestorage.storage import ReferenceCache
+from buildgrid.server.instance import BuildGridServer
 
 from ..cli import pass_context
 from ..settings import parser
-from ..server import BuildGridServer
 
 
 @click.group(name='server', short_help="Start a local server instance.")
@@ -50,58 +46,12 @@ def start(context, config):
         settings = parser.get_parser().safe_load(f)
 
     try:
-        server_settings = settings['server']
-        insecure_mode = server_settings['insecure-mode']
-
-        credentials = None
-        if not insecure_mode:
-            credential_settings = server_settings['credentials']
-            server_key = credential_settings['tls-server-key']
-            server_cert = credential_settings['tls-server-cert']
-            client_certs = credential_settings['tls-client-certs']
-            credentials = context.load_server_credentials(server_key, server_cert, client_certs)
-
-            if not credentials:
-                click.echo("ERROR: no TLS keys were specified and no defaults could be found.\n" +
-                           "Set `insecure-mode: false` in order to deactivate TLS encryption.\n", err=True)
-                sys.exit(-1)
-
-        port = server_settings['port']
-        instances = settings['instances']
-
-        execution_controllers = _instance_maker(instances, ExecutionController)
-
-        execution_instances = {}
-        bots_interfaces = {}
-        operations_instances = {}
-
-        # TODO: map properly in parser
-        # Issue 82
-        for k, v in execution_controllers.items():
-            execution_instances[k] = v.execution_instance
-            bots_interfaces[k] = v.bots_interface
-            operations_instances[k] = v.operations_instance
-
-        reference_caches = _instance_maker(instances, ReferenceCache)
-        action_caches = _instance_maker(instances, ActionCache)
-        cas = _instance_maker(instances, ContentAddressableStorageInstance)
-        bytestreams = _instance_maker(instances, ByteStreamInstance)
+        server = _create_server_from_config(settings)
 
     except KeyError as e:
         click.echo("ERROR: Could not parse config: {}.\n".format(str(e)), err=True)
         sys.exit(-1)
 
-    server = BuildGridServer(port=port,
-                             credentials=credentials,
-                             execution_instances=execution_instances,
-                             bots_interfaces=bots_interfaces,
-                             operations_instances=operations_instances,
-                             reference_storage_instances=reference_caches,
-                             action_cache_instances=action_caches,
-                             cas_instances=cas,
-                             bytestream_instances=bytestreams)
-
-    context.logger.info("Starting server on port {}".format(port))
     loop = asyncio.get_event_loop()
     try:
         server.start()
@@ -116,15 +66,25 @@ def start(context, config):
         loop.close()
 
 
-# Turn away now if you want to keep your eyes
-def _instance_maker(instances, service_type):
-    # TODO get this mapped in parser
-    made = {}
+def _create_server_from_config(config):
+    server_settings = config['server']
 
+    server = BuildGridServer()
+
+    try:
+        for channel in server_settings:
+            server.add_port(channel.address, channel.credentials)
+
+    except (AttributeError, TypeError) as e:
+        click.echo("Error: Use list of `!channel` tags: {}.\n".format(e), err=True)
+        sys.exit(-1)
+
+    instances = config['instances']
     for instance in instances:
-        services = instance['services']
         instance_name = instance['name']
+        services = instance['services']
+
         for service in services:
-            if isinstance(service, service_type):
-                made[instance_name] = service
-    return made
+            service.register_instance_with_server(instance_name, server)
+
+    return server
