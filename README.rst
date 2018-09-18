@@ -1,15 +1,18 @@
-.. _about:
-
-
 
 .. image:: https://gitlab.com/Buildgrid/buildgrid/badges/master/pipeline.svg
    :target: https://gitlab.com/BuildStream/buildstream/commits/master
 
 .. image:: https://gitlab.com/BuildGrid/buildgrid/badges/master/coverage.svg?job=coverage
    :target: https://buildgrid.gitlab.io/buildgrid/coverage
-   
+
+
+.. _about:
+
 About BuildGrid
 ===============
+
+
+.. _what-is-it:
 
 What is BuildGrid?
 ------------------
@@ -49,7 +52,7 @@ Resources
 - `GitLab repository`_
 - `Bug tracking`_
 - `Mailing list`_
-- `Slack channel`_  [`invite link`_]
+- `Slack channel`_ [`invite link`_]
 
 .. _Homepage: https://buildgrid.build
 .. _GitLab repository: https://gitlab.com/BuildGrid/buildgrid
