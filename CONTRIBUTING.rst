@@ -142,13 +142,67 @@ their containing *package*, as such; modules which are entirely private to
 BuildGrid are named as such, e.g. ``_roy.py``.
 
 
+.. _codebase-testing:
+
+Testing
+-------
+
+BuildGrid is using `pytest`_ for regression and newly added code testing. The
+test suite contains a serie of unit-tests and also run linting tools in order to
+detect coding-style_ breakage. The full test suite is automatically executed by
+GitLab CI system for every push to the server. Passing all the tests is a
+mandatory requirement for any merge request to the trunk.
+
+.. _pytest: https://docs.pytest.org
+
+
+Running tests
+~~~~~~~~~~~~~
+
+In order to run the entire test suite, simply run:
+
+.. code-block:: sh
+
+   python3 setup.py test
+
+You can use the ``--addopt`` function to feed arguments to pytest. For example,
+if you want to see the ``stdout`` and ``stderr`` generated y the test, run:
+
+.. code-block:: sh
+
+   python3 setup.py test  --addopts -s
+
+If you want run a  specific test instead of the entire suite use:
+
+.. code-block:: sh
+
+   python3 setup.py test  --addopts tests/cas/test_client
+
+pyest's `usage documentation section`_ details the different command line
+options that can be used when invoking the test runner.
+
+.. _usage documentation section: https://docs.pytest.org/en/latest/usage.html
+
+
+Test coverage
+~~~~~~~~~~~~~
+
+We are doing our best at keeping BuildGrid's test coverage score as high as
+possible. Doing so, we ask for any merge request to include necessary test
+additions and/or modifications in order to maintain that coverage level. A
+detailed `coverage report`_ is produced and publish for any change merged to the
+trunk.
+
+.. _coverage report: https://buildgrid.gitlab.io/buildgrid/coverage/
+
+
 .. _committer-access:
 
 Committer access
 ----------------
 
 We'll hand out commit access to anyone who has successfully landed a single
-patch to the code base. Please request this via irc or the mailing list.
+patch to the code base. Please request this via Slack or the mailing list.
 
 This of course relies on contributors being responsive and show willingness to
 address problems after landing branches there should not be any problems here.
