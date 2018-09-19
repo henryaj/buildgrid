@@ -19,9 +19,11 @@ import tempfile
 
 from google.protobuf import any_pb2
 
+from buildgrid.settings import HASH_LENGTH
 from buildgrid.client.cas import upload
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.bytestream import bytestream_pb2_grpc
+from buildgrid._exceptions import BotError
 from buildgrid.utils import read_file, write_file, parse_to_pb2_from_fetch
 
 
@@ -87,17 +89,30 @@ def work_buildbox(context, lease):
 
             command_line = subprocess.Popen(command_line,
                                             stdin=subprocess.PIPE,
-                                            stdout=subprocess.PIPE)
-            # TODO: Should return the stdout and stderr to the user.
-            command_line.communicate()
+                                            stdout=subprocess.PIPE,
+                                            stderr=subprocess.PIPE)
+            stdout, stderr = command_line.communicate()
+            returncode = command_line.returncode
+            action_result = remote_execution_pb2.ActionResult()
+            # TODO: Upload to CAS or output RAW
+            # For now, just pass raw
+            # https://gitlab.com/BuildGrid/buildgrid/issues/90
+            action_result.stdout_raw = stdout
+            action_result.stderr_raw = stderr
+            action_result.exit_code = returncode
+
+            logger.debug("BuildBox stderr: [{}]".format(stderr))
+            logger.debug("BuildBox stdout: [{}]".format(stdout))
+            logger.debug("BuildBox exit code: [{}]".format(returncode))
 
             output_digest = remote_execution_pb2.Digest()
             output_digest.ParseFromString(read_file(output_digest_file.name))
 
-            logger.debug("Output root digest: {}".format(output_digest))
+            logger.debug("Output root digest: [{}]".format(output_digest))
 
-            if len(output_digest.hash) < 64:
-                logger.warning("Buildbox command failed - no output root digest present.")
+            if len(output_digest.hash) != HASH_LENGTH:
+                raise BotError(stdout,
+                               detail=stderr, reason="Output root digest too small.")
 
             # TODO: Have BuildBox helping us creating the Tree instance here
             # See https://gitlab.com/BuildStream/buildbox/issues/7 for details
@@ -110,7 +125,6 @@ def work_buildbox(context, lease):
             output_directory.tree_digest.CopyFrom(output_tree_digest)
             output_directory.path = os.path.relpath(working_directory, start='/')
 
-            action_result = remote_execution_pb2.ActionResult()
             action_result.output_directories.extend([output_directory])
 
             action_result_any = any_pb2.Any()
