@@ -27,6 +27,7 @@ from google.protobuf import any_pb2
 
 
 from buildgrid.server._exceptions import NotFoundError
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 
 from .job import ExecuteStage, LeaseState
@@ -82,12 +83,16 @@ class Scheduler:
                 job.n_tries += 1
                 self.queue.appendleft(job)
 
-    def job_complete(self, name, result):
+    def job_complete(self, name, result, status):
         job = self.jobs[name]
-        job.result = result
-        job.update_execute_stage(ExecuteStage.COMPLETED)
+        job.lease.status.CopyFrom(status)
+        action_result = remote_execution_pb2.ActionResult()
+        result.Unpack(action_result)
+        job.result = action_result
         if not job.do_not_cache and self._action_cache is not None:
-            self._action_cache.update_action_result(job.action_digest, result)
+            if not job.lease.status.code:
+                self._action_cache.update_action_result(job.action_digest, result)
+        job.update_execute_stage(ExecuteStage.COMPLETED)
 
     def get_operations(self):
         response = operations_pb2.ListOperationsResponse()
@@ -112,6 +117,6 @@ class Scheduler:
         while self.queue:
             job = self.queue.popleft()
             job.update_execute_stage(ExecuteStage.EXECUTING)
-            job.lease = job.create_lease()
+            job.create_lease()
             job.lease.state = LeaseState.PENDING.value
             yield job.lease

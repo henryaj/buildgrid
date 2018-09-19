@@ -117,7 +117,7 @@ class BotsInterface:
 
             elif client_state == LeaseState.COMPLETED:
                 self._scheduler.update_job_lease_state(client_lease.id, client_lease.state)
-                self._scheduler.job_complete(client_lease.id, client_lease.result)
+                self._scheduler.job_complete(client_lease.id, client_lease.result, client_lease.status)
                 return None
 
             else:

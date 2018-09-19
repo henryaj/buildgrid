@@ -30,6 +30,7 @@ from enum import Enum
 
 import grpc
 
+from buildgrid._protos.google.rpc import code_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2, worker_pb2
 from buildgrid._exceptions import BotError
 
