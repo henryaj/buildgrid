@@ -1,8 +1,11 @@
 
-.. _internal-builds:
+.. _internal-client:
 
-Internal builds
+Internal client
 ===============
+
+BuildGrid contains a minimal remote execution client that can be used through
+the ``bgd`` command line interface.
 
 
 .. _dummy-test:

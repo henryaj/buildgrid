@@ -1,7 +1,7 @@
 
-.. _bazel-builds:
+.. _bazel-client:
 
-Bazel builds
+Bazel client
 ============
 
 `Bazel`_ is a *“fast, scalable, multi-language and extensible build system”*
@@ -18,7 +18,7 @@ Configuration
 -------------
 
 Bazel accepts many options that can either be specified as command line
-arguments when involking the ``bazel`` tool or stored in a `.bazelrc`_
+arguments when invoking the ``bazel`` tool or stored in a `.bazelrc`_
 configuration file. In order to activate remote build execution, the
 ``bazel build`` subcommand needs to be given specific `build options`_,
 including:
@@ -65,7 +65,7 @@ Next, change the current directory to the Bazel workspace root:
 
    cd bazel-examples/cpp-tutorial/stage3
 
-.. note::
+.. hint::
 
    All the commands in the instructions below are expected to be executed from
    that root directory (the stage3 example workspace's root directory).
@@ -80,7 +80,7 @@ below, paste it in a ``server.conf`` file in the root directory:
 This defines a single ``main`` server instance implementing a
 ``ContentAddressableStorage`` (CAS) + ``ByteStream`` service together with an
 ``Execution`` + ``ActionCache`` service, both using the same in-memory storage.
-You can then start the BuildGrid server deamon using that configuration by
+You can then start the BuildGrid server daemon using that configuration by
 running:
 
 .. code-block:: sh
@@ -97,8 +97,10 @@ has ``gcc`` installed, run:
    bgd bot --remote=http://localhost:50051 --parent=main temp-directory
 
 The ``--remote`` option is used to specify the server location (running on the
-same machine here, and listenning to port 50051). The ``--parent`` option is
-used to specifiy the server instance you except the bot to be attached to.
+same machine here, and listening to port 50051). The ``--parent`` option is used
+to specify the server instance you except the bot to be attached to. Refer to
+the :ref:`CLI reference section <invoking-bgd-bot-temp-directory>` for command
+line interface details.
 
 The BuildGrid server is now ready to accept jobs and execute them. Bazel needs
 some :ref:`configuration <bazel-configuration>` in order to run remote builds.
@@ -109,7 +111,7 @@ file in the root directory:
 
    build --spawn_strategy=remote --genrule_strategy=remote --remote_executor=localhost:50051 --remote_instance_name=main
 
-This ativates Bazel's remote execution mode and points to the ``main`` remote
+This activates Bazel's remote execution mode and points to the ``main`` remote
 execution server instance at ``localhost:50051``.
 
 You can finally have Bazel to build the example workspace by running:
@@ -118,7 +120,7 @@ You can finally have Bazel to build the example workspace by running:
 
    bazel build //main:hello-world
 
-You can verify that the example has been successfully build by runnig the
+You can verify that the example has been successfully build by running the
 generated executable. Simply invoke:
 
 .. code-block:: sh
