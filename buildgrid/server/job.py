@@ -121,10 +121,9 @@ class Job:
         self._operation.metadata.CopyFrom(self._pack_any(self.get_operation_meta()))
         if self.result is not None:
             self._operation.done = True
-            action_result = remote_execution_pb2.ActionResult()
-            self.result.Unpack(action_result)
-            response = remote_execution_pb2.ExecuteResponse(result=action_result,
-                                                            cached_result=self.result_cached)
+            response = remote_execution_pb2.ExecuteResponse(result=self.result,
+                                                            cached_result=self.result_cached,
+                                                            status=self.lease.status)
             self._operation.response.CopyFrom(self._pack_any(response))
 
         return self._operation
