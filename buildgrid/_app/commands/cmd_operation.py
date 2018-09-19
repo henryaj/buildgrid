@@ -27,12 +27,13 @@ import sys
 import click
 import grpc
 
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
 from buildgrid._protos.google.longrunning import operations_pb2, operations_pb2_grpc
 
 from ..cli import pass_context
 
 
-@click.group(name='operation', short_help="Long running operations commands")
+@click.group(name='operation', short_help="Long running operations commands.")
 @click.option('--remote', type=click.STRING, default='http://localhost:50051', show_default=True,
               help="Remote execution server's URL (port defaults to 50051 if no specified).")
 @click.option('--client-key', type=click.Path(exists=True, dir_okay=False), default=None,
@@ -93,3 +94,17 @@ def lists(context):
 
     for op in response.operations:
         context.logger.info(op)
+
+
+@cli.command('wait', short_help="Streams an operation until it is complete.")
+@click.argument('operation-name', nargs=1, type=click.STRING, required=True)
+@pass_context
+def wait(context, operation_name):
+    stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
+    request = remote_execution_pb2.WaitExecutionRequest(instance_name=context.instance_name,
+                                                        name=operation_name)
+
+    response = stub.WaitExecution(request)
+
+    for stream in response:
+        context.logger.info(stream)

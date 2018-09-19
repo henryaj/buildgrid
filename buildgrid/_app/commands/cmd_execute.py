@@ -97,20 +97,6 @@ def request_dummy(context, number, wait_for_completion):
             context.logger.info(next(response))
 
 
-@cli.command('wait', short_help="Streams an operation until it is complete.")
-@click.argument('operation-name', nargs=1, type=click.STRING, required=True)
-@pass_context
-def wait_execution(context, operation_name):
-    stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
-    request = remote_execution_pb2.WaitExecutionRequest(instance_name=context.instance_name,
-                                                        name=operation_name)
-
-    response = stub.WaitExecution(request)
-
-    for stream in response:
-        context.logger.info(stream)
-
-
 @cli.command('command', short_help="Send a command to be executed.")
 @click.option('--output-file', nargs=2, type=(click.STRING, click.BOOL), multiple=True,
               help="Tuple of expected output file and is-executeable flag.")
