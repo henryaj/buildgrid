@@ -19,10 +19,10 @@ instances:
         - !remote-storage &main-storage
           url: "http://localhost:50052"
           instance_name: main
-          credentials:
-            tls-client-key: null
-            tls-client-cert: null
-            tls-server-cert: null
+#          credentials:
+#            tls-client-key: null
+#            tls-client-cert: null
+#            tls-server-cert: null
 
     services:
       - !action-cache &main-action

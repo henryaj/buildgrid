@@ -17,7 +17,7 @@ instances:
 
     storages:
         - !disk-storage &main-storage
-          path: ~/cas/
+          path: !expand-path $HOME/cas/
 
     services:
       - !cas
