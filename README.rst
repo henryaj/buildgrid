@@ -1,15 +1,8 @@
 
-.. image:: https://gitlab.com/Buildgrid/buildgrid/badges/master/pipeline.svg
-   :target: https://gitlab.com/BuildStream/buildstream/commits/master
-
-.. image:: https://gitlab.com/BuildGrid/buildgrid/badges/master/coverage.svg?job=coverage
-   :target: https://buildgrid.gitlab.io/buildgrid/coverage
-
-
 .. _about:
 
-About BuildGrid
-===============
+About
+=====
 
 
 .. _what-is-it:
