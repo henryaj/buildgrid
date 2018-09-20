@@ -68,12 +68,21 @@ class Channel(YamlFactory):
                 sys.exit(-1)
 
 
+class ExpandPath(YamlFactory):
+
+    yaml_tag = u'!expand-path'
+
+    def __new__(cls, path):
+        path = os.path.expanduser(path)
+        path = os.path.expandvars(path)
+        return path
+
+
 class Disk(YamlFactory):
 
     yaml_tag = u'!disk-storage'
 
     def __new__(cls, path):
-        path = os.path.expanduser(path)
         return DiskStorage(path)
 
 
@@ -197,6 +206,7 @@ def _parse_size(size):
 def get_parser():
 
     yaml.SafeLoader.add_constructor(Channel.yaml_tag, Channel.from_yaml)
+    yaml.SafeLoader.add_constructor(ExpandPath.yaml_tag, ExpandPath.from_yaml)
     yaml.SafeLoader.add_constructor(Execution.yaml_tag, Execution.from_yaml)
     yaml.SafeLoader.add_constructor(Action.yaml_tag, Action.from_yaml)
     yaml.SafeLoader.add_constructor(Reference.yaml_tag, Reference.from_yaml)
