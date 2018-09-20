@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Disable broad exception catch
+# pylint: disable=broad-except
+
 
 """
 Bot Session
@@ -23,10 +26,12 @@ import asyncio
 import logging
 import platform
 import uuid
-
 from enum import Enum
 
+import grpc
+
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2, worker_pb2
+from buildgrid._exceptions import BotError
 
 
 class BotStatus(Enum):
@@ -142,9 +147,22 @@ class BotSession:
 
     async def create_work(self, lease):
         self.logger.debug("Work created: [{}]".format(lease.id))
-
         loop = asyncio.get_event_loop()
-        lease = await loop.run_in_executor(None, self._work, self._context, lease)
+
+        try:
+            lease = await loop.run_in_executor(None, self._work, self._context, lease)
+
+        except grpc.RpcError as e:
+            self.logger.error("Connection error thrown: [{}]".format(e))
+            lease.status.code = e.code()
+
+        except BotError as e:
+            self.logger.error("Internal bot error thrown: [{}]".format(e))
+            lease.status.code = code_pb2.INTERNAL
+
+        except Exception as e:
+            self.logger.error("Connection error thrown: [{}]".format(e))
+            lease.status.code = code_pb2.INTERNAL
 
         self.logger.debug("Work complete: [{}]".format(lease.id))
         self.lease_completed(lease)
