@@ -74,14 +74,25 @@ def work_temp_directory(context, lease):
 
         process = subprocess.Popen(command_line,
                                    cwd=working_directory,
-                                   universal_newlines=True,
                                    env=environment,
                                    stdin=subprocess.PIPE,
-                                   stdout=subprocess.PIPE)
-        # TODO: Should return the stdout and stderr in the ActionResult.
-        process.communicate()
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+
+        stdout, stderr = process.communicate()
+        returncode = process.returncode
 
         action_result = remote_execution_pb2.ActionResult()
+        # TODO: Upload to CAS or output RAW
+        # For now, just pass raw
+        # https://gitlab.com/BuildGrid/buildgrid/issues/90
+        action_result.stdout_raw = stdout
+        action_result.stderr_raw = stderr
+        action_result.exit_code = returncode
+
+        logger.debug("Command stderr: [{}]".format(stderr))
+        logger.debug("Command stdout: [{}]".format(stdout))
+        logger.debug("Command exit code: [{}]".format(returncode))
 
         with upload(context.cas_channel, instance=instance_name) as cas:
             for output_path in command.output_files:
