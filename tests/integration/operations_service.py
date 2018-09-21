@@ -33,6 +33,7 @@ from buildgrid.server._exceptions import InvalidArgumentError
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
+from buildgrid._protos.google.rpc import status_pb2
 
 
 server = mock.create_autospec(grpc.server)
@@ -130,8 +131,10 @@ def test_list_operations_with_result(instance, controller, execute_request, cont
     output_file = remote_execution_pb2.OutputFile(path='unicorn')
     action_result.output_files.extend([output_file])
 
+    controller.operations_instance._scheduler.jobs[response_execute.name].create_lease()
     controller.operations_instance._scheduler.job_complete(response_execute.name,
-                                                           _pack_any(action_result))
+                                                           _pack_any(action_result),
+                                                           status_pb2.Status())
 
     request = operations_pb2.ListOperationsRequest(name=instance_name)
     response = instance.ListOperations(request, context)
