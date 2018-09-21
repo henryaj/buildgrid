@@ -94,15 +94,21 @@ def work_temp_directory(context, lease):
         logger.debug("Command stdout: [{}]".format(stdout))
         logger.debug("Command exit code: [{}]".format(returncode))
 
-        with upload(context.cas_channel, instance=instance_name) as cas:
+        with upload(context.cas_channel, instance=instance_name) as uploader:
+            output_files, output_directories = [], []
+
             for output_path in command.output_files:
                 file_path = os.path.join(working_directory, output_path)
                 # Missing outputs should simply be omitted in ActionResult:
                 if not os.path.isfile(file_path):
                     continue
 
-                output_file = output_file_maker(file_path, working_directory, cas=cas)
-                action_result.output_files.extend([output_file])
+                file_digest = uploader.upload_file(file_path, queue=True)
+                output_file = output_file_maker(file_path, working_directory,
+                                                file_digest)
+                output_files.append(output_file)
+
+            action_result.output_files.extend(output_files)
 
             for output_path in command.output_directories:
                 directory_path = os.path.join(working_directory, output_path)
@@ -110,10 +116,12 @@ def work_temp_directory(context, lease):
                 if not os.path.isdir(directory_path):
                     continue
 
-                # OutputDirectory.path should be relative to the working direcory:
-                output_directory = output_directory_maker(directory_path, working_directory, cas=cas)
+                tree_digest = uploader.upload_tree(directory_path, queue=True)
+                output_directory = output_directory_maker(directory_path, working_directory,
+                                                          tree_digest)
+                output_directories.append(output_directory)
 
-                action_result.output_directories.extend([output_directory])
+            action_result.output_directories.extend(output_directories)
 
         action_result_any = any_pb2.Any()
         action_result_any.Pack(action_result)
