@@ -69,6 +69,18 @@ class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressa
 
         return remote_execution_pb2.BatchReadBlobsResponse()
 
+    def BatchReadBlobs(self, request, context):
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+
+        return remote_execution_pb2.BatchReadBlobsResponse()
+
+    def GetTree(self, request, context):
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+
+        return iter([remote_execution_pb2.GetTreeResponse()])
+
     def _get_instance(self, instance_name):
         try:
             return self._instances[instance_name]
@@ -171,6 +183,12 @@ class ByteStreamService(bytestream_pb2_grpc.ByteStreamServicer):
             context.set_code(grpc.StatusCode.NOT_FOUND)
 
         return bytestream_pb2.WriteResponse()
+
+    def QueryWriteStatus(self, request, context):
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+
+        return bytestream_pb2.QueryWriteStatusResponse()
 
     def _get_instance(self, instance_name):
         try:
