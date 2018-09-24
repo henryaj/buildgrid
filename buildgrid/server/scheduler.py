@@ -91,7 +91,7 @@ class Scheduler:
         job.result = action_result
         if not job.do_not_cache and self._action_cache is not None:
             if not job.lease.status.code:
-                self._action_cache.update_action_result(job.action_digest, result)
+                self._action_cache.update_action_result(job.action_digest, action_result)
         job.update_execute_stage(ExecuteStage.COMPLETED)
 
     def get_operations(self):
