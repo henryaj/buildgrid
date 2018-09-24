@@ -50,17 +50,31 @@ BuildGrid's Command Line Interface (CLI) reference documentation.
 
 ----
 
+.. _invoking-bgd-cas-download-dir:
+
+.. click:: buildgrid._app.commands.cmd_cas:download_directory
+   :prog: bgd cas download-dir
+
+----
+
+.. _invoking-bgd-cas-download-file:
+
+.. click:: buildgrid._app.commands.cmd_cas:download_file
+   :prog: bgd cas download-file
+
+----
+
 .. _invoking-bgd-cas-upload-dir:
 
-.. click:: buildgrid._app.commands.cmd_cas:upload_dir
+.. click:: buildgrid._app.commands.cmd_cas:upload_directory
    :prog: bgd cas upload-dir
 
 ----
 
-.. _invoking-bgd-cas-upload-files:
+.. _invoking-bgd-cas-upload-file:
 
-.. click:: buildgrid._app.commands.cmd_cas:upload_files
-   :prog: bgd cas upload-files
+.. click:: buildgrid._app.commands.cmd_cas:upload_file
+   :prog: bgd cas upload-file
 
 ----
 
@@ -73,7 +87,7 @@ BuildGrid's Command Line Interface (CLI) reference documentation.
 
 .. _invoking-bgd-execute-command:
 
-.. click:: buildgrid._app.commands.cmd_execute:command
+.. click:: buildgrid._app.commands.cmd_execute:run_command
    :prog: bgd execute command
 
 ----
@@ -112,6 +126,7 @@ BuildGrid's Command Line Interface (CLI) reference documentation.
    :prog: bgd operation wait
 
 ----
+
 .. _invoking-bgd-server:
 
 .. click:: buildgrid._app.commands.cmd_server:cli
