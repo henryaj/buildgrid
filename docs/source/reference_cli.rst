@@ -36,10 +36,10 @@ BuildGrid's Command Line Interface (CLI) reference documentation.
 
 ----
 
-.. _invoking-bgd-bot-temp-directory:
+.. _invoking-bgd-bot-host-tools:
 
-.. click:: buildgrid._app.commands.cmd_bot:run_temp_directory
-   :prog: bgd bot temp-directory
+.. click:: buildgrid._app.commands.cmd_bot:run_host_tools
+   :prog: bgd bot host-tools
 
 ----
 

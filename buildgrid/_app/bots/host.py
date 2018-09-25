@@ -24,7 +24,7 @@ from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_p
 from buildgrid.utils import output_file_maker, output_directory_maker
 
 
-def work_temp_directory(context, lease):
+def work_host_tools(context, lease):
     """Executes a lease for a build action, using host tools.
     """
 

@@ -1,3 +1,4 @@
+
 .. _internal-client:
 
 Internal client
@@ -83,7 +84,7 @@ Start the following bot session:
 
 .. code-block:: sh
 
-   bgd bot temp-directory
+   bgd bot host-tools
 
 Upload the directory containing the C file:
 

@@ -94,12 +94,12 @@ has ``gcc`` installed, run:
 
 .. code-block:: sh
 
-   bgd bot --remote=http://localhost:50051 --parent=main temp-directory
+   bgd bot --remote=http://localhost:50051 --parent=main host-tools
 
 The ``--remote`` option is used to specify the server location (running on the
 same machine here, and listening to port 50051). The ``--parent`` option is used
 to specify the server instance you expect the bot to be attached to. Refer to
-the :ref:`CLI reference section <invoking-bgd-bot-temp-directory>` for command
+the :ref:`CLI reference section <invoking-bgd-bot-host-tools>` for command
 line interface details.
 
 The BuildGrid server is now ready to accept jobs and execute them. Bazel needs

@@ -31,7 +31,7 @@ import grpc
 from buildgrid.bot import bot, bot_interface
 from buildgrid.bot.bot_session import BotSession, Device, Worker
 
-from ..bots import buildbox, dummy, temp_directory
+from ..bots import buildbox, dummy, host
 from ..cli import pass_context
 
 
@@ -135,8 +135,7 @@ def cli(context, parent, remote, client_key, client_cert, server_cert,
 @pass_context
 def run_dummy(context):
     """
-    Simple dummy client. Creates a session, accepts leases, does fake work and
-    updates the server.
+    Creates a session, accepts leases, does fake work and updates the server.
     """
     try:
         b = bot.Bot(context.bot_session)
@@ -146,15 +145,16 @@ def run_dummy(context):
         pass
 
 
-@cli.command('temp-directory', short_help="Runs commands in temp directory and uploads results.")
+@cli.command('host-tools', short_help="Runs commands using the host's tools.")
 @pass_context
-def run_temp_directory(context):
-    """ Downloads files and command from CAS and runs
-    in a temp directory, uploading result back to CAS
+def run_host_tools(context):
+    """
+    Downloads inputs from CAS, runs build commands using host-tools and uploads
+    result back to CAS.
     """
     try:
         b = bot.Bot(context.bot_session)
-        b.session(temp_directory.work_temp_directory,
+        b.session(host.work_host_tools,
                   context)
     except KeyboardInterrupt:
         pass
@@ -168,7 +168,7 @@ def run_temp_directory(context):
 @pass_context
 def run_buildbox(context, local_cas, fuse_dir):
     """
-    Uses BuildBox to run commands.
+    Uses BuildBox to run build commands.
     """
     context.local_cas = local_cas
     context.fuse_dir = fuse_dir
