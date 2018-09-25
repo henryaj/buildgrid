@@ -13,14 +13,16 @@
 # limitations under the License.
 
 
+from buildgrid._app.settings import parser
+from buildgrid._app.commands.cmd_server import _create_server_from_config
 from buildgrid.server.cas.service import ByteStreamService, ContentAddressableStorageService
 from buildgrid.server.actioncache.service import ActionCacheService
 from buildgrid.server.execution.service import ExecutionService
 from buildgrid.server.operations.service import OperationsService
 from buildgrid.server.bots.service import BotsService
 from buildgrid.server.referencestorage.service import ReferenceStorageService
-from buildgrid._app.settings import parser
-from buildgrid._app.commands.cmd_server import _create_server_from_config
+
+from .utils.cas import run_in_subprocess
 
 
 config = """
@@ -69,17 +71,25 @@ instances:
 
 
 def test_create_server():
-    settings = parser.get_parser().safe_load(config)
+    # Actual test function, to be run in a subprocess:
+    def __test_create_server(queue, config_data):
+        settings = parser.get_parser().safe_load(config)
+        server = _create_server_from_config(settings)
 
-    server = _create_server_from_config(settings)
+        server.start()
+        server.stop()
 
-    server.start()
-    server.stop()
+        try:
+            assert isinstance(server._execution_service, ExecutionService)
+            assert isinstance(server._operations_service, OperationsService)
+            assert isinstance(server._bots_service, BotsService)
+            assert isinstance(server._reference_storage_service, ReferenceStorageService)
+            assert isinstance(server._action_cache_service, ActionCacheService)
+            assert isinstance(server._cas_service, ContentAddressableStorageService)
+            assert isinstance(server._bytestream_service, ByteStreamService)
+        except AssertionError:
+            queue.put(False)
+        else:
+            queue.put(True)
 
-    assert isinstance(server._execution_service, ExecutionService)
-    assert isinstance(server._operations_service, OperationsService)
-    assert isinstance(server._bots_service, BotsService)
-    assert isinstance(server._reference_storage_service, ReferenceStorageService)
-    assert isinstance(server._action_cache_service, ActionCacheService)
-    assert isinstance(server._cas_service, ContentAddressableStorageService)
-    assert isinstance(server._bytestream_service, ByteStreamService)
+    assert run_in_subprocess(__test_create_server, config)
