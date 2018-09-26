@@ -21,7 +21,6 @@ A CAS storage provider that stores files as blobs on disk.
 """
 
 import os
-import pathlib
 import tempfile
 
 from .storage_abc import StorageABC
@@ -30,28 +29,41 @@ from .storage_abc import StorageABC
 class DiskStorage(StorageABC):
 
     def __init__(self, path):
-        self._path = pathlib.Path(path)
-        os.makedirs(str(self._path / "temp"), exist_ok=True)
+        if not os.path.isabs(path):
+            self.__root_path = os.path.abspath(path)
+        else:
+            self.__root_path = path
+        self.__cas_path = os.path.join(self.__root_path, 'cas')
+
+        self.objects_path = os.path.join(self.__cas_path, 'objects')
+        self.temp_path = os.path.join(self.__root_path, 'tmp')
+
+        os.makedirs(self.objects_path, exist_ok=True)
+        os.makedirs(self.temp_path, exist_ok=True)
 
     def has_blob(self, digest):
-        return (self._path / (digest.hash + "_" + str(digest.size_bytes))).exists()
+        return os.path.exists(self._get_object_path(digest))
 
     def get_blob(self, digest):
         try:
-            return (self._path / (digest.hash + "_" + str(digest.size_bytes))).open('rb')
+            return open(self._get_object_path(digest), 'rb')
         except FileNotFoundError:
             return None
 
-    def begin_write(self, _digest):
-        return tempfile.NamedTemporaryFile("wb", dir=str(self._path / "temp"))
+    def begin_write(self, digest):
+        return tempfile.NamedTemporaryFile("wb", dir=self.temp_path)
 
     def commit_write(self, digest, write_session):
-        # Atomically move the temporary file into place.
-        path = self._path / (digest.hash + "_" + str(digest.size_bytes))
-        os.replace(write_session.name, str(path))
+        object_path = self._get_object_path(digest)
+
         try:
-            write_session.close()
-        except FileNotFoundError:
-            # We moved the temporary file to a new location, so when Python
-            # tries to delete its old location, it'll fail.
+            os.makedirs(os.path.dirname(object_path), exist_ok=True)
+            os.link(write_session.name, object_path)
+        except FileExistsError:
+            # Object is already there!
             pass
+
+        write_session.close()
+
+    def _get_object_path(self, digest):
+        return os.path.join(self.objects_path, digest.hash[:2], digest.hash[2:])
