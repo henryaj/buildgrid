@@ -154,15 +154,15 @@ class BotSession:
             lease = await loop.run_in_executor(None, self._work, self._context, lease)
 
         except grpc.RpcError as e:
-            self.logger.error("Connection error thrown: [{}]".format(e))
-            lease.status.code = e.code()
+            self.logger.error("RPC error thrown: [{}]".format(e))
+            lease.status.CopyFrom(e.code())
 
         except BotError as e:
             self.logger.error("Internal bot error thrown: [{}]".format(e))
             lease.status.code = code_pb2.INTERNAL
 
         except Exception as e:
-            self.logger.error("Connection error thrown: [{}]".format(e))
+            self.logger.error("Exception thrown: [{}]".format(e))
             lease.status.code = code_pb2.INTERNAL
 
         self.logger.debug("Work complete: [{}]".format(lease.id))
