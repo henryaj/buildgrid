@@ -20,7 +20,7 @@ In one terminal, start a server:
 
 In another terminal, upload an action to CAS:
 
-.. code-block::sh
+.. code-block:: sh
 
    bgd cas upload-dummy
 
@@ -34,7 +34,7 @@ The stage should show as ``QUEUED`` as it awaits a bot to pick up the work:
 
 .. code-block:: sh
 
-   bgd execute list
+   bgd operation list
 
 Create a bot session:
 
@@ -46,7 +46,7 @@ Show the work as completed:
 
 .. code-block:: sh
 
-   bgd execute list
+   bgd operation list
 
 
 .. _simple-build:
