@@ -283,7 +283,7 @@ class Downloader:
             try:
                 batch_response = self.__cas_stub.BatchReadBlobs(batch_request)
                 for response in batch_response.responses:
-                    assert response.digest.hash in digests
+                    assert response.digest in digests
 
                     read_blobs.append(response.data)
 
