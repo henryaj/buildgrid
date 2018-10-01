@@ -35,6 +35,9 @@ from ..cli import Context
 
 
 class YamlFactory(yaml.YAMLObject):
+    """ Base class for contructing maps or scalars from tags.
+    """
+
     @classmethod
     def from_yaml(cls, loader, node):
         if isinstance(node, yaml.ScalarNode):
@@ -47,6 +50,21 @@ class YamlFactory(yaml.YAMLObject):
 
 
 class Channel(YamlFactory):
+    """Creates a GRPC channel.
+
+    The :class:`Channel` class returns a `grpc.Channel` and is generated from the tag ``!channel``.
+    Creates either a secure or insecure channel.
+
+    Args:
+       port (int): A port for the channel.
+       insecure_mode (bool): If ``True``, generates an insecure channel, even if there are
+    credentials. Defaults to ``True``.
+       credentials (dict, optional): A dictionary in the form::
+
+           tls-server-key: /path/to/server-key
+           tls-server-cert: /path/to/server-cert
+           tls-client-certs: /path/to/client-certs
+    """
 
     yaml_tag = u'!channel'
 
@@ -69,6 +87,13 @@ class Channel(YamlFactory):
 
 
 class ExpandPath(YamlFactory):
+    """Returns a string of the user's path after expansion.
+
+    The :class:`ExpandPath` class returns a string and is generated from the tag ``!expand-path``.
+
+    Args:
+       path (str): Can be used with strings such as: ``~/dir/to/something`` or ``$HOME/certs``
+    """
 
     yaml_tag = u'!expand-path'
 
@@ -79,14 +104,30 @@ class ExpandPath(YamlFactory):
 
 
 class Disk(YamlFactory):
+    """Generates :class:`buildgrid.server.cas.storage.disk.DiskStorage` using the tag ``!disk-storage``.
+
+    Args:
+       path (str): Path to directory to storage.
+
+    """
 
     yaml_tag = u'!disk-storage'
 
     def __new__(cls, path):
+        """Creates a new disk
+
+        Args:
+           path (str): Some path
+        """
         return DiskStorage(path)
 
 
 class LRU(YamlFactory):
+    """Generates :class:`buildgrid.server.cas.storage.lru_memory_cache.LRUMemoryCache` using the tag ``!lru-storage``.
+
+    Args:
+      size (int): Size e.g ``10kb``. Size parsed with :meth:`buildgrid._app.settings.parser._parse_size`.
+    """
 
     yaml_tag = u'!lru-storage'
 
@@ -95,6 +136,12 @@ class LRU(YamlFactory):
 
 
 class S3(YamlFactory):
+    """Generates :class:`buildgrid.server.cas.storage.s3.S3Storage` using the tag ``!s3-storage``.
+
+    Args:
+        bucket (str): Name of bucket
+        endpoint (str): URL of endpoint.
+    """
 
     yaml_tag = u'!s3-storage'
 
@@ -103,6 +150,18 @@ class S3(YamlFactory):
 
 
 class Remote(YamlFactory):
+    """Generates :class:`buildgrid.server.cas.storage.remote.RemoteStorage`
+    using the tag ``!remote-storage``.
+
+    Args:
+      url (str): URL to remote storage. If used with ``https``, needs credentials.
+      instance_name (str): Instance of the remote to connect to.
+      credentials (dict, optional): A dictionary in the form::
+
+           tls-client-key: /path/to/client-key
+           tls-client-cert: /path/to/client-cert
+           tls-server-cert: /path/to/server-cert
+    """
 
     yaml_tag = u'!remote-storage'
 
@@ -144,6 +203,18 @@ class Remote(YamlFactory):
 
 
 class WithCache(YamlFactory):
+    """Generates :class:`buildgrid.server.cas.storage.with_cache.WithCacheStorage`
+    using the tag ``!with-cache-storage``.
+
+    Args:
+      url (str): URL to remote storage. If used with ``https``, needs credentials.
+      instance_name (str): Instance of the remote to connect to.
+      credentials (dict, optional): A dictionary in the form::
+
+           tls-client-key: /path/to/certs
+           tls-client-cert: /path/to/certs
+           tls-server-cert: /path/to/certs
+    """
 
     yaml_tag = u'!with-cache-storage'
 
@@ -152,6 +223,13 @@ class WithCache(YamlFactory):
 
 
 class Execution(YamlFactory):
+    """Generates :class:`buildgrid.server.execution.service.ExecutionService`
+    using the tag ``!execution``.
+
+    Args:
+      storage(:class:`buildgrid.server.cas.storage.storage_abc.StorageABC`): Instance of storage to use.
+      action_cache(:class:`Action`): Instance of action cache to use.
+    """
 
     yaml_tag = u'!execution'
 
@@ -160,6 +238,14 @@ class Execution(YamlFactory):
 
 
 class Action(YamlFactory):
+    """Generates :class:`buildgrid.server.actioncache.service.ActionCacheService`
+    using the tag ``!action-cache``.
+
+    Args:
+      storage(:class:`buildgrid.server.cas.storage.storage_abc.StorageABC`): Instance of storage to use.
+      max_cached_refs(int): Max number of cached actions.
+      allow_updates(bool): Allow updates pushed to CAS. Defaults to ``True``.
+    """
 
     yaml_tag = u'!action-cache'
 
@@ -168,6 +254,14 @@ class Action(YamlFactory):
 
 
 class Reference(YamlFactory):
+    """Generates :class:`buildgrid.server.referencestorage.service.ReferenceStorageService`
+    using the tag ``!reference-cache``.
+
+    Args:
+      storage(:class:`buildgrid.server.cas.storage.storage_abc.StorageABC`): Instance of storage to use.
+      max_cached_refs(int): Max number of cached actions.
+      allow_updates(bool): Allow updates pushed to CAS. Defauled to ``True``.
+    """
 
     yaml_tag = u'!reference-cache'
 
@@ -176,6 +270,12 @@ class Reference(YamlFactory):
 
 
 class CAS(YamlFactory):
+    """Generates :class:`buildgrid.server.cas.service.ContentAddressableStorageService`
+    using the tag ``!cas``.
+
+    Args:
+      storage(:class:`buildgrid.server.cas.storage.storage_abc.StorageABC`): Instance of storage to use.
+    """
 
     yaml_tag = u'!cas'
 
@@ -184,6 +284,12 @@ class CAS(YamlFactory):
 
 
 class ByteStream(YamlFactory):
+    """Generates :class:`buildgrid.server.cas.service.ByteStreamService`
+    using the tag ``!bytestream``.
+
+    Args:
+      storage(:class:`buildgrid.server.cas.storage.storage_abc.StorageABC`): Instance of storage to use.
+    """
 
     yaml_tag = u'!bytestream'
 

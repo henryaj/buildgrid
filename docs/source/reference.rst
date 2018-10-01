@@ -1,4 +1,3 @@
-
 .. _reference:
 
 Reference
@@ -11,3 +10,4 @@ This section contains BuildGrid API and CLI reference documentation.
 
    reference_api.rst
    reference_cli.rst
+   reference_server_config.rst
