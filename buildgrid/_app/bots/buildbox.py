@@ -46,11 +46,6 @@ def work_buildbox(context, lease):
         command = downloader.get_message(action.command_digest,
                                          remote_execution_pb2.Command())
 
-    environment = {}
-    for variable in command.environment_variables:
-        if variable.name not in ['PWD']:
-            environment[variable.name] = variable.value
-
     if command.working_directory:
         working_directory = command.working_directory
     else:
@@ -81,6 +76,12 @@ def work_buildbox(context, lease):
                 command_line.append('--client-cert={}'.format(context.cas_client_cert))
             if context.cas_server_cert:
                 command_line.append('--server-cert={}'.format(context.cas_server_cert))
+
+            command_line.append('--clearenv')
+            for variable in command.environment_variables:
+                command_line.append('--setenv')
+                command_line.append(variable.name)
+                command_line.append(variable.value)
 
             command_line.append(context.fuse_dir)
             command_line.extend(command.arguments)
