@@ -11,4 +11,5 @@ This section covers how to run an use the BuildGrid build service.
    using_internal.rst
    using_bazel.rst
    using_buildstream.rst
+   using_recc.rst
    using_cas_server.rst
