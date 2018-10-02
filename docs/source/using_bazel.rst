@@ -98,7 +98,7 @@ has ``gcc`` installed, run:
 
 The ``--remote`` option is used to specify the server location (running on the
 same machine here, and listening to port 50051). The ``--parent`` option is used
-to specify the server instance you except the bot to be attached to. Refer to
+to specify the server instance you expect the bot to be attached to. Refer to
 the :ref:`CLI reference section <invoking-bgd-bot-temp-directory>` for command
 line interface details.
 
@@ -120,7 +120,7 @@ You can finally have Bazel to build the example workspace by running:
 
    bazel build //main:hello-world
 
-You can verify that the example has been successfully build by running the
+You can verify that the example has been successfully built by running the
 generated executable. Simply invoke:
 
 .. code-block:: sh

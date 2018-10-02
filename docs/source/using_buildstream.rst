@@ -149,7 +149,7 @@ that the ``buildbox`` tool is functional on your machine (refer to
 
 The ``--remote`` option is used to specify the server location (running on the
 same machine here, and listening to port 50051). The ``--parent`` option is
-used to specify the server instance you except the bot to be attached to (empty
+used to specify the server instance you expect the bot to be attached to (empty
 here). ``--fuse-dir`` and ``--local-cas`` are specific to the ``buildbox`` bot
 and respectively specify the sandbox mount point and local CAS cache locations.
 Refer to the :ref:`CLI reference section <invoking-bgd-bot-buildbox>` for
@@ -178,7 +178,7 @@ You can finally have BuildStream to build the example project by running:
 
    bst build hello.bst
 
-You can verify that the example has been successfully build by running the
+You can verify that the example has been successfully built by running the
 generated executable. Simply invoke:
 
 .. code-block:: sh
