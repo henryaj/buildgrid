@@ -47,7 +47,8 @@ class ReferenceStorageService(buildstream_pb2_grpc.ReferenceStorageServicer):
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
-        except NotFoundError:
+        except NotFoundError as e:
+            self.logger.debug(e)
             context.set_code(grpc.StatusCode.NOT_FOUND)
 
         return buildstream_pb2.GetReferenceResponse()
