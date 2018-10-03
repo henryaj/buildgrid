@@ -23,8 +23,6 @@ Schedules jobs.
 
 from collections import deque
 
-from google.protobuf import any_pb2
-
 from buildgrid._exceptions import NotFoundError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
@@ -60,9 +58,7 @@ class Scheduler:
                 job.update_execute_stage(ExecuteStage.QUEUED)
 
             else:
-                cached_result_any = any_pb2.Any()
-                cached_result_any.Pack(cached_result)
-                job.result = cached_result_any
+                job.result = cached_result
                 job.result_cached = True
                 job.update_execute_stage(ExecuteStage.COMPLETED)
 
