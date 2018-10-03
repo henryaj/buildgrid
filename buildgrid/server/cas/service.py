@@ -46,8 +46,11 @@ class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressa
 
     def FindMissingBlobs(self, request, context):
         try:
+            self.logger.debug("FindMissingBlobs request: [{}]".format(request))
             instance = self._get_instance(request.instance_name)
-            return instance.find_missing_blobs(request.blob_digests)
+            response = instance.find_missing_blobs(request.blob_digests)
+            self.logger.debug("FindMissingBlobs response: [{}]".format(response))
+            return response
 
         except InvalidArgumentError as e:
             self.logger.error(e)
@@ -58,8 +61,11 @@ class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressa
 
     def BatchUpdateBlobs(self, request, context):
         try:
+            self.logger.debug("BatchUpdateBlobs request: [{}]".format(request))
             instance = self._get_instance(request.instance_name)
-            return instance.batch_update_blobs(request.requests)
+            response = instance.batch_update_blobs(request.requests)
+            self.logger.debug("FindMissingBlobs response: [{}]".format(response))
+            return response
 
         except InvalidArgumentError as e:
             self.logger.error(e)
@@ -102,6 +108,7 @@ class ByteStreamService(bytestream_pb2_grpc.ByteStreamServicer):
 
     def Read(self, request, context):
         try:
+            self.logger.debug("Read request: [{}]".format(request))
             path = request.resource_name.split("/")
             instance_name = path[0]
 
@@ -141,10 +148,13 @@ class ByteStreamService(bytestream_pb2_grpc.ByteStreamServicer):
             context.set_code(grpc.StatusCode.OUT_OF_RANGE)
             yield bytestream_pb2.ReadResponse()
 
+            self.logger.debug("Read finished.")
+
     def Write(self, requests, context):
         try:
             requests, request_probe = tee(requests, 2)
             first_request = next(request_probe)
+            self.logger.debug("First write request: [{}]".format(first_request))
 
             path = first_request.resource_name.split("/")
 
@@ -164,7 +174,9 @@ class ByteStreamService(bytestream_pb2_grpc.ByteStreamServicer):
                 raise InvalidArgumentError("Invalid resource name: [{}]".format(first_request.resource_name))
 
             instance = self._get_instance(instance_name)
-            return instance.write(requests)
+            response = instance.write(requests)
+            self.logger.debug("Write response: [{}]".format(response))
+            return response
 
         except NotImplementedError as e:
             self.logger.error(e)
