@@ -66,7 +66,9 @@ class BotsInterface:
         self._bot_sessions[name] = bot_session
         self.logger.info("Created bot session name=[{}] with bot_id=[{}]".format(name, bot_id))
 
-        for lease in self._scheduler.create_leases():
+        # For now, one lease at a time.
+        lease = self._scheduler.create_lease()
+        if lease:
             bot_session.leases.extend([lease])
 
         return bot_session
@@ -83,8 +85,11 @@ class BotsInterface:
         del bot_session.leases[:]
         bot_session.leases.extend(leases)
 
-        for lease in self._scheduler.create_leases():
-            bot_session.leases.extend([lease])
+        # For now, one lease at a time
+        if not bot_session.leases:
+            lease = self._scheduler.create_lease()
+            if lease:
+                bot_session.leases.extend([lease])
 
         self._bot_sessions[name] = bot_session
         return bot_session

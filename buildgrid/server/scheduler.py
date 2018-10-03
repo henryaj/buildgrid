@@ -108,10 +108,11 @@ class Scheduler:
         if state in (LeaseState.PENDING.value, LeaseState.ACTIVE.value):
             self.retry_job(name)
 
-    def create_leases(self):
-        while self.queue:
+    def create_lease(self):
+        if self.queue:
             job = self.queue.popleft()
             job.update_execute_stage(ExecuteStage.EXECUTING)
             job.create_lease()
             job.lease.state = LeaseState.PENDING.value
-            yield job.lease
+            return job.lease
+        return None
