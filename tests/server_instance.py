@@ -44,8 +44,8 @@ instances:
       The main server
 
     storages:
-        - !disk-storage &main-storage
-          path: ~/cas/
+        - !lru-storage &main-storage
+          size: 256mb
 
     services:
       - !action-cache &main-action
