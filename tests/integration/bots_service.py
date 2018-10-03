@@ -129,7 +129,7 @@ def test_number_of_leases(number_of_jobs, bot_session, context, instance):
     request = bots_pb2.CreateBotSessionRequest(bot_session=bot_session)
     response = instance.CreateBotSession(request, context)
 
-    assert len(response.leases) == number_of_jobs
+    assert len(response.leases) == min(number_of_jobs, 1)
 
 
 def test_update_leases_with_work(bot_session, context, instance):
