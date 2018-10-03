@@ -241,7 +241,7 @@ class Downloader:
         """Fetches a blob using ByteStream.Read()"""
         read_blob = bytearray()
 
-        if self.instance_name is not None:
+        if self.instance_name:
             resource_name = '/'.join([self.instance_name, 'blobs',
                                       digest.hash, str(digest.size_bytes)])
         else:
@@ -313,7 +313,7 @@ class Downloader:
 
     def _fetch_file(self, digest, file_path):
         """Fetches a file using ByteStream.Read()"""
-        if self.instance_name is not None:
+        if self.instance_name:
             resource_name = '/'.join([self.instance_name, 'blobs',
                                       digest.hash, str(digest.size_bytes)])
         else:
@@ -699,7 +699,7 @@ class Uploader:
         else:
             blob_digest.hash = HASH(blob).hexdigest()
             blob_digest.size_bytes = len(blob)
-        if self.instance_name is not None:
+        if self.instance_name:
             resource_name = '/'.join([self.instance_name, 'uploads', self.u_uid, 'blobs',
                                       blob_digest.hash, str(blob_digest.size_bytes)])
         else:
