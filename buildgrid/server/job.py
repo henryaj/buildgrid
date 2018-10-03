@@ -122,8 +122,11 @@ class Job:
         if self.result is not None:
             self._operation.done = True
             response = remote_execution_pb2.ExecuteResponse(result=self.result,
-                                                            cached_result=self.result_cached,
-                                                            status=self.lease.status)
+                                                            cached_result=self.result_cached)
+
+            if not self.result_cached:
+                response.status.CopyFrom(self.lease.status)
+
             self._operation.response.CopyFrom(self._pack_any(response))
 
         return self._operation
