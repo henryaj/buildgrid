@@ -1,6 +1,6 @@
 server:
   - !channel
-    port: 50051
+    port: 50052
     insecure_mode: true
 #    credentials:
 #      tls-server-key: null
