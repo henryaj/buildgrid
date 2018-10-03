@@ -52,7 +52,7 @@ class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
         except NotFoundError as e:
-            self.logger.error(e)
+            self.logger.info(e)
             context.set_code(grpc.StatusCode.NOT_FOUND)
 
         return remote_execution_pb2.ActionResult()
