@@ -52,16 +52,19 @@ from ..cli import pass_context
               help="Public CAS client certificate for TLS (PEM-encoded)")
 @click.option('--cas-server-cert', type=click.Path(exists=True, dir_okay=False), default=None,
               help="Public CAS server certificate for TLS (PEM-encoded)")
+@click.option('--update-period', type=click.FLOAT, default=0.5, show_default=True,
+              help="Time period for bot updates to the server in seconds.")
 @click.option('--parent', type=click.STRING, default='main', show_default=True,
               help="Targeted farm resource.")
 @pass_context
-def cli(context, parent, remote, client_key, client_cert, server_cert,
+def cli(context, parent, update_period, remote, client_key, client_cert, server_cert,
         remote_cas, cas_client_key, cas_client_cert, cas_server_cert):
     # Setup the remote execution server channel:
     url = urlparse(remote)
 
     context.remote = '{}:{}'.format(url.hostname, url.port or 50051)
     context.remote_url = remote
+    context.update_period = update_period
     context.parent = parent
 
     if url.scheme == 'http':
@@ -138,7 +141,7 @@ def run_dummy(context):
     Creates a session, accepts leases, does fake work and updates the server.
     """
     try:
-        b = bot.Bot(context.bot_session)
+        b = bot.Bot(context.bot_session, context.update_period)
         b.session(dummy.work_dummy,
                   context)
     except KeyboardInterrupt:
@@ -153,7 +156,7 @@ def run_host_tools(context):
     result back to CAS.
     """
     try:
-        b = bot.Bot(context.bot_session)
+        b = bot.Bot(context.bot_session, context.update_period)
         b.session(host.work_host_tools,
                   context)
     except KeyboardInterrupt:
@@ -174,7 +177,7 @@ def run_buildbox(context, local_cas, fuse_dir):
     context.fuse_dir = fuse_dir
 
     try:
-        b = bot.Bot(context.bot_session)
+        b = bot.Bot(context.bot_session, context.update_period)
         b.session(buildbox.work_buildbox,
                   context)
     except KeyboardInterrupt:
