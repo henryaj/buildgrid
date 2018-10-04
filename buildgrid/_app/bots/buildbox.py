@@ -17,8 +17,6 @@ import os
 import subprocess
 import tempfile
 
-from google.protobuf import any_pb2
-
 from buildgrid.client.cas import download, upload
 from buildgrid._exceptions import BotError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
@@ -29,13 +27,14 @@ from buildgrid.utils import read_file, write_file
 def work_buildbox(context, lease):
     """Executes a lease for a build action, using buildbox.
     """
-
     local_cas_directory = context.local_cas
     # instance_name = context.parent
     logger = context.logger
 
     action_digest = remote_execution_pb2.Digest()
+
     lease.payload.Unpack(action_digest)
+    lease.result.Clear()
 
     with download(context.cas_channel) as downloader:
         action = downloader.get_message(action_digest,
@@ -131,10 +130,7 @@ def work_buildbox(context, lease):
 
             action_result.output_directories.extend([output_directory])
 
-            action_result_any = any_pb2.Any()
-            action_result_any.Pack(action_result)
-
-            lease.result.CopyFrom(action_result_any)
+            lease.result.Pack(action_result)
 
     return lease
 

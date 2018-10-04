@@ -19,8 +19,6 @@ import logging
 import uuid
 from enum import Enum
 
-from google.protobuf import any_pb2
-
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
@@ -96,7 +94,7 @@ class Job:
         self._operation_update_queues.remove(queue)
 
     def get_operation(self):
-        self._operation.metadata.CopyFrom(self._pack_any(self.get_operation_meta()))
+        self._operation.metadata.Pack(self.get_operation_meta())
         if self.result is not None:
             self._operation.done = True
             response = remote_execution_pb2.ExecuteResponse(result=self.result,
@@ -105,7 +103,7 @@ class Job:
             if not self.result_cached:
                 response.status.CopyFrom(self.lease.status)
 
-            self._operation.response.CopyFrom(self._pack_any(response))
+            self._operation.response.Pack(response)
 
         return self._operation
 
@@ -117,11 +115,9 @@ class Job:
         return meta
 
     def create_lease(self):
-        action_digest = self._pack_any(self._action_digest)
+        lease = bots_pb2.Lease(id=self.name, state=LeaseState.PENDING.value)
+        lease.payload.Pack(self._action_digest)
 
-        lease = bots_pb2.Lease(id=self.name,
-                               payload=action_digest,
-                               state=LeaseState.PENDING.value)
         self.lease = lease
         return lease
 
@@ -132,8 +128,3 @@ class Job:
         self._execute_stage = stage
         for queue in self._operation_update_queues:
             queue.put(self.get_operation())
-
-    def _pack_any(self, pack):
-        some_any = any_pb2.Any()
-        some_any.Pack(pack)
-        return some_any

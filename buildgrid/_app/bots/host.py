@@ -17,8 +17,6 @@ import os
 import subprocess
 import tempfile
 
-from google.protobuf import any_pb2
-
 from buildgrid.client.cas import download, upload
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid.utils import output_file_maker, output_directory_maker
@@ -27,12 +25,13 @@ from buildgrid.utils import output_file_maker, output_directory_maker
 def work_host_tools(context, lease):
     """Executes a lease for a build action, using host tools.
     """
-
     instance_name = context.parent
     logger = context.logger
 
     action_digest = remote_execution_pb2.Digest()
+
     lease.payload.Unpack(action_digest)
+    lease.result.Clear()
 
     with tempfile.TemporaryDirectory() as temp_directory:
         with download(context.cas_channel, instance=instance_name) as downloader:
@@ -122,9 +121,6 @@ def work_host_tools(context, lease):
 
             action_result.output_directories.extend(output_directories)
 
-        action_result_any = any_pb2.Any()
-        action_result_any.Pack(action_result)
-
-        lease.result.CopyFrom(action_result_any)
+        lease.result.Pack(action_result)
 
     return lease
