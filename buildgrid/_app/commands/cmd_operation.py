@@ -101,8 +101,7 @@ def lists(context):
 @pass_context
 def wait(context, operation_name):
     stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
-    request = remote_execution_pb2.WaitExecutionRequest(instance_name=context.instance_name,
-                                                        name=operation_name)
+    request = remote_execution_pb2.WaitExecutionRequest(name=operation_name)
 
     response = stub.WaitExecution(request)
 
