@@ -455,8 +455,12 @@ known-standard-library=
 
 # Force import order to recognize a module as part of a third party library.
 known-third-party=boto3,
+                  click,
                   enchant,
-                  grpc
+                  google,
+                  grpc,
+                  moto,
+                  yaml
 
 
 [DESIGN]
