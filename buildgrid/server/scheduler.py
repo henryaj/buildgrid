@@ -27,7 +27,7 @@ from buildgrid._exceptions import NotFoundError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 
-from .job import ExecuteStage, LeaseState
+from .job import OperationStage, LeaseState
 
 
 class Scheduler:
@@ -55,26 +55,26 @@ class Scheduler:
                 cached_result = self._action_cache.get_action_result(job.action_digest)
             except NotFoundError:
                 self.queue.append(job)
-                job.update_execute_stage(ExecuteStage.QUEUED)
+                job.update_operation_stage(OperationStage.QUEUED)
 
             else:
                 job.result = cached_result
                 job.result_cached = True
-                job.update_execute_stage(ExecuteStage.COMPLETED)
+                job.update_operation_stage(OperationStage.COMPLETED)
 
         else:
             self.queue.append(job)
-            job.update_execute_stage(ExecuteStage.QUEUED)
+            job.update_operation_stage(OperationStage.QUEUED)
 
     def retry_job(self, name):
         if name in self.jobs:
             job = self.jobs[name]
             if job.n_tries >= self.MAX_N_TRIES:
                 # TODO: Decide what to do with these jobs
-                job.update_execute_stage(ExecuteStage.COMPLETED)
+                job.update_operation_stage(OperationStage.COMPLETED)
                 # TODO: Mark these jobs as done
             else:
-                job.update_execute_stage(ExecuteStage.QUEUED)
+                job.update_operation_stage(OperationStage.QUEUED)
                 job.n_tries += 1
                 self.queue.appendleft(job)
 
@@ -87,7 +87,7 @@ class Scheduler:
         if not job.do_not_cache and self._action_cache is not None:
             if not job.lease.status.code:
                 self._action_cache.update_action_result(job.action_digest, action_result)
-        job.update_execute_stage(ExecuteStage.COMPLETED)
+        job.update_operation_stage(OperationStage.COMPLETED)
 
     def get_operations(self):
         response = operations_pb2.ListOperationsResponse()
@@ -111,7 +111,7 @@ class Scheduler:
     def create_lease(self):
         if self.queue:
             job = self.queue.popleft()
-            job.update_execute_stage(ExecuteStage.EXECUTING)
+            job.update_operation_stage(OperationStage.EXECUTING)
             job.create_lease()
             job.lease.state = LeaseState.PENDING.value
             return job.lease

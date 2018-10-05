@@ -26,50 +26,28 @@ from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 
 
-class ExecuteStage(Enum):
+class OperationStage(Enum):
+    # Initially unknown stage.
     UNKNOWN = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('UNKNOWN')
-
     # Checking the result against the cache.
     CACHE_CHECK = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('CACHE_CHECK')
-
     # Currently idle, awaiting a free machine to execute.
     QUEUED = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('QUEUED')
-
     # Currently being executed by a worker.
     EXECUTING = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('EXECUTING')
-
     # Finished execution.
     COMPLETED = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('COMPLETED')
 
 
-class BotStatus(Enum):
-    BOT_STATUS_UNSPECIFIED = bots_pb2.BotStatus.Value('BOT_STATUS_UNSPECIFIED')
-
-    # The bot is healthy, and will accept leases as normal.
-    OK = bots_pb2.BotStatus.Value('OK')
-
-    # The bot is unhealthy and will not accept new leases.
-    UNHEALTHY = bots_pb2.BotStatus.Value('UNHEALTHY')
-
-    # The bot has been asked to reboot the host.
-    HOST_REBOOTING = bots_pb2.BotStatus.Value('HOST_REBOOTING')
-
-    # The bot has been asked to shut down.
-    BOT_TERMINATING = bots_pb2.BotStatus.Value('BOT_TERMINATING')
-
-
 class LeaseState(Enum):
+    # Initially unknown state.
     LEASE_STATE_UNSPECIFIED = bots_pb2.LeaseState.Value('LEASE_STATE_UNSPECIFIED')
-
     # The server expects the bot to accept this lease.
     PENDING = bots_pb2.LeaseState.Value('PENDING')
-
     # The bot has accepted this lease.
     ACTIVE = bots_pb2.LeaseState.Value('ACTIVE')
-
     # The bot is no longer leased.
     COMPLETED = bots_pb2.LeaseState.Value('COMPLETED')
-
     # The bot should immediately release all resources associated with the lease.
     CANCELLED = bots_pb2.LeaseState.Value('CANCELLED')
 
@@ -85,7 +63,7 @@ class Job:
 
         self._action_digest = action_digest
         self._do_not_cache = do_not_cache
-        self._execute_stage = ExecuteStage.UNKNOWN
+        self._execute_stage = OperationStage.UNKNOWN
         self._name = str(uuid.uuid4())
         self._operation = operations_pb2.Operation(name=self._name)
         self._operation_update_queues = []
@@ -150,7 +128,7 @@ class Job:
     def get_operations(self):
         return operations_pb2.ListOperationsResponse(operations=[self.get_operation()])
 
-    def update_execute_stage(self, stage):
+    def update_operation_stage(self, stage):
         self._execute_stage = stage
         for queue in self._operation_update_queues:
             queue.put(self.get_operation())
