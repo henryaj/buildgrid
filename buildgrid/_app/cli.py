@@ -141,12 +141,18 @@ class BuildGridCLI(click.MultiCommand):
 
 
 @click.command(cls=BuildGridCLI, context_settings=CONTEXT_SETTINGS)
-@click.option('-v', '--verbose', is_flag=True,
-              help='Enables verbose mode.')
+@click.option('-v', '--verbose', count=True,
+              help='Increase log verbosity level.')
 @pass_context
 def cli(context, verbose):
     """BuildGrid App"""
     logger = _logging.bgd_logger()
-    context.verbose = verbose
-    if verbose:
+
+    if verbose == 1:
+        logger.setLevel(logging.WARNING)
+    elif verbose == 2:
+        logger.setLevel(logging.INFO)
+    elif verbose >= 3:
         logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.ERROR)
