@@ -43,6 +43,8 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
     def Execute(self, request, context):
         try:
+            self.logger.debug("Execute request from [{}]"
+                              .format(context.peer()))
             message_queue = queue.Queue()
             instance = self._get_instance(request.instance_name)
             operation = instance.execute(request.action_digest,
@@ -78,6 +80,8 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
     def WaitExecution(self, request, context):
         try:
+            self.logger.debug("WaitExecution request from [{}]"
+                              .format(context.peer()))
             names = request.name.split("/")
 
             # Operation name should be in format:

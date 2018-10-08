@@ -44,6 +44,8 @@ class BotsService(bots_pb2_grpc.BotsServicer):
 
     def CreateBotSession(self, request, context):
         try:
+            self.logger.debug("CreateBotSession request from [{}]"
+                              .format(context.peer()))
             parent = request.parent
             instance = self._get_instance(request.parent)
             return instance.create_bot_session(parent,
@@ -58,6 +60,8 @@ class BotsService(bots_pb2_grpc.BotsServicer):
 
     def UpdateBotSession(self, request, context):
         try:
+            self.logger.debug("UpdateBotSession request from [{}]"
+                              .format(context.peer()))
             names = request.name.split("/")
             # Operation name should be in format:
             # {instance/name}/{uuid}
@@ -85,6 +89,8 @@ class BotsService(bots_pb2_grpc.BotsServicer):
         return bots_pb2.BotSession()
 
     def PostBotEventTemp(self, request, context):
+        self.logger.debug("PostBotEventTemp request from [{}]"
+                          .format(context.peer()))
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         return Empty()
 

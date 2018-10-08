@@ -43,6 +43,8 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
 
     def GetOperation(self, request, context):
         try:
+            self.logger.debug("GetOperation request from [{}"
+                              .format(context.peer()))
             name = request.name
 
             instance_name = self._parse_instance_name(name)
@@ -64,6 +66,8 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
 
     def ListOperations(self, request, context):
         try:
+            self.logger.debug("ListOperations request from [{}]"
+                              .format(context.peer()))
             # The request name should be the collection name
             # In our case, this is just the instance_name
             instance_name = request.name
@@ -87,6 +91,8 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
 
     def DeleteOperation(self, request, context):
         try:
+            self.logger.debug("DeleteOperation request from [{}]"
+                              .format(context.peer()))
             name = request.name
 
             instance_name = self._parse_instance_name(name)
@@ -104,6 +110,8 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
 
     def CancelOperation(self, request, context):
         try:
+            self.logger.debug("CancelOperation request from [{}]"
+                              .format(context.peer()))
             name = request.name
 
             instance_name = self._parse_instance_name(name)
