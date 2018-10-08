@@ -200,17 +200,19 @@ trunk.
 Committer access
 ----------------
 
-We'll hand out commit access to anyone who has successfully landed a
+We'll hand out commit access to anyone who has successfully landed a single
 patch to the code base. Please request this via Slack or the mailing list.
 
-This of course relies on contributors being responsive and showing willingness to
-address any problems that come about after landing branches.
+This of course relies on contributors being responsive and showing willingness 
+to address any problems that may arise after landing branches.
 
-When submitting a patch, please obtain a review from another committer who is 
-familiar with the area of the code base which the branch effects. An approval 
-from someone who is not the patch author will be needed before any merge (we use
-gitlab's 'approval' feature for this). What we are expecting of committers here 
-in general is basically to escalate the review in cases of uncertainty.
+When submitting a merge request, please obtain a review from another committer 
+who is familiar with the area of the code base which the branch effects. An 
+approval from another committer who is not the patch author will be needed 
+before any merge (we use gitlab's 'approval' feature for this).
+
+What we are expecting of committers here in general is basically to escalate the
+review in cases of uncertainty.
 
 .. note::
 
