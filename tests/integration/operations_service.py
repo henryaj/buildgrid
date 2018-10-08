@@ -30,6 +30,7 @@ from buildgrid._protos.google.longrunning import operations_pb2
 from buildgrid._protos.google.rpc import status_pb2
 from buildgrid.server.cas.storage import lru_memory_cache
 from buildgrid.server.controller import ExecutionController
+from buildgrid.server.job import LeaseState
 from buildgrid.server.operations import service
 from buildgrid.server.operations.service import OperationsService
 from buildgrid.utils import create_digest
@@ -131,9 +132,10 @@ def test_list_operations_with_result(instance, controller, execute_request, cont
     action_result.output_files.extend([output_file])
 
     controller.operations_instance._scheduler.jobs[response_execute.name].create_lease()
-    controller.operations_instance._scheduler.job_complete(response_execute.name,
-                                                           _pack_any(action_result),
-                                                           status_pb2.Status())
+    controller.operations_instance._scheduler.update_job_lease_state(response_execute.name,
+                                                                     LeaseState.COMPLETED,
+                                                                     lease_status=status_pb2.Status(),
+                                                                     lease_result=_pack_any(action_result))
 
     request = operations_pb2.ListOperationsRequest(name=instance_name)
     response = instance.ListOperations(request, context)

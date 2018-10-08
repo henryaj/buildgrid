@@ -24,7 +24,6 @@ Schedules jobs.
 from collections import deque
 
 from buildgrid._exceptions import NotFoundError
-from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 
 from .job import OperationStage, LeaseState
@@ -45,7 +44,7 @@ class Scheduler:
     def unregister_client(self, name, queue):
         job = self.jobs[name]
         job.unregister_client(queue)
-        if job.check_job_finished():
+        if job.operation.done:
             del self.jobs[name]
 
     def append_job(self, job, skip_cache_lookup=False):
@@ -58,8 +57,7 @@ class Scheduler:
                 job.update_operation_stage(OperationStage.QUEUED)
 
             else:
-                job.result = cached_result
-                job.result_cached = True
+                job.set_cached_result(cached_result)
                 job.update_operation_stage(OperationStage.COMPLETED)
 
         else:
@@ -75,29 +73,26 @@ class Scheduler:
                 # TODO: Mark these jobs as done
             else:
                 job.update_operation_stage(OperationStage.QUEUED)
-                job.n_tries += 1
                 self.queue.appendleft(job)
-
-    def job_complete(self, name, result, status):
-        job = self.jobs[name]
-        job.lease.status.CopyFrom(status)
-        action_result = remote_execution_pb2.ActionResult()
-        result.Unpack(action_result)
-        job.result = action_result
-        if not job.do_not_cache and self._action_cache is not None:
-            if not job.lease.status.code:
-                self._action_cache.update_action_result(job.action_digest, action_result)
-        job.update_operation_stage(OperationStage.COMPLETED)
 
     def get_operations(self):
         response = operations_pb2.ListOperationsResponse()
         for v in self.jobs.values():
-            response.operations.extend([v.get_operation()])
+            response.operations.extend([v.operation])
         return response
 
-    def update_job_lease_state(self, name, state):
-        job = self.jobs[name]
-        job.lease.state = state
+    def update_job_lease_state(self, job_name, lease_state, lease_status=None, lease_result=None):
+        job = self.jobs[job_name]
+        if lease_state != LeaseState.COMPLETED:
+            job.update_lease_state(lease_state)
+        else:
+            job.update_lease_state(lease_state, status=lease_status, result=lease_result)
+
+            if not job.do_not_cache and self._action_cache is not None:
+                if not job.lease.status.code:
+                    self._action_cache.update_action_result(job.action_digest, job.action_result)
+
+            job.update_operation_stage(OperationStage.COMPLETED)
 
     def get_job_lease(self, name):
         return self.jobs[name].lease
@@ -113,6 +108,5 @@ class Scheduler:
             job = self.queue.popleft()
             job.update_operation_stage(OperationStage.EXECUTING)
             job.create_lease()
-            job.lease.state = LeaseState.PENDING.value
             return job.lease
         return None

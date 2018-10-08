@@ -53,7 +53,7 @@ class ExecutionInstance:
 
         self._scheduler.append_job(job, skip_cache_lookup)
 
-        return job.get_operation()
+        return job.operation
 
     def register_message_client(self, name, queue):
         try:

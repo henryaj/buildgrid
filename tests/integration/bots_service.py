@@ -174,6 +174,7 @@ def test_update_leases_work_complete(bot_session, context, instance):
     response = copy.deepcopy(instance.UpdateBotSession(request, context))
 
     response.leases[0].state = LeaseState.COMPLETED.value
+    response.leases[0].result.Pack(remote_execution_pb2.ActionResult())
 
     request = bots_pb2.UpdateBotSessionRequest(name=response.name,
                                                bot_session=response)

@@ -34,13 +34,13 @@ class OperationsInstance:
         server.add_operations_instance(self, instance_name)
 
     def get_operation(self, name):
-        operation = self._scheduler.jobs.get(name)
+        job = self._scheduler.jobs.get(name)
 
-        if operation is None:
+        if job is None:
             raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
 
         else:
-            return operation.get_operation()
+            return job.operation
 
     def list_operations(self, list_filter, page_size, page_token):
         # TODO: Pages

@@ -109,7 +109,8 @@ class BotsInterface:
         if server_state == LeaseState.PENDING:
 
             if client_state == LeaseState.ACTIVE:
-                self._scheduler.update_job_lease_state(client_lease.id, client_lease.state)
+                self._scheduler.update_job_lease_state(client_lease.id,
+                                                       LeaseState.ACTIVE)
             elif client_state == LeaseState.COMPLETED:
                 # TODO: Lease was rejected
                 raise NotImplementedError("'Not Accepted' is unsupported")
@@ -122,8 +123,10 @@ class BotsInterface:
                 pass
 
             elif client_state == LeaseState.COMPLETED:
-                self._scheduler.update_job_lease_state(client_lease.id, client_lease.state)
-                self._scheduler.job_complete(client_lease.id, client_lease.result, client_lease.status)
+                self._scheduler.update_job_lease_state(client_lease.id,
+                                                       LeaseState.COMPLETED,
+                                                       lease_status=client_lease.status,
+                                                       lease_result=client_lease.result)
                 return None
 
             else:

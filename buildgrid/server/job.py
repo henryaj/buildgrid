@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Codethink Limited
+# Copyright (C) 2018 Bloomberg LP
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,9 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# Authors:
-#        Finn Ball <finn.ball@codethink.co.uk>
+
 
 import logging
 import uuid
@@ -53,18 +51,23 @@ class LeaseState(Enum):
 class Job:
 
     def __init__(self, action_digest, do_not_cache=False, message_queue=None):
-        self.lease = None
         self.logger = logging.getLogger(__name__)
-        self.n_tries = 0
-        self.result = None
-        self.result_cached = False
 
-        self._action_digest = action_digest
-        self._do_not_cache = do_not_cache
-        self._execute_stage = OperationStage.UNKNOWN
         self._name = str(uuid.uuid4())
-        self._operation = operations_pb2.Operation(name=self._name)
+        self._operation = operations_pb2.Operation()
+        self._lease = None
+
+        self.__execute_response = None
+        self.__operation_metadata = remote_execution_pb2.ExecuteOperationMetadata()
+
+        self.__operation_metadata.action_digest.CopyFrom(action_digest)
+        self.__operation_metadata.stage = OperationStage.UNKNOWN.value
+
+        self._do_not_cache = do_not_cache
         self._operation_update_queues = []
+        self._operation.name = self._name
+        self._operation.done = False
+        self._n_tries = 0
 
         if message_queue is not None:
             self.register_client(message_queue)
@@ -74,57 +77,138 @@ class Job:
         return self._name
 
     @property
-    def action_digest(self):
-        return self._action_digest
-
-    @property
     def do_not_cache(self):
         return self._do_not_cache
 
-    def check_job_finished(self):
-        if not self._operation_update_queues:
-            return self._operation.done
-        return False
+    @property
+    def action_digest(self):
+        return self.__operation_metadata.action_digest
 
-    def register_client(self, queue):
-        self._operation_update_queues.append(queue)
-        queue.put(self.get_operation())
+    @property
+    def action_result(self):
+        if self.__execute_response is not None:
+            return self.__execute_response.result
+        else:
+            return None
 
-    def unregister_client(self, queue):
-        self._operation_update_queues.remove(queue)
-
-    def get_operation(self):
-        self._operation.metadata.Pack(self.get_operation_meta())
-        if self.result is not None:
-            self._operation.done = True
-            response = remote_execution_pb2.ExecuteResponse(result=self.result,
-                                                            cached_result=self.result_cached)
-
-            if not self.result_cached:
-                response.status.CopyFrom(self.lease.status)
-
-            self._operation.response.Pack(response)
-
+    @property
+    def operation(self):
         return self._operation
 
-    def get_operation_meta(self):
-        meta = remote_execution_pb2.ExecuteOperationMetadata()
-        meta.stage = self._execute_stage.value
-        meta.action_digest.CopyFrom(self._action_digest)
+    @property
+    def operation_stage(self):
+        return OperationStage(self.__operation_metadata.state)
 
-        return meta
+    @property
+    def lease(self):
+        return self._lease
+
+    @property
+    def lease_state(self):
+        if self._lease is not None:
+            return LeaseState(self._lease.state)
+        else:
+            return None
+
+    @property
+    def n_tries(self):
+        return self._n_tries
+
+    @property
+    def n_clients(self):
+        return len(self._operation_update_queues)
+
+    def register_client(self, queue):
+        """Subscribes to the job's :class:`Operation` stage change events.
+
+        Args:
+            queue (queue.Queue): the event queue to register.
+        """
+        self._operation_update_queues.append(queue)
+        queue.put(self._operation)
+
+    def unregister_client(self, queue):
+        """Unsubscribes to the job's :class:`Operation` stage change events.
+
+        Args:
+            queue (queue.Queue): the event queue to unregister.
+        """
+        self._operation_update_queues.remove(queue)
+
+    def set_cached_result(self, action_result):
+        """Allows specifying an action result form the action cache for the job.
+        """
+        self.__execute_response = remote_execution_pb2.ExecuteResponse()
+        self.__execute_response.result.CopyFrom(action_result)
+        self.__execute_response.cached_result = True
 
     def create_lease(self):
-        lease = bots_pb2.Lease(id=self.name, state=LeaseState.PENDING.value)
-        lease.payload.Pack(self._action_digest)
+        """Emits a new :class:`Lease` for the job.
 
-        self.lease = lease
-        return lease
+        Only one :class:`Lease` can be emitted for a given job. This method
+        should only be used once, any furhter calls are ignored.
+        """
+        if self._lease is not None:
+            return None
 
-    def get_operations(self):
-        return operations_pb2.ListOperationsResponse(operations=[self.get_operation()])
+        self._lease = bots_pb2.Lease()
+        self._lease.id = self._name
+        self._lease.payload.Pack(self.__operation_metadata.action_digest)
+        self._lease.state = LeaseState.PENDING.value
+
+        return self._lease
+
+    def update_lease_state(self, state, status=None, result=None):
+        """Operates a state transition for the job's current :class:Lease.
+
+        Args:
+            state (LeaseState): the lease state to transition to.
+            status (google.rpc.Status): the lease execution status, only
+                required if `state` is `COMPLETED`.
+            result (google.protobuf.Any): the lease execution result, only
+                required if `state` is `COMPLETED`.
+        """
+        if state.value == self._lease.state:
+            return
+
+        self._lease.state = state.value
+
+        if self._lease.state == LeaseState.PENDING.value:
+            self._lease.status.Clear()
+            self._lease.result.Clear()
+
+        elif self._lease.state == LeaseState.COMPLETED.value:
+            action_result = remote_execution_pb2.ActionResult()
+
+            if result is not None:
+                assert result.Is(action_result.DESCRIPTOR)
+                result.Unpack(action_result)
+
+            self.__execute_response = remote_execution_pb2.ExecuteResponse()
+            self.__execute_response.result.CopyFrom(action_result)
+            self.__execute_response.cached_result = False
+            self.__execute_response.status.CopyFrom(status)
 
     def update_operation_stage(self, stage):
-        self._execute_stage = stage
+        """Operates a stage transition for the job's :class:Operation.
+
+        Args:
+            stage (OperationStage): the operation stage to transition to.
+        """
+        if stage.value == self.__operation_metadata.stage:
+            return
+
+        self.__operation_metadata.stage = stage.value
+
+        if self.__operation_metadata.stage == OperationStage.QUEUED.value:
+            self._n_tries += 1
+
+        elif self.__operation_metadata.stage == OperationStage.COMPLETED.value:
+            if self.__execute_response is not None:
+                self._operation.response.Pack(self.__execute_response)
+            self._operation.done = True
+
+        self._operation.metadata.Pack(self.__operation_metadata)
+
         for queue in self._operation_update_queues:
-            queue.put(self.get_operation())
+            queue.put(self._operation)
