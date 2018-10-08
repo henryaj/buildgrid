@@ -1,4 +1,3 @@
-
 .. _contributing:
 
 Contributing
@@ -201,20 +200,17 @@ trunk.
 Committer access
 ----------------
 
-We'll hand out commit access to anyone who has successfully landed a single
+We'll hand out commit access to anyone who has successfully landed a
 patch to the code base. Please request this via Slack or the mailing list.
 
-This of course relies on contributors being responsive and show willingness to
-address problems after landing branches there should not be any problems here.
+This of course relies on contributors being responsive and showing willingness to
+address any problems that come about after landing branches.
 
-What we are expecting of committers here in general is basically to escalate the
-review in cases of uncertainty:
-
-- If the change is very trivial (obvious few line changes, typos…), and you are
-  confident of the change, there is no need for review.
-- If the change is non trivial, please obtain a review from another committer
-  who is familiar with the area which the branch effects. An approval from
-  someone who is not the patch author will be needed before any merge.
+When submitting a patch, please obtain a review from another committer who is 
+familiar with the area of the code base which the branch effects. An approval 
+from someone who is not the patch author will be needed before any merge (we use
+gitlab's 'approval' feature for this). What we are expecting of committers here 
+in general is basically to escalate the review in cases of uncertainty.
 
 .. note::
 
