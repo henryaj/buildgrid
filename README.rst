@@ -1,4 +1,3 @@
-
 .. _about:
 
 About
@@ -14,13 +13,15 @@ BuildGrid is a Python remote execution service which implements Google's
 `Remote Execution API`_ and the `Remote Workers API`_. The project's goal is to
 be able to execute build jobs remotely on a grid of computers in order to
 massively speed up build times. Workers on the grid should be able to run with
-different environments. It is designed to work with clients such as `Bazel`_ and 
-`BuildStream`_.
+different environments. It works with clients such as `Bazel`_, 
+`BuildStream`_ and `RECC`_, and is designed to be able to work with any client
+that conforms to the above API protocols.
 
 .. _Remote Execution API: https://github.com/bazelbuild/remote-apis
 .. _Remote Workers API: https://docs.google.com/document/d/1s_AzRRD2mdyktKUj2HWBn99rMg_3tcPvdjx3MPbFidU/edit#heading=h.1u2taqr2h940
 .. _BuildStream: https://wiki.gnome.org/Projects/BuildStream
 .. _Bazel: https://bazel.build
+.. _RECC: https://gitlab.com/bloomberg/recc
 
 
 .. _getting-started:
