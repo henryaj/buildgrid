@@ -1,4 +1,3 @@
-
 .. _external-resources:
 
 Resources
@@ -19,6 +18,9 @@ Remote execution and worker API useful links:
 - `bubblewrap repository`_
 - `Buildfarm reference REAPI implementation`_
 - `Buildbarn Golang REAPI implementation`_
+- `Demonstration of RECC with BuildGrid`_
+- `Demonstration of Bazel with BuildGrid`_
+- `Demonstration of BuildStream with BuildGrid`_
 
 .. _REAPI design document: https://docs.google.com/document/d/1AaGk7fOPByEvpAbqeXIyE8HX_A3_axxNnvroblTZ_6s
 .. _REAPI protobuf specification: https://github.com/bazelbuild/remote-apis/blob/master/build/bazel/remote/execution/v2/remote_execution.proto
@@ -36,3 +38,6 @@ Remote execution and worker API useful links:
 .. _bubblewrap repository: https://github.com/projectatomic/bubblewrap
 .. _Buildfarm reference REAPI implementation: https://github.com/bazelbuild/bazel-buildfarm
 .. _Buildbarn Golang REAPI implementation: https://github.com/EdSchouten/bazel-buildbarn
+.. _Demonstration of RECC with BuildGrid: https://asciinema.org/a/0FjExIqrTGSlpSUIS8Ehf5gUg
+.. _Demonstration of Bazel with BuildGrid: https://asciinema.org/a/uVHFWOxpivwJ4ari23CEerR8N
+.. _Demonstration of BuildStream with BuildGrid: https://asciinema.org/a/QfkYGqhfhEQz4o8prlBdEBFP7
