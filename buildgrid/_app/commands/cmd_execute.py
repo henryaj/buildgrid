@@ -169,6 +169,7 @@ def run_command(context, input_root, commands, output_file, output_directory):
 
             downloader.download_file(output_file_response.digest, path)
 
-            if output_file_response.path in output_executeables:
-                st = os.stat(path)
-                os.chmod(path, st.st_mode | stat.S_IXUSR)
+    for output_file_response in execute_response.result.output_files:
+        if output_file_response.path in output_executeables:
+            st = os.stat(path)
+            os.chmod(path, st.st_mode | stat.S_IXUSR)
