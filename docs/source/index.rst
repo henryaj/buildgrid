@@ -29,11 +29,11 @@ Resources
 - `GitLab repository`_
 - `Bug tracking`_
 - `Mailing list`_
-- `Slack channel`_  [`invite link`_]
+- `Slack channel`_ [`invite link`_]
 
 .. _Homepage: https://buildgrid.build
 .. _GitLab repository: https://gitlab.com/BuildGrid/buildgrid
-.. _Bug tracking: https://gitlab.com/BuildGrid/buildgrid/issues
+.. _Bug tracking: https://gitlab.com/BuildGrid/buildgrid/boards
 .. _Mailing list: https://lists.buildgrid.build/cgi-bin/mailman/listinfo/buildgrid
 .. _Slack channel: https://buildteamworld.slack.com/messages/CC9MKC203
 .. _invite link: https://join.slack.com/t/buildteamworld/shared_invite/enQtMzkxNzE0MDMyMDY1LTRmZmM1OWE0OTFkMGE1YjU5Njc4ODEzYjc0MGMyOTM5ZTQ5MmE2YTQ1MzQwZDc5MWNhODY1ZmRkZTE4YjFhNjU
