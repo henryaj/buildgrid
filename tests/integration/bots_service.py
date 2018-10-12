@@ -284,4 +284,4 @@ def _inject_work(scheduler, action_digest=None):
     if not action_digest:
         action_digest = remote_execution_pb2.Digest()
     j = job.Job(action_digest, False)
-    scheduler.append_job(j, True)
+    scheduler.queue_job(j, True)

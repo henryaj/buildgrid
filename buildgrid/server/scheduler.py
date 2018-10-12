@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Codethink Limited
+# Copyright (C) 2018 Bloomberg LP
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,9 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# Authors:
-#        Finn Ball <finn.ball@codethink.co.uk>
+
 
 """
 Scheduler
@@ -37,35 +35,39 @@ class Scheduler:
         self.jobs = {}
         self.queue = deque()
 
-    def register_client(self, name, queue):
-        self.jobs[name].register_client(queue)
+    def register_client(self, job_name, queue):
+        self.jobs[job_name].register_client(queue)
 
-    def unregister_client(self, name, queue):
-        job = self.jobs[name]
-        job.unregister_client(queue)
-        if job.operation.done:
-            del self.jobs[name]
+    def unregister_client(self, job_name, queue):
+        self.jobs[job_name].unregister_client(queue)
 
-    def append_job(self, job, skip_cache_lookup=False):
+        if not self.jobs[job_name].n_clients and self.jobs[job_name].operation.done:
+            del self.jobs[job_name]
+
+    def queue_job(self, job, skip_cache_lookup=False):
         self.jobs[job.name] = job
+
+        operation_stage = None
         if self._action_cache is not None and not skip_cache_lookup:
             try:
-                cached_result = self._action_cache.get_action_result(job.action_digest)
+                action_result = self._action_cache.get_action_result(job.action_digest)
             except NotFoundError:
+                operation_stage = OperationStage.QUEUED
                 self.queue.append(job)
-                job.update_operation_stage(OperationStage.QUEUED)
 
             else:
-                job.set_cached_result(cached_result)
-                job.update_operation_stage(OperationStage.COMPLETED)
+                job.set_cached_result(action_result)
+                operation_stage = OperationStage.COMPLETED
 
         else:
+            operation_stage = OperationStage.QUEUED
             self.queue.append(job)
-            job.update_operation_stage(OperationStage.QUEUED)
 
-    def retry_job(self, name):
-        if name in self.jobs:
-            job = self.jobs[name]
+        job.update_operation_stage(operation_stage)
+
+    def retry_job(self, job_name):
+        if job_name in self.jobs:
+            job = self.jobs[job_name]
             if job.n_tries >= self.MAX_N_TRIES:
                 # TODO: Decide what to do with these jobs
                 job.update_operation_stage(OperationStage.COMPLETED)
@@ -77,12 +79,42 @@ class Scheduler:
     def list_jobs(self):
         return self.jobs.values()
 
+    def request_job_leases(self, worker_capabilities):
+        """Generates a list of the highest priority leases to be run.
+
+        Args:
+            worker_capabilities (dict): a set of key-value pairs decribing the
+                worker properties, configuration and state at the time of the
+                request.
+        """
+        if not self.queue:
+            return []
+
+        job = self.queue.popleft()
+        # For now, one lease at a time:
+        lease = job.create_lease()
+
+        return [lease]
+
     def update_job_lease_state(self, job_name, lease_state, lease_status=None, lease_result=None):
+        """Requests a state transition for a job's current :class:Lease.
+
+        Args:
+            job_name (str): name of the job to query.
+            lease_state (LeaseState): the lease state to transition to.
+            lease_status (google.rpc.Status): the lease execution status, only
+                required if `lease_state` is `COMPLETED`.
+            lease_result (google.protobuf.Any): the lease execution result, only
+                required if `lease_state` is `COMPLETED`.
+        """
         job = self.jobs[job_name]
+
         if lease_state != LeaseState.COMPLETED:
             job.update_lease_state(lease_state)
+
         else:
-            job.update_lease_state(lease_state, status=lease_status, result=lease_result)
+            job.update_lease_state(lease_state,
+                                   status=lease_status, result=lease_result)
 
             if not job.do_not_cache and self._action_cache is not None:
                 if not job.lease.status.code:
@@ -90,19 +122,10 @@ class Scheduler:
 
             job.update_operation_stage(OperationStage.COMPLETED)
 
-    def get_job_lease(self, name):
-        return self.jobs[name].lease
+    def get_job_lease(self, job_name):
+        """Returns the lease associated to job, if any have been emitted yet."""
+        return self.jobs[job_name].lease
 
-    def cancel_session(self, name):
-        job = self.jobs[name]
-        state = job.lease.state
-        if state in (LeaseState.PENDING.value, LeaseState.ACTIVE.value):
-            self.retry_job(name)
-
-    def create_lease(self):
-        if self.queue:
-            job = self.queue.popleft()
-            job.update_operation_stage(OperationStage.EXECUTING)
-            job.create_lease()
-            return job.lease
-        return None
+    def get_job_operation(self, job_name):
+        """Returns the operation associated to job."""
+        return self.jobs[job_name].operation

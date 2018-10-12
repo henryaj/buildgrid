@@ -51,7 +51,7 @@ class ExecutionInstance:
         job = Job(action_digest, action.do_not_cache, message_queue)
         self.logger.info("Operation name: [{}]".format(job.name))
 
-        self._scheduler.append_job(job, skip_cache_lookup)
+        self._scheduler.queue_job(job, skip_cache_lookup)
 
         return job.operation
 
