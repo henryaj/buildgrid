@@ -17,9 +17,13 @@ discuss with us before submitting anything, as we may well have some important
 context which will could help guide your efforts.
 
 Any major feature additions should be raised first as a proposal on the
-`BuildGrid mailing list`_ to be discussed, and then eventually followed up with
-an issue on GitLab. We recommend that you propose the feature in advance of
-commencing work.
+BuildGrid mailing list to be discussed between the core contributors. Once 
+this discussion has taken place and there is agreement on how to proceed, 
+it should be followed by with a Gitlab issue being raised which summarizes 
+the tasks required.
+
+We strongly recommend that you propose the feature in advance of
+commencing any work.
 
 The author of any patch is expected to take ownership of that code and is to
 support it for a reasonable time-frame. This means addressing any unforeseen
