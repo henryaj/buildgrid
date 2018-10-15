@@ -237,21 +237,49 @@ following goals:
   for the viewer to digest.
 - Ensure that we keep it simple and easy to contribute to the project.
 
-We are currenlty using the following GitLab features:
+Explanation of how the project is currenlty using some GitLab features:
 
 - `Milestones`_: we have seen them used in the same way as `Epics`_ in other
-  projects. BuildGrid milestones must be time-line based, can overlap and we can
-  be working towards multiple milestones at any one time. They allow us to group
-  together all sub tasks into an overall aim. See our `BuildGrid milestones`_.
-- `Labels`_: allow us to filter tickets in useful ways. They do complexity and
-  effort as they grow in number and usage, though, so the general approach is
-  to have the minimum possible. See our `BuildGrid labels`_.
+  projects and are trying not to do that here. Instead we are going to 
+  use milestones to denote development cycles (ie, two week 'sprints'). See the
+  `BuildGrid milestones`_.
+- `Labels`_: allow us to filter tickets (ie, 'issues' in gitlab terminology)
+  in useful ways. They add complexity and effort as they grow in number, so the
+  general approach is to have the minimum possible but 
+  ensure we use them consistently. See the `BuildGrid labels`_. 
 - `Boards`_: allow us to visualise and manage issues and labels in a simple way.
-  For now, we are only utilising one boards. Issues start life in the
-  ``Backlog`` column by default, and we move them into ``ToDo`` when they are
-  coming up in the next few weeks. ``Doing`` is only for when an item is
-  currently being worked on. Moving an issue from column to column automatically
-  adjust the tagged labels. See our `BuildGrid boards`_.
+  Issues start life in the ``Backlog`` column by default, and we move them into
+  ``ToDo`` when we aim to complete them in the current development cycle.
+  ``Doing`` is only for when an item is currently being worked on. When on the
+  Board view, dragging and dropping an issue from column to column automatically
+  adjusts the relevant labels. See the `BuildGrid boards`_.
+  
+  
+Guidelines for using GitLab features when working on this project: 
+  
+- When raising an issue, please:
+   
+  - check to see if there already is an issue to cover this task (if not then 
+    raise a new one)
+  - assign the appropriate label or labels (tip: the vast majority of issues 
+    raised will be either an enhancement or a bug)
+    
+- If you plan to work on an issue, please:
+
+  - self-assign the ticket
+  - ensure it's captured in the current sprint (ie, Gitlab milestone)
+  - ensure the ticket is in the ``ToDo`` column of the board if you aim to 
+    complete in the current sprint but aren't yet working on it, and
+    the ``Doing`` column if you are working on it currently.
+
+- Please note that Gitlab issues are for either 'tasks' or 'bugs' - ie not for 
+  long discussions (where the mailing list is a better choice) or for ranting, 
+  for example.
+  
+The above may seem like a lot to take in, but please don't worry about getting 
+it right the first few times. The worst that can happen is that you'll get a 
+friendly message from a current contributor who explains the process. We welcome
+and value all contributions to the project!  
 
 .. _Milestones: https://docs.gitlab.com/ee/user/project/milestones
 .. _Epics: https://docs.gitlab.com/ee/user/group/epics
