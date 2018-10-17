@@ -24,7 +24,6 @@ Schedules jobs.
 from collections import deque
 
 from buildgrid._exceptions import NotFoundError
-from buildgrid._protos.google.longrunning import operations_pb2
 
 from .job import OperationStage, LeaseState
 
@@ -75,11 +74,8 @@ class Scheduler:
                 job.update_operation_stage(OperationStage.QUEUED)
                 self.queue.appendleft(job)
 
-    def get_operations(self):
-        response = operations_pb2.ListOperationsResponse()
-        for v in self.jobs.values():
-            response.operations.extend([v.operation])
-        return response
+    def list_jobs(self):
+        return self.jobs.values()
 
     def update_job_lease_state(self, job_name, lease_state, lease_status=None, lease_result=None):
         job = self.jobs[job_name]

@@ -22,6 +22,7 @@ An instance of the LongRunningOperations Service.
 import logging
 
 from buildgrid._exceptions import InvalidArgumentError
+from buildgrid._protos.google.longrunning import operations_pb2
 
 
 class OperationsInstance:
@@ -45,7 +46,10 @@ class OperationsInstance:
     def list_operations(self, list_filter, page_size, page_token):
         # TODO: Pages
         # Spec says number of pages and length of a page are optional
-        return self._scheduler.get_operations()
+        response = operations_pb2.ListOperationsResponse()
+        response.operations.extend([job.operation for job in self._scheduler.list_jobs()])
+
+        return response
 
     def delete_operation(self, name):
         try:
