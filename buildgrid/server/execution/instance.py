@@ -48,7 +48,10 @@ class ExecutionInstance:
         if not action:
             raise FailedPreconditionError("Could not get action from storage.")
 
-        job = Job(action_digest, action.do_not_cache, message_queue)
+        job = Job(action, action_digest)
+        if message_queue is not None:
+            job.register_client(message_queue)
+
         self.logger.info("Operation name: [{}]".format(job.name))
 
         self._scheduler.queue_job(job, skip_cache_lookup)

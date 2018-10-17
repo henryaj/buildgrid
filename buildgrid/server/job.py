@@ -50,10 +50,11 @@ class LeaseState(Enum):
 
 class Job:
 
-    def __init__(self, action_digest, do_not_cache=False, message_queue=None):
+    def __init__(self, action, action_digest):
         self.logger = logging.getLogger(__name__)
 
         self._name = str(uuid.uuid4())
+        self._action = remote_execution_pb2.Action()
         self._operation = operations_pb2.Operation()
         self._lease = None
 
@@ -63,14 +64,12 @@ class Job:
         self.__operation_metadata.action_digest.CopyFrom(action_digest)
         self.__operation_metadata.stage = OperationStage.UNKNOWN.value
 
-        self._do_not_cache = do_not_cache
+        self._action.CopyFrom(action)
+        self._do_not_cache = self._action.do_not_cache
         self._operation_update_queues = []
         self._operation.name = self._name
         self._operation.done = False
         self._n_tries = 0
-
-        if message_queue is not None:
-            self.register_client(message_queue)
 
     @property
     def name(self):
@@ -79,6 +78,10 @@ class Job:
     @property
     def do_not_cache(self):
         return self._do_not_cache
+
+    @property
+    def action(self):
+        return self._action
 
     @property
     def action_digest(self):
@@ -179,6 +182,10 @@ class Job:
 
         elif self._lease.state == LeaseState.COMPLETED.value:
             action_result = remote_execution_pb2.ActionResult()
+
+            # TODO: Make a distinction between build and bot failures!
+            if status.code != 0:
+                self._do_not_cache = True
 
             if result is not None:
                 assert result.Is(action_result.DESCRIPTOR)

@@ -116,9 +116,8 @@ class Scheduler:
             job.update_lease_state(lease_state,
                                    status=lease_status, result=lease_result)
 
-            if not job.do_not_cache and self._action_cache is not None:
-                if not job.lease.status.code:
-                    self._action_cache.update_action_result(job.action_digest, job.action_result)
+            if self._action_cache is not None and not job.do_not_cache:
+                self._action_cache.update_action_result(job.action_digest, job.action_result)
 
             job.update_operation_stage(OperationStage.COMPLETED)
 

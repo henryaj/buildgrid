@@ -137,7 +137,7 @@ def test_update_leases_with_work(bot_session, context, instance):
                                                bot_session=bot_session)
 
     action_digest = remote_execution_pb2.Digest(hash='gaff')
-    _inject_work(instance._instances[""]._scheduler, action_digest)
+    _inject_work(instance._instances[""]._scheduler, action_digest=action_digest)
 
     response = instance.CreateBotSession(request, context)
 
@@ -159,7 +159,7 @@ def test_update_leases_work_complete(bot_session, context, instance):
 
     # Inject work
     action_digest = remote_execution_pb2.Digest(hash='gaff')
-    _inject_work(instance._instances[""]._scheduler, action_digest)
+    _inject_work(instance._instances[""]._scheduler, action_digest=action_digest)
 
     request = bots_pb2.UpdateBotSessionRequest(name=response.name,
                                                bot_session=response)
@@ -188,7 +188,7 @@ def test_work_rejected_by_bot(bot_session, context, instance):
                                                bot_session=bot_session)
     # Inject work
     action_digest = remote_execution_pb2.Digest(hash='gaff')
-    _inject_work(instance._instances[""]._scheduler, action_digest)
+    _inject_work(instance._instances[""]._scheduler, action_digest=action_digest)
 
     # Simulated the severed binding between client and server
     response = copy.deepcopy(instance.CreateBotSession(request, context))
@@ -210,7 +210,7 @@ def test_work_out_of_sync_from_pending(state, bot_session, context, instance):
                                                bot_session=bot_session)
     # Inject work
     action_digest = remote_execution_pb2.Digest(hash='gaff')
-    _inject_work(instance._instances[""]._scheduler, action_digest)
+    _inject_work(instance._instances[""]._scheduler, action_digest=action_digest)
 
     # Simulated the severed binding between client and server
     response = copy.deepcopy(instance.CreateBotSession(request, context))
@@ -231,7 +231,7 @@ def test_work_out_of_sync_from_active(state, bot_session, context, instance):
                                                bot_session=bot_session)
     # Inject work
     action_digest = remote_execution_pb2.Digest(hash='gaff')
-    _inject_work(instance._instances[""]._scheduler, action_digest)
+    _inject_work(instance._instances[""]._scheduler, action_digest=action_digest)
 
     # Simulated the severed binding between client and server
     response = copy.deepcopy(instance.CreateBotSession(request, context))
@@ -258,7 +258,7 @@ def test_work_active_to_active(bot_session, context, instance):
                                                bot_session=bot_session)
     # Inject work
     action_digest = remote_execution_pb2.Digest(hash='gaff')
-    _inject_work(instance._instances[""]._scheduler, action_digest)
+    _inject_work(instance._instances[""]._scheduler, action_digest=action_digest)
 
     # Simulated the severed binding between client and server
     response = copy.deepcopy(instance.CreateBotSession(request, context))
@@ -280,8 +280,10 @@ def test_post_bot_event_temp(context, instance):
     context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
 
 
-def _inject_work(scheduler, action_digest=None):
+def _inject_work(scheduler, action=None, action_digest=None):
+    if not action:
+        action = remote_execution_pb2.Action()
     if not action_digest:
         action_digest = remote_execution_pb2.Digest()
-    j = job.Job(action_digest, False)
+    j = job.Job(action, action_digest)
     scheduler.queue_job(j, True)

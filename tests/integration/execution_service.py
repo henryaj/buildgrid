@@ -105,7 +105,7 @@ def test_no_action_digest_in_storage(instance, context):
 
 
 def test_wait_execution(instance, controller, context):
-    j = job.Job(action_digest, None)
+    j = job.Job(action, action_digest)
     j._operation.done = True
 
     request = remote_execution_pb2.WaitExecutionRequest(name="{}/{}".format('', j.name))
