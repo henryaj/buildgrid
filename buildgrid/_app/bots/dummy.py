@@ -16,9 +16,18 @@
 import random
 import time
 
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
+
 
 def work_dummy(context, lease):
     """ Just returns lease after some random time
     """
+    lease.result.Clear()
+
     time.sleep(random.randint(1, 5))
+
+    action_result = remote_execution_pb2.ActionResult()
+
+    lease.result.Pack(action_result)
+
     return lease
