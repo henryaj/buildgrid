@@ -43,7 +43,6 @@ tests-debian-stretch:
   <<: *linux-tests
 
 run-dummy-job-debian:
-  image: buildstream/buildstream-debian
   <<: *dummy-job
 
 
