@@ -17,16 +17,32 @@ import random
 import time
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
+from buildgrid.utils import get_hostname
 
 
 def work_dummy(context, lease):
     """ Just returns lease after some random time
     """
+    action_result = remote_execution_pb2.ActionResult()
+
     lease.result.Clear()
 
-    time.sleep(random.randint(1, 5))
+    action_result.execution_metadata.worker = get_hostname()
 
-    action_result = remote_execution_pb2.ActionResult()
+    # Simulation input-downloading phase:
+    action_result.execution_metadata.input_fetch_start_timestamp.GetCurrentTime()
+    time.sleep(random.random())
+    action_result.execution_metadata.input_fetch_completed_timestamp.GetCurrentTime()
+
+    # Simulation execution phase:
+    action_result.execution_metadata.execution_start_timestamp.GetCurrentTime()
+    time.sleep(random.random())
+    action_result.execution_metadata.execution_completed_timestamp.GetCurrentTime()
+
+    # Simulation output-uploading phase:
+    action_result.execution_metadata.output_upload_start_timestamp.GetCurrentTime()
+    time.sleep(random.random())
+    action_result.execution_metadata.output_upload_completed_timestamp.GetCurrentTime()
 
     lease.result.Pack(action_result)
 
