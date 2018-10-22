@@ -144,7 +144,8 @@ def test_list_operations_with_result(instance, controller, execute_request, cont
 
     execute_response = remote_execution_pb2.ExecuteResponse()
     response.operations[0].response.Unpack(execute_response)
-    assert execute_response.result == action_result
+
+    assert execute_response.result.output_files == action_result.output_files
 
 
 def test_list_operations_empty(instance, context):

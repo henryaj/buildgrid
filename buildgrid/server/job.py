@@ -17,6 +17,8 @@ import logging
 import uuid
 from enum import Enum
 
+from google.protobuf import timestamp_pb2
+
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
@@ -60,6 +62,9 @@ class Job:
 
         self.__execute_response = None
         self.__operation_metadata = remote_execution_pb2.ExecuteOperationMetadata()
+        self.__queued_timestamp = timestamp_pb2.Timestamp()
+        self.__worker_start_timestamp = timestamp_pb2.Timestamp()
+        self.__worker_completed_timestamp = timestamp_pb2.Timestamp()
 
         self.__operation_metadata.action_digest.CopyFrom(action_digest)
         self.__operation_metadata.stage = OperationStage.UNKNOWN.value
@@ -177,10 +182,18 @@ class Job:
         self._lease.state = state.value
 
         if self._lease.state == LeaseState.PENDING.value:
+            self.__worker_start_timestamp.Clear()
+            self.__worker_completed_timestamp.Clear()
+
             self._lease.status.Clear()
             self._lease.result.Clear()
 
+        elif self._lease.state == LeaseState.ACTIVE.value:
+            self.__worker_start_timestamp.GetCurrentTime()
+
         elif self._lease.state == LeaseState.COMPLETED.value:
+            self.__worker_completed_timestamp.GetCurrentTime()
+
             action_result = remote_execution_pb2.ActionResult()
 
             # TODO: Make a distinction between build and bot failures!
@@ -190,6 +203,11 @@ class Job:
             if result is not None:
                 assert result.Is(action_result.DESCRIPTOR)
                 result.Unpack(action_result)
+
+            action_metadata = action_result.execution_metadata
+            action_metadata.queued_timestamp.CopyFrom(self.__worker_start_timestamp)
+            action_metadata.worker_start_timestamp.CopyFrom(self.__worker_start_timestamp)
+            action_metadata.worker_completed_timestamp.CopyFrom(self.__worker_completed_timestamp)
 
             self.__execute_response = remote_execution_pb2.ExecuteResponse()
             self.__execute_response.result.CopyFrom(action_result)
@@ -208,6 +226,8 @@ class Job:
         self.__operation_metadata.stage = stage.value
 
         if self.__operation_metadata.stage == OperationStage.QUEUED.value:
+            if self.__queued_timestamp.ByteSize() == 0:
+                self.__queued_timestamp.GetCurrentTime()
             self._n_tries += 1
 
         elif self.__operation_metadata.stage == OperationStage.COMPLETED.value:
