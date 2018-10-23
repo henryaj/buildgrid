@@ -26,7 +26,6 @@ import logging
 
 import click
 import grpc
-from xdg import XDG_CACHE_HOME, XDG_CONFIG_HOME, XDG_DATA_HOME
 
 from buildgrid.utils import read_file
 
@@ -42,41 +41,21 @@ class Context:
 
         self.user_home = os.getcwd()
 
-        self.cache_home = os.path.join(XDG_CACHE_HOME, 'buildgrid')
-        self.config_home = os.path.join(XDG_CONFIG_HOME, 'buildgrid')
-        self.data_home = os.path.join(XDG_DATA_HOME, 'buildgrid')
-
-    def load_client_credentials(self, client_key=None, client_cert=None,
-                                server_cert=None, use_default_client_keys=False):
+    def load_client_credentials(self, client_key=None, client_cert=None, server_cert=None):
         """Looks-up and loads TLS client gRPC credentials.
 
         Args:
             client_key(str): root certificate file path.
             client_cert(str): private key file path.
             server_cert(str): certificate chain file path.
-            use_default_client_keys(bool, optional): whether or not to try
-                loading client keys from default location. Defaults to False.
 
         Returns:
             :obj:`ChannelCredentials`: The credentials for use for a
             TLS-encrypted gRPC client channel.
         """
-        if not client_key or not os.path.exists(client_key):
-            if use_default_client_keys:
-                client_key = os.path.join(self.config_home, 'client.key')
-            else:
-                client_key = None
-
-        if not client_cert or not os.path.exists(client_cert):
-            if use_default_client_keys:
-                client_cert = os.path.join(self.config_home, 'client.crt')
-            else:
-                client_cert = None
 
         if not server_cert or not os.path.exists(server_cert):
-            server_cert = os.path.join(self.config_home, 'server.crt')
-            if not os.path.exists(server_cert):
-                return None
+            return None
 
         server_cert_pem = read_file(server_cert)
         if client_key and os.path.exists(client_key):
@@ -100,8 +79,7 @@ class Context:
 
         return credentials
 
-    def load_server_credentials(self, server_key=None, server_cert=None,
-                                client_certs=None, use_default_client_certs=False):
+    def load_server_credentials(self, server_key=None, server_cert=None, client_certs=None):
         """Looks-up and loads TLS server gRPC credentials.
 
         Every private and public keys are expected to be PEM-encoded.
@@ -110,29 +88,16 @@ class Context:
             server_key(str): private server key file path.
             server_cert(str): public server certificate file path.
             client_certs(str): public client certificates file path.
-            use_default_client_certs(bool, optional): whether or not to try
-                loading public client certificates from default location.
-                Defaults to False.
 
         Returns:
             :obj:`ServerCredentials`: The credentials for use for a
             TLS-encrypted gRPC server channel.
         """
         if not server_key or not os.path.exists(server_key):
-            server_key = os.path.join(self.config_home, 'server.key')
-            if not os.path.exists(server_key):
-                return None
+            return None
 
         if not server_cert or not os.path.exists(server_cert):
-            server_cert = os.path.join(self.config_home, 'server.crt')
-            if not os.path.exists(server_cert):
-                return None
-
-        if not client_certs or not os.path.exists(client_certs):
-            if use_default_client_certs:
-                client_certs = os.path.join(self.config_home, 'client.crt')
-            else:
-                client_certs = None
+            return None
 
         server_key_pem = read_file(server_key)
         server_cert_pem = read_file(server_cert)
