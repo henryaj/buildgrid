@@ -109,11 +109,16 @@ class Scheduler:
         """
         job = self.jobs[job_name]
 
-        if lease_state != LeaseState.COMPLETED:
-            job.update_lease_state(lease_state)
+        if lease_state == LeaseState.PENDING:
+            job.update_lease_state(LeaseState.PENDING)
+            job.update_operation_stage(OperationStage.QUEUED)
 
-        else:
-            job.update_lease_state(lease_state,
+        elif lease_state == LeaseState.ACTIVE:
+            job.update_lease_state(LeaseState.ACTIVE)
+            job.update_operation_stage(OperationStage.EXECUTING)
+
+        elif lease_state == LeaseState.COMPLETED:
+            job.update_lease_state(LeaseState.COMPLETED,
                                    status=lease_status, result=lease_result)
 
             if self._action_cache is not None and not job.do_not_cache:
