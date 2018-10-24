@@ -15,9 +15,19 @@
 
 from operator import attrgetter
 import os
+import socket
 
 from buildgrid.settings import HASH
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
+
+
+def get_hostname():
+    """Returns the hostname of the machine executing that function.
+
+    Returns:
+        str: Hostname for the current machine.
+    """
+    return socket.gethostname()
 
 
 def create_digest(bytes_to_digest):
