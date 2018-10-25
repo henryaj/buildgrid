@@ -65,6 +65,13 @@ class OperationsInstance:
         except KeyError:
             raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
 
+    def cancel_operation(self, name):
+        try:
+            self._scheduler.cancel_job_operation(name)
+
+        except KeyError:
+            raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
+
     def register_message_client(self, name, queue):
         try:
             self._scheduler.register_client(name, queue)
@@ -85,7 +92,3 @@ class OperationsInstance:
             yield operation
             operation = message_queue.get()
         yield operation
-
-    def cancel_operation(self, name):
-        # TODO: Cancel leases
-        raise NotImplementedError("Cancelled operations not supported")
