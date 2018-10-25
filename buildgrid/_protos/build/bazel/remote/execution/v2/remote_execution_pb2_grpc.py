@@ -99,6 +99,9 @@ class ExecutionServicer(object):
     * `INTERNAL`: An internal error occurred in the execution engine or the
     worker.
     * `DEADLINE_EXCEEDED`: The execution timed out.
+    * `CANCELLED`: The operation was cancelled by the client. This status is
+    only possible if the server implements the Operations API CancelOperation
+    method, and it was called for the current execution.
 
     In the case of a missing input or command, the server SHOULD additionally
     send a [PreconditionFailure][google.rpc.PreconditionFailure] error detail
@@ -229,7 +232,7 @@ class ActionCacheServicer(object):
     `ContentAddressableStorage`.
 
     Errors:
-    * `NOT_IMPLEMENTED`: This method is not supported by the server.
+    * `UNIMPLEMENTED`: This method is not supported by the server.
     * `RESOURCE_EXHAUSTED`: There is insufficient storage space to add the
     entry to the cache.
     """
@@ -273,8 +276,8 @@ class ContentAddressableStorageStub(object):
   hierarchy, which must also each be uploaded on their own.
 
   For small file uploads the client should group them together and call
-  [BatchUpdateBlobs][build.bazel.remote.execution.v2.ContentAddressableStorage.BatchUpdateBlobs]
-  on chunks of no more than 10 MiB. For large uploads, the client must use the
+  [BatchUpdateBlobs][build.bazel.remote.execution.v2.ContentAddressableStorage.BatchUpdateBlobs].
+  For large uploads, the client must use the
   [Write method][google.bytestream.ByteStream.Write] of the ByteStream API. The
   `resource_name` is `{instance_name}/uploads/{uuid}/blobs/{hash}/{size}`,
   where `instance_name` is as described in the next paragraph, `uuid` is a
@@ -369,8 +372,8 @@ class ContentAddressableStorageServicer(object):
   hierarchy, which must also each be uploaded on their own.
 
   For small file uploads the client should group them together and call
-  [BatchUpdateBlobs][build.bazel.remote.execution.v2.ContentAddressableStorage.BatchUpdateBlobs]
-  on chunks of no more than 10 MiB. For large uploads, the client must use the
+  [BatchUpdateBlobs][build.bazel.remote.execution.v2.ContentAddressableStorage.BatchUpdateBlobs].
+  For large uploads, the client must use the
   [Write method][google.bytestream.ByteStream.Write] of the ByteStream API. The
   `resource_name` is `{instance_name}/uploads/{uuid}/blobs/{hash}/{size}`,
   where `instance_name` is as described in the next paragraph, `uuid` is a
