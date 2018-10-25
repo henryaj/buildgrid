@@ -19,7 +19,7 @@ import tempfile
 
 from buildgrid.client.cas import download, upload
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
-from buildgrid.utils import output_file_maker, output_directory_maker
+from buildgrid.utils import get_hostname, output_file_maker, output_directory_maker
 
 
 def work_host_tools(context, lease):
@@ -29,9 +29,12 @@ def work_host_tools(context, lease):
     logger = context.logger
 
     action_digest = remote_execution_pb2.Digest()
+    action_result = remote_execution_pb2.ActionResult()
 
     lease.payload.Unpack(action_digest)
     lease.result.Clear()
+
+    action_result.execution_metadata.worker = get_hostname()
 
     with tempfile.TemporaryDirectory() as temp_directory:
         with download(context.cas_channel, instance=instance_name) as downloader:
@@ -43,7 +46,11 @@ def work_host_tools(context, lease):
             command = downloader.get_message(action.command_digest,
                                              remote_execution_pb2.Command())
 
+            action_result.execution_metadata.input_fetch_start_timestamp.GetCurrentTime()
+
             downloader.download_directory(action.input_root_digest, temp_directory)
+
+        action_result.execution_metadata.input_fetch_completed_timestamp.GetCurrentTime()
 
         environment = os.environ.copy()
         for variable in command.environment_variables:
@@ -70,6 +77,8 @@ def work_host_tools(context, lease):
 
         logger.debug(' '.join(command_line))
 
+        action_result.execution_metadata.execution_start_timestamp.GetCurrentTime()
+
         process = subprocess.Popen(command_line,
                                    cwd=working_directory,
                                    env=environment,
@@ -80,7 +89,8 @@ def work_host_tools(context, lease):
         stdout, stderr = process.communicate()
         returncode = process.returncode
 
-        action_result = remote_execution_pb2.ActionResult()
+        action_result.execution_metadata.execution_completed_timestamp.GetCurrentTime()
+
         # TODO: Upload to CAS or output RAW
         # For now, just pass raw
         # https://gitlab.com/BuildGrid/buildgrid/issues/90
@@ -91,6 +101,8 @@ def work_host_tools(context, lease):
         logger.debug("Command stderr: [{}]".format(stderr))
         logger.debug("Command stdout: [{}]".format(stdout))
         logger.debug("Command exit code: [{}]".format(returncode))
+
+        action_result.execution_metadata.output_upload_start_timestamp.GetCurrentTime()
 
         with upload(context.cas_channel, instance=instance_name) as uploader:
             output_files, output_directories = [], []
@@ -120,6 +132,8 @@ def work_host_tools(context, lease):
                 output_directories.append(output_directory)
 
             action_result.output_directories.extend(output_directories)
+
+        action_result.execution_metadata.output_upload_completed_timestamp.GetCurrentTime()
 
         lease.result.Pack(action_result)
 
