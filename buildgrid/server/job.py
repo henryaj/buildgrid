@@ -22,6 +22,7 @@ from buildgrid._enums import LeaseState, OperationStage
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
+from buildgrid._protos.google.rpc import code_pb2
 
 
 class Job:
@@ -171,7 +172,7 @@ class Job:
             action_result = remote_execution_pb2.ActionResult()
 
             # TODO: Make a distinction between build and bot failures!
-            if status.code != 0:
+            if status.code != code_pb2.OK:
                 self._do_not_cache = True
 
             if result is not None:
