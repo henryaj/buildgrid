@@ -97,7 +97,10 @@ class Scheduler:
         # For now, one lease at a time:
         lease = job.create_lease()
 
-        return [lease]
+        if lease:
+            return [lease]
+
+        return None
 
     def update_job_lease_state(self, job_name, lease_state, lease_status=None, lease_result=None):
         """Requests a state transition for a job's current :class:Lease.
@@ -136,3 +139,13 @@ class Scheduler:
     def get_job_operation(self, job_name):
         """Returns the operation associated to job."""
         return self.jobs[job_name].operation
+
+    def cancel_job_operation(self, job_name):
+        """"Cancels the underlying operation of a given job.
+
+        This will also cancel any job's lease that may have been issued.
+
+        Args:
+            job_name (str): name of the job holding the operation to cancel.
+        """
+        self.jobs[job_name].cancel_operation()
