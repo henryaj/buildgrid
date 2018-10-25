@@ -153,6 +153,18 @@ def status(context, operation_name, json):
         click.echo(json_format.MessageToJson(operation))
 
 
+@cli.command('cancel', short_help="Cancel an operation.")
+@click.argument('operation-name', nargs=1, type=click.STRING, required=True)
+@pass_context
+def cancel(context, operation_name):
+    click.echo("Cancelling an operation...")
+    stub = operations_pb2_grpc.OperationsStub(context.channel)
+    request = operations_pb2.CancelOperationRequest(name=operation_name)
+
+    stub.CancelOperation(request)
+    click.echo("Operation cancelled: [{}]".format(request))
+
+
 @cli.command('list', short_help="List operations.")
 @click.option('--json', is_flag=True, show_default=True,
               help="Print operations list in JSON format.")
