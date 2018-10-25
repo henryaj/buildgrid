@@ -19,6 +19,7 @@ import uuid
 from google.protobuf import timestamp_pb2
 
 from buildgrid._enums import LeaseState, OperationStage
+from buildgrid._exceptions import CancelledError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
@@ -37,9 +38,13 @@ class Job:
 
         self.__execute_response = None
         self.__operation_metadata = remote_execution_pb2.ExecuteOperationMetadata()
+
         self.__queued_timestamp = timestamp_pb2.Timestamp()
         self.__worker_start_timestamp = timestamp_pb2.Timestamp()
         self.__worker_completed_timestamp = timestamp_pb2.Timestamp()
+
+        self.__operation_cancelled = False
+        self.__lease_cancelled = False
 
         self.__operation_metadata.action_digest.CopyFrom(action_digest)
         self.__operation_metadata.stage = OperationStage.UNKNOWN.value
@@ -131,7 +136,9 @@ class Job:
         Only one :class:`Lease` can be emitted for a given job. This method
         should only be used once, any furhter calls are ignored.
         """
-        if self._lease is not None:
+        if self.__operation_cancelled:
+            return None
+        elif self._lease is not None:
             return None
 
         self._lease = bots_pb2.Lease()
@@ -189,6 +196,15 @@ class Job:
             self.__execute_response.cached_result = False
             self.__execute_response.status.CopyFrom(status)
 
+    def cancel_lease(self):
+        """Triggers a job's :class:Lease cancellation.
+
+        This will not cancel the job's :class:Operation.
+        """
+        self.__lease_cancelled = True
+        if self._lease is not None:
+            self.update_lease_state(LeaseState.CANCELLED)
+
     def update_operation_stage(self, stage):
         """Operates a stage transition for the job's :class:Operation.
 
@@ -214,3 +230,18 @@ class Job:
 
         for queue in self._operation_update_queues:
             queue.put(self._operation)
+
+    def cancel_operation(self):
+        """Triggers a job's :class:Operation cancellation.
+
+        This will also cancel any job's :class:Lease that may have been issued.
+        """
+        self.__operation_cancelled = True
+        if self._lease is not None:
+            self.cancel_lease()
+
+        self.__execute_response = remote_execution_pb2.ExecuteResponse()
+        self.__execute_response.status.code = code_pb2.CANCELLED
+        self.__execute_response.status.message = "Operation cancelled by client."
+
+        self.update_operation_stage(OperationStage.COMPLETED)
