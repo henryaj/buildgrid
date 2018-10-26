@@ -23,7 +23,7 @@ Instance of the Remote Workers interface.
 import logging
 import uuid
 
-from buildgrid._exceptions import InvalidArgumentError, OutOfSyncError
+from buildgrid._exceptions import InvalidArgumentError
 
 from ..job import LeaseState
 
@@ -34,7 +34,7 @@ class BotsInterface:
         self.__logger = logging.getLogger(__name__)
 
         self._bot_ids = {}
-        self._bot_sessions = {}
+        self._assigned_leases = {}
         self._scheduler = scheduler
 
     def register_instance_with_server(self, instance_name, server):
@@ -59,18 +59,16 @@ class BotsInterface:
 
         # Bot session name, selected by the server
         name = "{}/{}".format(parent, str(uuid.uuid4()))
-
         bot_session.name = name
 
         self._bot_ids[name] = bot_id
-        self._bot_sessions[name] = bot_session
+
         self.__logger.info("Created bot session name=[%s] with bot_id=[%s]", name, bot_id)
 
-        # TODO: Send worker capabilities to the scheduler!
-        leases = self._scheduler.request_job_leases({})
-        if leases:
-            bot_session.leases.extend(leases)
+        # We want to keep a copy of lease ids we have assigned
+        self._assigned_leases[name] = set()
 
+        self._request_leases(bot_session)
         return bot_session
 
     def update_bot_session(self, name, bot_session):
@@ -79,70 +77,54 @@ class BotsInterface:
         """
         self.__logger.debug("Updating bot session name=[%s]", name)
         self._check_bot_ids(bot_session.bot_id, name)
+        self._check_assigned_leases(bot_session)
 
-        leases = filter(None, [self.check_states(lease) for lease in bot_session.leases])
+        for lease in bot_session.leases:
+            checked_lease = self._check_lease_state(lease)
+            if not checked_lease:
+                # TODO: Make sure we don't need this
+                try:
+                    self._assigned_leases[name].remove(lease.id)
+                except KeyError:
+                    pass
+                lease.Clear()
 
-        del bot_session.leases[:]
-        bot_session.leases.extend(leases)
+        self._request_leases(bot_session)
+        return bot_session
 
+    def _request_leases(self, bot_session):
         # TODO: Send worker capabilities to the scheduler!
+        # Only send one lease at a time currently.
         if not bot_session.leases:
             leases = self._scheduler.request_job_leases({})
             if leases:
+                for lease in leases:
+                    self._assigned_leases[bot_session.name].add(lease.id)
                 bot_session.leases.extend(leases)
 
-        self._bot_sessions[name] = bot_session
-        return bot_session
+    def _check_lease_state(self, lease):
+        # careful here
+        # should store bot name in scheduler
+        lease_state = LeaseState(lease.state)
 
-    def check_states(self, client_lease):
-        """ Edge detector for states
-        """
-        # TODO: Handle cancelled states
+        # Lease has replied with cancelled, remove
+        if lease_state == LeaseState.CANCELLED:
+            return None
+
         try:
-            server_lease = self._scheduler.get_job_lease(client_lease.id)
+            if self._scheduler.get_job_lease_cancelled(lease.id):
+                lease.state.CopyFrom(LeaseState.CANCELLED.value)
+                return lease
         except KeyError:
-            raise InvalidArgumentError("Lease not found on server: [{}]".format(client_lease))
+            # Job does not exist, remove from bot.
+            return None
 
-        server_state = LeaseState(server_lease.state)
-        client_state = LeaseState(client_lease.state)
+        self._scheduler.update_job_lease(lease)
 
-        if server_state == LeaseState.PENDING:
+        if lease_state == LeaseState.COMPLETED:
+            return None
 
-            if client_state == LeaseState.ACTIVE:
-                self._scheduler.update_job_lease_state(client_lease.id,
-                                                       LeaseState.ACTIVE)
-            elif client_state == LeaseState.COMPLETED:
-                # TODO: Lease was rejected
-                raise NotImplementedError("'Not Accepted' is unsupported")
-            else:
-                raise OutOfSyncError("Server lease: [{}]. Client lease: [{}]".format(server_lease, client_lease))
-
-        elif server_state == LeaseState.ACTIVE:
-
-            if client_state == LeaseState.ACTIVE:
-                pass
-
-            elif client_state == LeaseState.COMPLETED:
-                self._scheduler.update_job_lease_state(client_lease.id,
-                                                       LeaseState.COMPLETED,
-                                                       lease_status=client_lease.status,
-                                                       lease_result=client_lease.result)
-                return None
-
-            else:
-                raise OutOfSyncError("Server lease: [{}]. Client lease: [{}]".format(server_lease, client_lease))
-
-        elif server_state == LeaseState.COMPLETED:
-            raise OutOfSyncError("Server lease: [{}]. Client lease: [{}]".format(server_lease, client_lease))
-
-        elif server_state == LeaseState.CANCELLED:
-            raise NotImplementedError("Cancelled states not supported yet")
-
-        else:
-            # Sould never get here
-            raise OutOfSyncError("State now allowed: {}".format(server_state))
-
-        return client_lease
+        return lease
 
     def _check_bot_ids(self, bot_id, name=None):
         """ Checks the ID and the name of the bot.
@@ -164,6 +146,19 @@ class BotsInterface:
                         'Bot id already registered. ID sent: [{}].'
                         'Id registered: [{}] with name: [{}]'.format(bot_id, _bot_id, _name))
 
+    def _check_assigned_leases(self, bot_session):
+        session_lease_ids = []
+
+        for lease in bot_session.leases:
+            session_lease_ids.append(lease.id)
+
+        for lease_id in self._assigned_leases[bot_session.name]:
+            if lease_id not in session_lease_ids:
+                self.__logger.error("Assigned lease id=[%s],"
+                                    " not found on bot with name=[%s] and id=[%s]."
+                                    " Retrying job", lease_id, bot_session.name, bot_session.bot_id)
+                self._scheduler.retry_job(lease_id)
+
     def _close_bot_session(self, name):
         """ Before removing the session, close any leases and
         requeue with high priority.
@@ -174,10 +169,9 @@ class BotsInterface:
             raise InvalidArgumentError("Bot id does not exist: [{}]".format(name))
 
         self.__logger.debug("Attempting to close [%s] with name: [%s]", bot_id, name)
-        for lease in self._bot_sessions[name].leases:
-            if lease.state != LeaseState.COMPLETED.value:
-                # TODO: Be wary here, may need to handle rejected leases in future
-                self._scheduler.retry_job(lease.id)
+        for lease_id in self._assigned_leases[name]:
+            self._scheduler.retry_job(lease_id)
+        self._assigned_leases.pop(name)
 
         self.__logger.debug("Closing bot session: [%s]", name)
         self._bot_ids.pop(name)

@@ -99,6 +99,10 @@ class Job:
             return None
 
     @property
+    def lease_cancelled(self):
+        return self.__lease_cancelled
+
+    @property
     def n_tries(self):
         return self._n_tries
 

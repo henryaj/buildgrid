@@ -107,7 +107,7 @@ class Scheduler:
 
         return None
 
-    def update_job_lease_state(self, job_name, lease_state, lease_status=None, lease_result=None):
+    def update_job_lease(self, lease):
         """Requests a state transition for a job's current :class:Lease.
 
         Args:
@@ -118,7 +118,9 @@ class Scheduler:
             lease_result (google.protobuf.Any): the lease execution result, only
                 required if `lease_state` is `COMPLETED`.
         """
-        job = self.jobs[job_name]
+
+        job = self.jobs[lease.id]
+        lease_state = LeaseState(lease.state)
 
         if lease_state == LeaseState.PENDING:
             job.update_lease_state(LeaseState.PENDING)
@@ -130,7 +132,7 @@ class Scheduler:
 
         elif lease_state == LeaseState.COMPLETED:
             job.update_lease_state(LeaseState.COMPLETED,
-                                   status=lease_status, result=lease_result)
+                                   status=lease.status, result=lease.result)
 
             if self._action_cache is not None and not job.do_not_cache:
                 self._action_cache.update_action_result(job.action_digest, job.action_result)
@@ -140,6 +142,10 @@ class Scheduler:
     def get_job_lease(self, job_name):
         """Returns the lease associated to job, if any have been emitted yet."""
         return self.jobs[job_name].lease
+
+    def get_job_lease_cancelled(self, job_name):
+        """Returns true if the lease is cancelled"""
+        return self.jobs[job_name].lease_cancelled
 
     def get_job_operation(self, job_name):
         """Returns the operation associated to job."""
