@@ -15,39 +15,13 @@
 
 import logging
 import uuid
-from enum import Enum
 
 from google.protobuf import timestamp_pb2
 
+from buildgrid._enums import LeaseState, OperationStage
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
-
-
-class OperationStage(Enum):
-    # Initially unknown stage.
-    UNKNOWN = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('UNKNOWN')
-    # Checking the result against the cache.
-    CACHE_CHECK = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('CACHE_CHECK')
-    # Currently idle, awaiting a free machine to execute.
-    QUEUED = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('QUEUED')
-    # Currently being executed by a worker.
-    EXECUTING = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('EXECUTING')
-    # Finished execution.
-    COMPLETED = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('COMPLETED')
-
-
-class LeaseState(Enum):
-    # Initially unknown state.
-    LEASE_STATE_UNSPECIFIED = bots_pb2.LeaseState.Value('LEASE_STATE_UNSPECIFIED')
-    # The server expects the bot to accept this lease.
-    PENDING = bots_pb2.LeaseState.Value('PENDING')
-    # The bot has accepted this lease.
-    ACTIVE = bots_pb2.LeaseState.Value('ACTIVE')
-    # The bot is no longer leased.
-    COMPLETED = bots_pb2.LeaseState.Value('COMPLETED')
-    # The bot should immediately release all resources associated with the lease.
-    CANCELLED = bots_pb2.LeaseState.Value('CANCELLED')
 
 
 class Job:
