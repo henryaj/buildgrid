@@ -83,7 +83,8 @@ def test_execute(skip_cache_lookup, instance, context):
     metadata = remote_execution_pb2.ExecuteOperationMetadata()
     result.metadata.Unpack(metadata)
     assert metadata.stage == job.OperationStage.QUEUED.value
-    assert uuid.UUID(result.name, version=4)
+    operation_uuid = result.name.split('/')[-1]
+    assert uuid.UUID(operation_uuid, version=4)
     assert result.done is False
 
 
@@ -108,7 +109,7 @@ def test_wait_execution(instance, controller, context):
     j = job.Job(action, action_digest)
     j._operation.done = True
 
-    request = remote_execution_pb2.WaitExecutionRequest(name="{}/{}".format('', j.name))
+    request = remote_execution_pb2.WaitExecutionRequest(name=j.name)
 
     controller.execution_instance._scheduler.jobs[j.name] = j
 

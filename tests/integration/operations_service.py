@@ -75,6 +75,16 @@ def instance(controller):
         yield operation_service
 
 
+# Blank instance
+@pytest.fixture
+def blank_instance(controller):
+    with mock.patch.object(service, 'operations_pb2_grpc'):
+        operation_service = OperationsService(server)
+        operation_service.add_instance('', controller.operations_instance)
+
+        yield operation_service
+
+
 # Queue an execution, get operation corresponding to that request
 def test_get_operation(instance, controller, execute_request, context):
     response_execute = controller.execution_instance.execute(execute_request.action_digest,
@@ -82,14 +92,34 @@ def test_get_operation(instance, controller, execute_request, context):
 
     request = operations_pb2.GetOperationRequest()
 
+    # The execution instance name is normally set in add_instance, but since
+    # we're manually creating the instance here, it doesn't get a name.
+    # Therefore we need to manually add the instance name to the operation
+    # name in the GetOperation request.
     request.name = "{}/{}".format(instance_name, response_execute.name)
 
     response = instance.GetOperation(request, context)
-    assert response is response_execute
+    assert response.name == "{}/{}".format(instance_name, response_execute.name)
+    assert response.done == response_execute.done
+
+
+# Queue an execution, get operation corresponding to that request
+def test_get_operation_blank(blank_instance, controller, execute_request, context):
+    response_execute = controller.execution_instance.execute(execute_request.action_digest,
+                                                             execute_request.skip_cache_lookup)
+
+    request = operations_pb2.GetOperationRequest()
+
+    request.name = response_execute.name
+
+    response = blank_instance.GetOperation(request, context)
+    assert response.name == response_execute.name
+    assert response.done == response_execute.done
 
 
 def test_get_operation_fail(instance, context):
     request = operations_pb2.GetOperationRequest()
+
     request.name = "{}/{}".format(instance_name, "runner")
     instance.GetOperation(request, context)
 
@@ -109,6 +139,18 @@ def test_list_operations(instance, controller, execute_request, context):
 
     request = operations_pb2.ListOperationsRequest(name=instance_name)
     response = instance.ListOperations(request, context)
+
+    names = response.operations[0].name.split('/')
+    assert names[0] == instance_name
+    assert names[1] == response_execute.name
+
+
+def test_list_operations_blank(blank_instance, controller, execute_request, context):
+    response_execute = controller.execution_instance.execute(execute_request.action_digest,
+                                                             execute_request.skip_cache_lookup)
+
+    request = operations_pb2.ListOperationsRequest(name='')
+    response = blank_instance.ListOperations(request, context)
 
     assert response.operations[0].name.split('/')[-1] == response_execute.name
 
@@ -160,15 +202,30 @@ def test_list_operations_empty(instance, context):
 def test_delete_operation(instance, controller, execute_request, context):
     response_execute = controller.execution_instance.execute(execute_request.action_digest,
                                                              execute_request.skip_cache_lookup)
+
     request = operations_pb2.DeleteOperationRequest()
-    request.name = "{}/{}".format(instance_name, response_execute.name)
+    request.name = response_execute.name
     instance.DeleteOperation(request, context)
 
-    request = operations_pb2.GetOperationRequest()
-    request.name = "{}/{}".format(instance_name, response_execute.name)
+    request_name = "{}/{}".format(instance_name, response_execute.name)
 
     with pytest.raises(InvalidArgumentError):
-        controller.operations_instance.get_operation(response_execute.name)
+        controller.operations_instance.get_operation(request_name)
+
+
+# Send execution off, delete, try to find operation should fail
+def test_delete_operation_blank(blank_instance, controller, execute_request, context):
+    response_execute = controller.execution_instance.execute(execute_request.action_digest,
+                                                             execute_request.skip_cache_lookup)
+
+    request = operations_pb2.DeleteOperationRequest()
+    request.name = response_execute.name
+    blank_instance.DeleteOperation(request, context)
+
+    request_name = response_execute.name
+
+    with pytest.raises(InvalidArgumentError):
+        controller.operations_instance.get_operation(request_name)
 
 
 def test_delete_operation_fail(instance, context):
@@ -183,6 +240,14 @@ def test_cancel_operation(instance, context):
     request = operations_pb2.CancelOperationRequest()
     request.name = "{}/{}".format(instance_name, "runner")
     instance.CancelOperation(request, context)
+
+    context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
+
+
+def test_cancel_operation_blank(blank_instance, context):
+    request = operations_pb2.CancelOperationRequest()
+    request.name = "runner"
+    blank_instance.CancelOperation(request, context)
 
     context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
 
