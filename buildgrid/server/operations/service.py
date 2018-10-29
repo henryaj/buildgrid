@@ -44,13 +44,16 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
     def GetOperation(self, request, context):
         try:
             name = request.name
-            operation_name = self._get_operation_name(name)
 
-            instance = self._get_instance(name)
+            instance_name = self._parse_instance_name(name)
+            instance = self._get_instance(instance_name)
 
+            operation_name = self._parse_operation_name(name)
             operation = instance.get_operation(operation_name)
-            operation.name = name
-            return operation
+            op = operations_pb2.Operation()
+            op.CopyFrom(operation)
+            op.name = name
+            return op
 
         except InvalidArgumentError as e:
             self.logger.error(e)
@@ -61,17 +64,17 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
 
     def ListOperations(self, request, context):
         try:
-            # Name should be the collection name
-            # Or in this case, the instance_name
-            name = request.name
-            instance = self._get_instance(name)
+            # The request name should be the collection name
+            # In our case, this is just the instance_name
+            instance_name = request.name
+            instance = self._get_instance(instance_name)
 
             result = instance.list_operations(request.filter,
                                               request.page_size,
                                               request.page_token)
 
             for operation in result.operations:
-                operation.name = "{}/{}".format(name, operation.name)
+                operation.name = "{}/{}".format(instance_name, operation.name)
 
             return result
 
@@ -85,10 +88,11 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
     def DeleteOperation(self, request, context):
         try:
             name = request.name
-            operation_name = self._get_operation_name(name)
 
-            instance = self._get_instance(name)
+            instance_name = self._parse_instance_name(name)
+            instance = self._get_instance(instance_name)
 
+            operation_name = self._parse_operation_name(name)
             instance.delete_operation(operation_name)
 
         except InvalidArgumentError as e:
@@ -101,10 +105,11 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
     def CancelOperation(self, request, context):
         try:
             name = request.name
-            operation_name = self._get_operation_name(name)
 
-            instance = self._get_instance(name)
+            instance_name = self._parse_instance_name(name)
+            instance = self._get_instance(instance_name)
 
+            operation_name = self._parse_operation_name(name)
             instance.cancel_operation(operation_name)
 
         except NotImplementedError as e:
@@ -119,20 +124,20 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
 
         return Empty()
 
-    def _get_operation_name(self, name):
-        return name.split("/")[-1]
+    def _parse_instance_name(self, name):
+        """ If the instance name is not blank, 'name' will have the form
+        {instance_name}/{operation_uuid}. Otherwise, it will just be
+        {operation_uuid} """
+        names = name.split('/')
+        return '/'.join(names[:-1]) if len(names) > 1 else ''
+
+    def _parse_operation_name(self, name):
+        names = name.split('/')
+        return names[-1] if len(names) > 1 else name
 
     def _get_instance(self, name):
         try:
-            names = name.split("/")
-
-            # Operation name should be in format:
-            # {instance/name}/{operation_id}
-            instance_name = ''.join(names[0:-1])
-            if not instance_name:
-                return self._instances[name]
-
-            return self._instances[instance_name]
+            return self._instances[name]
 
         except KeyError:
             raise InvalidArgumentError("Instance doesn't exist on server: [{}]".format(name))

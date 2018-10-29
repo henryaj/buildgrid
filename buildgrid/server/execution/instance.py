@@ -52,8 +52,6 @@ class ExecutionInstance:
         if message_queue is not None:
             job.register_client(message_queue)
 
-        self.logger.info("Operation name: [{}]".format(job.name))
-
         self._scheduler.queue_job(job, skip_cache_lookup)
 
         return job.operation

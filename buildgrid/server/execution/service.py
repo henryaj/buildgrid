@@ -52,8 +52,17 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             context.add_callback(partial(instance.unregister_message_client,
                                          operation.name, message_queue))
 
-            yield from instance.stream_operation_updates(message_queue,
-                                                         operation.name)
+            instanced_op_name = "{}/{}".format(request.instance_name,
+                                               operation.name)
+
+            self.logger.info("Operation name: [{}]".format(instanced_op_name))
+
+            for operation in instance.stream_operation_updates(message_queue,
+                                                               operation.name):
+                op = operations_pb2.Operation()
+                op.CopyFrom(operation)
+                op.name = instanced_op_name
+                yield op
 
         except InvalidArgumentError as e:
             self.logger.error(e)
@@ -84,8 +93,12 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             context.add_callback(partial(instance.unregister_message_client,
                                          operation_name, message_queue))
 
-            yield from instance.stream_operation_updates(message_queue,
-                                                         operation_name)
+            for operation in instance.stream_operation_updates(message_queue,
+                                                               operation_name):
+                op = operations_pb2.Operation()
+                op.CopyFrom(operation)
+                op.name = request.name
+                yield op
 
         except InvalidArgumentError as e:
             self.logger.error(e)
