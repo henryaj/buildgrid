@@ -86,7 +86,7 @@ def get_cmdclass():
     return cmdclass
 
 tests_require = [
-    'coverage == 4.4.0',
+    'coverage >= 4.5.0',
     'moto',
     'pep8',
     'psutil',
