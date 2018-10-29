@@ -51,6 +51,7 @@ run-dummy-job-debian:
 documentation:
   stage: post
   script:
+    - apt-get update && apt-get install -y graphviz
     - python3 -m pip install --user --editable ".[docs]"
     - make -C docs html
     - mkdir -p documentation/
