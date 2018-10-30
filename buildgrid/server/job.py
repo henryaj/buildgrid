@@ -29,10 +29,11 @@ from buildgrid._protos.google.rpc import code_pb2
 
 class Job:
 
-    def __init__(self, action, action_digest):
+    def __init__(self, action, action_digest, priority=0):
         self.__logger = logging.getLogger(__name__)
 
         self._name = str(uuid.uuid4())
+        self._priority = priority
         self._action = remote_execution_pb2.Action()
         self._operation = operations_pb2.Operation()
         self._lease = None
@@ -58,11 +59,47 @@ class Job:
         self._operation.done = False
         self._n_tries = 0
 
+    def __lt__(self, other):
+        try:
+            return self.priority < other.priority
+        except AttributeError:
+            return NotImplemented
+
+    def __le__(self, other):
+        try:
+            return self.priority <= other.priority
+        except AttributeError:
+            return NotImplemented
+
+    def __eq__(self, other):
+        if isinstance(other, Job):
+            return self.name == other.name
+        return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __gt__(self, other):
+        try:
+            return self.priority > other.priority
+        except AttributeError:
+            return NotImplemented
+
+    def __ge__(self, other):
+        try:
+            return self.priority >= other.priority
+        except AttributeError:
+            return NotImplemented
+
     # --- Public API ---
 
     @property
     def name(self):
         return self._name
+
+    @property
+    def priority(self):
+        return self._priority
 
     @property
     def do_not_cache(self):
