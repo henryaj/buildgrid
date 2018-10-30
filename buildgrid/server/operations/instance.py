@@ -75,26 +75,3 @@ class OperationsInstance:
 
         except KeyError:
             raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
-
-    def register_message_client(self, name, queue):
-        try:
-            self._scheduler.register_client(name, queue)
-
-        except KeyError:
-            raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
-
-    def unregister_message_client(self, name, queue):
-        try:
-            self._scheduler.unregister_client(name, queue)
-
-        except KeyError:
-            raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
-
-    def stream_operation_updates(self, message_queue, operation_name):
-        job = message_queue.get()
-        while not job.operation.done:
-            yield job.operation
-            job = message_queue.get()
-            job.check_operation_status()
-
-        yield job.operation

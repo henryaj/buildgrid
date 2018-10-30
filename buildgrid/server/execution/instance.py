@@ -21,7 +21,7 @@ An instance of the Remote Execution Service.
 
 import logging
 
-from buildgrid._exceptions import FailedPreconditionError, InvalidArgumentError
+from buildgrid._exceptions import FailedPreconditionError, InvalidArgumentError, NotFoundError
 from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Action
 
 from ..job import Job
@@ -46,7 +46,7 @@ class ExecutionInstance:
     def hash_type(self):
         return get_hash_type()
 
-    def execute(self, action_digest, skip_cache_lookup, message_queue=None):
+    def execute(self, action_digest, skip_cache_lookup, peer=None, message_queue=None):
         """ Sends a job for execution.
         Queues an action and creates an Operation instance to be associated with
         this action.
@@ -58,26 +58,26 @@ class ExecutionInstance:
             raise FailedPreconditionError("Could not get action from storage.")
 
         job = Job(action, action_digest)
-        if message_queue is not None:
-            job.register_client(message_queue)
+        if peer is not None and message_queue is not None:
+            job.register_operation_peer(peer, message_queue)
 
         self._scheduler.queue_job(job, skip_cache_lookup)
 
         return job.operation
 
-    def register_message_client(self, name, queue):
+    def register_operation_peer(self, job_name, peer, message_queue):
         try:
-            self._scheduler.register_client(name, queue)
+            self._scheduler.register_operation_peer(job_name, peer, message_queue)
 
-        except KeyError:
-            raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
+        except NotFoundError:
+            raise InvalidArgumentError("Operation name does not exist: [{}]".format(job_name))
 
-    def unregister_message_client(self, name, queue):
+    def unregister_operation_peer(self, job_name, peer):
         try:
-            self._scheduler.unregister_client(name, queue)
+            self._scheduler.unregister_operation_peer(job_name, peer)
 
-        except KeyError:
-            raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
+        except NotFoundError:
+            raise InvalidArgumentError("Operation name does not exist: [{}]".format(job_name))
 
     def stream_operation_updates(self, message_queue, operation_name):
         job = message_queue.get()

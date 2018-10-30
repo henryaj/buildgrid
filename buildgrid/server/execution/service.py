@@ -98,12 +98,14 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
         try:
             instance = self._get_instance(instance_name)
+
             operation = instance.execute(request.action_digest,
                                          request.skip_cache_lookup,
-                                         message_queue)
+                                         peer=peer,
+                                         message_queue=message_queue)
 
             context.add_callback(partial(self._rpc_termination_callback,
-                                         peer, instance_name, operation.name, message_queue))
+                                         peer, instance_name, operation.name))
 
             if self._is_instrumented:
                 if peer not in self.__peers:
@@ -160,9 +162,11 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
         try:
             instance = self._get_instance(instance_name)
 
-            instance.register_message_client(operation_name, message_queue)
+            instance.register_operation_peer(operation_name,
+                                             peer, message_queue)
+
             context.add_callback(partial(self._rpc_termination_callback,
-                                         peer, instance_name, operation_name, message_queue))
+                                         peer, instance_name, operation_name))
 
             if self._is_instrumented:
                 if peer not in self.__peers:
@@ -211,10 +215,10 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
     # --- Private API ---
 
-    def _rpc_termination_callback(self, peer, instance_name, job_name, message_queue):
+    def _rpc_termination_callback(self, peer, instance_name, job_name):
         instance = self._get_instance(instance_name)
 
-        instance.unregister_message_client(job_name, message_queue)
+        instance.unregister_operation_peer(job_name, peer)
 
         if self._is_instrumented:
             if self.__peers[peer] > 1:

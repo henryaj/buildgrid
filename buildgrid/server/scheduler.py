@@ -52,15 +52,40 @@ class Scheduler:
 
     # --- Public API ---
 
-    def register_client(self, job_name, queue):
-        job = self.jobs[job_name]
+    def register_operation_peer(self, job_name, peer, message_queue):
+        """Subscribes to one of the job's :class:`Operation` stage changes.
 
-        job.register_client(queue)
+        Args:
+            job_name (str): name of the job subscribe to.
+            peer (str): a unique string identifying the client.
+            message_queue (queue.Queue): the event queue to register.
 
-    def unregister_client(self, job_name, queue):
-        job = self.jobs[job_name]
+        Raises:
+            NotFoundError: If no job with `job_name` exists.
+        """
+        try:
+            job = self.jobs[job_name]
+        except KeyError:
+            raise NotFoundError('No job named {} found.'.format(job_name))
 
-        job.unregister_client(queue)
+        job.register_operation_peer(peer, message_queue)
+
+    def unregister_operation_peer(self, job_name, peer):
+        """Unsubscribes to one of the job's :class:`Operation` stage change.
+
+        Args:
+            job_name (str): name of the job to unsubscribe from.
+            peer (str): a unique string identifying the client.
+
+        Raises:
+            NotFoundError: If no job with `job_name` exists.
+        """
+        try:
+            job = self.jobs[job_name]
+        except KeyError:
+            raise NotFoundError('No job named {} found.'.format(job_name))
+
+        job.unregister_operation_peer(peer)
 
         if not job.n_clients and job.operation.done and not job.lease:
             self._delete_job(job.name)

@@ -46,6 +46,7 @@ class Job:
         self.__worker_start_timestamp = timestamp_pb2.Timestamp()
         self.__worker_completed_timestamp = timestamp_pb2.Timestamp()
 
+        self.__operation_message_queues = {}
         self.__operation_cancelled = False
         self.__lease_cancelled = False
 
@@ -54,7 +55,6 @@ class Job:
 
         self._action.CopyFrom(action)
         self._do_not_cache = self._action.do_not_cache
-        self._operation_update_queues = []
         self._operation.name = self._name
         self._operation.done = False
         self._n_tries = 0
@@ -156,26 +156,30 @@ class Job:
 
     @property
     def n_clients(self):
-        return len(self._operation_update_queues)
+        return len(self.__operation_message_queues)
 
-    def register_client(self, queue):
-        """Subscribes to the job's :class:`Operation` stage change events.
+    def register_operation_peer(self, peer, message_queue):
+        """Subscribes to the job's :class:`Operation` stage changes.
 
         Queues this :object:`Job` instance.
 
         Args:
-            queue (queue.Queue): the event queue to register.
+            peer (str): a unique string identifying the client.
+            message_queue (queue.Queue): the event queue to register.
         """
-        self._operation_update_queues.append(queue)
-        queue.put(self)
+        if peer not in self.__operation_message_queues:
+            self.__operation_message_queues[peer] = message_queue
 
-    def unregister_client(self, queue):
-        """Unsubscribes to the job's :class:`Operation` stage change events.
+        message_queue.put(self)
+
+    def unregister_operation_peer(self, peer):
+        """Unsubscribes to the job's :class:`Operation` stage change.
 
         Args:
-            queue (queue.Queue): the event queue to unregister.
+            peer (str): a unique string identifying the client.
         """
-        self._operation_update_queues.remove(queue)
+        if peer not in self.__operation_message_queues:
+            del self.__operation_message_queues[peer]
 
     def set_cached_result(self, action_result):
         """Allows specifying an action result form the action cache for the job.
@@ -293,8 +297,8 @@ class Job:
 
         self._operation.metadata.Pack(self.__operation_metadata)
 
-        for queue in self._operation_update_queues:
-            queue.put(self)
+        for message_queue in self.__operation_message_queues.values():
+            message_queue.put(self)
 
     def check_operation_status(self):
         """Reports errors on unexpected job's :class:Operation state.
