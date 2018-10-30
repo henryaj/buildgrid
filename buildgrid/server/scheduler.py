@@ -25,6 +25,7 @@ import logging
 
 from buildgrid._enums import LeaseState, OperationStage
 from buildgrid._exceptions import NotFoundError
+from buildgrid.server.job import Job
 
 
 class Scheduler:
@@ -42,7 +43,10 @@ class Scheduler:
         self.__retries_count = 0
 
         self._action_cache = action_cache
-        self.jobs = {}
+
+        self.__jobs_by_action = {}  # Action to Job 1:1 mapping
+        self.__jobs_by_name = {}  # Name to Job 1:1 mapping
+
         self.__queue = []
 
         self._is_instrumented = monitor
@@ -64,9 +68,10 @@ class Scheduler:
             NotFoundError: If no job with `job_name` exists.
         """
         try:
-            job = self.jobs[job_name]
+            job = self.__jobs_by_name[job_name]
+
         except KeyError:
-            raise NotFoundError('No job named {} found.'.format(job_name))
+            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
 
         job.register_operation_peer(peer, message_queue)
 
@@ -81,21 +86,49 @@ class Scheduler:
             NotFoundError: If no job with `job_name` exists.
         """
         try:
-            job = self.jobs[job_name]
+            job = self.__jobs_by_name[job_name]
+
         except KeyError:
-            raise NotFoundError('No job named {} found.'.format(job_name))
+            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
 
         job.unregister_operation_peer(peer)
 
         if not job.n_clients and job.operation.done and not job.lease:
             self._delete_job(job.name)
 
-    def queue_job(self, job, skip_cache_lookup=False):
+    def queue_job(self, action, action_digest, priority=0, skip_cache_lookup=False):
+        """Inserts a newly created job into the execution queue.
+
+        Args:
+            action (Action): the given action to queue for execution.
+            action_digest (Digest): the digest of the given action.
+            priority (int): the execution job's priority.
+            skip_cache_lookup (bool): whether or not to look for pre-computed
+                result for the given action.
+        """
+        if action_digest.hash in self.__jobs_by_action:
+            job = self.__jobs_by_action[action_digest.hash]
+
+            # Reschedule if priority is now greater:
+            if priority < job.priority:
+                job.priority = priority
+
+                if job.operation_stage == OperationStage.QUEUED:
+                    self._queue_job(job.name)
+
+            return job
+
+        job = Job(action, action_digest, priority=priority)
+
+        self.__jobs_by_action[job.action_digest.hash] = job
+        self.__jobs_by_name[job.name] = job
+
         operation_stage = None
 
         if self._action_cache is not None and not skip_cache_lookup:
             try:
                 action_result = self._action_cache.get_action_result(job.action_digest)
+
             except NotFoundError:
                 operation_stage = OperationStage.QUEUED
                 self._queue_job(job.name)
@@ -113,8 +146,14 @@ class Scheduler:
 
         self._update_job_operation_stage(job.name, operation_stage)
 
+        return job
+
     def retry_job(self, job_name):
-        job = self.jobs[job_name]
+        try:
+            job = self.__jobs_by_name[job_name]
+
+        except KeyError:
+            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
 
         operation_stage = None
         if job.n_tries >= self.MAX_N_TRIES:
@@ -128,10 +167,10 @@ class Scheduler:
 
             job.update_lease_state(LeaseState.PENDING)
 
-        self._update_job_operation_stage(job_name, operation_stage)
+        self._update_job_operation_stage(job.name, operation_stage)
 
     def list_jobs(self):
-        return self.jobs.values()
+        return self.__jobs_by_name.values()
 
     def request_job_leases(self, worker_capabilities):
         """Generates a list of the highest priority leases to be run.
@@ -157,18 +196,22 @@ class Scheduler:
 
         return None
 
-    def update_job_lease(self, lease):
+    def update_job_lease(self, job_name, lease):
         """Requests a state transition for a job's current :class:Lease.
 
         Args:
             job_name (str): name of the job to query.
-            lease_state (LeaseState): the lease state to transition to.
-            lease_status (google.rpc.Status): the lease execution status, only
-                required if `lease_state` is `COMPLETED`.
-            lease_result (google.protobuf.Any): the lease execution result, only
-                required if `lease_state` is `COMPLETED`.
+            lease (Lease): the lease holding the new state.
+
+        Raises:
+            NotFoundError: If no job with `job_name` exists.
         """
-        job = self.jobs[lease.id]
+        try:
+            job = self.__jobs_by_name[job_name]
+
+        except KeyError:
+            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
+
         lease_state = LeaseState(lease.state)
 
         operation_stage = None
@@ -204,28 +247,78 @@ class Scheduler:
                 self.__leases_by_state[LeaseState.ACTIVE].discard(lease.id)
                 self.__leases_by_state[LeaseState.COMPLETED].add(lease.id)
 
-        self._update_job_operation_stage(lease.id, operation_stage)
+        self._update_job_operation_stage(job_name, operation_stage)
 
     def get_job_lease(self, job_name):
-        """Returns the lease associated to job, if any have been emitted yet."""
-        return self.jobs[job_name].lease
+        """Returns the lease associated to job, if any have been emitted yet.
+
+        Args:
+            job_name (str): name of the job to query.
+
+        Raises:
+            NotFoundError: If no job with `job_name` exists.
+        """
+        try:
+            job = self.__jobs_by_name[job_name]
+
+        except KeyError:
+            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
+
+        return job.lease
 
     def get_job_lease_cancelled(self, job_name):
-        """Returns true if the lease is cancelled"""
-        return self.jobs[job_name].lease_cancelled
+        """Returns true if the lease is cancelled.
+
+        Args:
+            job_name (str): name of the job to query.
+
+        Raises:
+            NotFoundError: If no job with `job_name` exists.
+        """
+        try:
+            job = self.__jobs_by_name[job_name]
+
+        except KeyError:
+            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
+
+        return job.lease_cancelled
 
     def delete_job_lease(self, job_name):
-        """Discards the lease associated to a job."""
-        job = self.jobs[job_name]
+        """Discards the lease associated with a job.
 
-        self.jobs[job.name].delete_lease()
+        Args:
+            job_name (str): name of the job to query.
+
+        Raises:
+            NotFoundError: If no job with `job_name` exists.
+        """
+        try:
+            job = self.__jobs_by_name[job_name]
+
+        except KeyError:
+            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
+
+        job.delete_lease()
 
         if not job.n_clients and job.operation.done:
             self._delete_job(job.name)
 
     def get_job_operation(self, job_name):
-        """Returns the operation associated to job."""
-        return self.jobs[job_name].operation
+        """Returns the operation associated to job.
+
+        Args:
+            job_name (str): name of the job to query.
+
+        Raises:
+            NotFoundError: If no job with `job_name` exists.
+        """
+        try:
+            job = self.__jobs_by_name[job_name]
+
+        except KeyError:
+            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
+
+        return job.operation
 
     def cancel_job_operation(self, job_name):
         """"Cancels the underlying operation of a given job.
@@ -235,7 +328,28 @@ class Scheduler:
         Args:
             job_name (str): name of the job holding the operation to cancel.
         """
-        self.jobs[job_name].cancel_operation()
+        try:
+            job = self.__jobs_by_name[job_name]
+
+        except KeyError:
+            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
+
+        job.cancel_operation()
+
+    def delete_job_operation(self, job_name):
+        """"Removes a job.
+
+        Args:
+            job_name (str): name of the job to delete.
+        """
+        try:
+            job = self.__jobs_by_name[job_name]
+
+        except KeyError:
+            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
+
+        if job.n_clients == 0 and (job.operation.done or job.lease is None):
+            self._delete_job(job.name)
 
     # --- Public API: Monitoring ---
 
@@ -285,11 +399,11 @@ class Scheduler:
             self.__build_metadata_queues.append(message_queue)
 
     def query_n_jobs(self):
-        return len(self.jobs)
+        return len(self.__jobs_by_name)
 
     def query_n_operations(self):
         # For now n_operations == n_jobs:
-        return len(self.jobs)
+        return len(self.__jobs_by_name)
 
     def query_n_operations_by_stage(self, operation_stage):
         try:
@@ -300,7 +414,7 @@ class Scheduler:
         return 0
 
     def query_n_leases(self):
-        return len(self.jobs)
+        return len(self.__jobs_by_name)
 
     def query_n_leases_by_state(self, lease_state):
         try:
@@ -322,7 +436,7 @@ class Scheduler:
 
     def _queue_job(self, job_name):
         """Schedules or reschedules a job."""
-        job = self.jobs[job_name]
+        job = self.__jobs_by_name[job_name]
 
         if job.operation_stage == OperationStage.QUEUED:
             self.__queue.sort()
@@ -332,22 +446,23 @@ class Scheduler:
 
     def _delete_job(self, job_name):
         """Drops an entry from the internal list of jobs."""
-        job = self.jobs[job_name]
+        job = self.__jobs_by_name[job_name]
 
         if job.operation_stage == OperationStage.QUEUED:
             self.__queue.remove(job)
 
-        del self.jobs[job_name]
+        del self.__jobs_by_action[job.action_digest.hash]
+        del self.__jobs_by_name[job.name]
 
         if self._is_instrumented:
-            self.__operations_by_stage[OperationStage.CACHE_CHECK].discard(job_name)
-            self.__operations_by_stage[OperationStage.QUEUED].discard(job_name)
-            self.__operations_by_stage[OperationStage.EXECUTING].discard(job_name)
-            self.__operations_by_stage[OperationStage.COMPLETED].discard(job_name)
+            self.__operations_by_stage[OperationStage.CACHE_CHECK].discard(job.name)
+            self.__operations_by_stage[OperationStage.QUEUED].discard(job.name)
+            self.__operations_by_stage[OperationStage.EXECUTING].discard(job.name)
+            self.__operations_by_stage[OperationStage.COMPLETED].discard(job.name)
 
-            self.__leases_by_state[LeaseState.PENDING].discard(job_name)
-            self.__leases_by_state[LeaseState.ACTIVE].discard(job_name)
-            self.__leases_by_state[LeaseState.COMPLETED].discard(job_name)
+            self.__leases_by_state[LeaseState.PENDING].discard(job.name)
+            self.__leases_by_state[LeaseState.ACTIVE].discard(job.name)
+            self.__leases_by_state[LeaseState.COMPLETED].discard(job.name)
 
     def _update_job_operation_stage(self, job_name, operation_stage):
         """Requests a stage transition for the job's :class:Operations.
@@ -356,7 +471,7 @@ class Scheduler:
             job_name (str): name of the job to query.
             operation_stage (OperationStage): the stage to transition to.
         """
-        job = self.jobs[job_name]
+        job = self.__jobs_by_name[job_name]
 
         if operation_stage == OperationStage.CACHE_CHECK:
             job.update_operation_stage(OperationStage.CACHE_CHECK)

@@ -126,7 +126,7 @@ class BotsInterface:
             # Job does not exist, remove from bot.
             return None
 
-        self._scheduler.update_job_lease(lease)
+        self._scheduler.update_job_lease(lease.id, lease)
 
         if lease_state == LeaseState.COMPLETED:
             return None

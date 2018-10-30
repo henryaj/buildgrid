@@ -25,7 +25,6 @@ import pytest
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
-from buildgrid.server import job
 from buildgrid.server.controller import ExecutionController
 from buildgrid.server.job import LeaseState
 from buildgrid.server.bots import service
@@ -159,7 +158,8 @@ def test_post_bot_event_temp(context, instance):
 def _inject_work(scheduler, action=None, action_digest=None):
     if not action:
         action = remote_execution_pb2.Action()
+
     if not action_digest:
         action_digest = remote_execution_pb2.Digest()
-    j = job.Job(action, action_digest)
-    scheduler.queue_job(j, True)
+
+    scheduler.queue_job(action, action_digest, skip_cache_lookup=True)

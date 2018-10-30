@@ -21,7 +21,7 @@ An instance of the LongRunningOperations Service.
 
 import logging
 
-from buildgrid._exceptions import InvalidArgumentError
+from buildgrid._exceptions import InvalidArgumentError, NotFoundError
 from buildgrid._protos.google.longrunning import operations_pb2
 
 
@@ -39,14 +39,14 @@ class OperationsInstance:
     def register_instance_with_server(self, instance_name, server):
         server.add_operations_instance(self, instance_name)
 
-    def get_operation(self, name):
-        job = self._scheduler.jobs.get(name)
+    def get_operation(self, job_name):
+        try:
+            operation = self._scheduler.get_job_operation(job_name)
 
-        if job is None:
-            raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
+        except NotFoundError:
+            raise InvalidArgumentError("Operation name does not exist: [{}]".format(job_name))
 
-        else:
-            return job.operation
+        return operation
 
     def list_operations(self, list_filter, page_size, page_token):
         # TODO: Pages
@@ -62,16 +62,16 @@ class OperationsInstance:
 
         return response
 
-    def delete_operation(self, name):
+    def delete_operation(self, job_name):
         try:
-            self._scheduler.jobs.pop(name)
+            self._scheduler.delete_job_operation(job_name)
 
-        except KeyError:
-            raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
+        except NotFoundError:
+            raise InvalidArgumentError("Operation name does not exist: [{}]".format(job_name))
 
-    def cancel_operation(self, name):
+    def cancel_operation(self, job_name):
         try:
-            self._scheduler.cancel_job_operation(name)
+            self._scheduler.cancel_job_operation(job_name)
 
-        except KeyError:
-            raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
+        except NotFoundError:
+            raise InvalidArgumentError("Operation name does not exist: [{}]".format(job_name))

@@ -23,9 +23,7 @@ import logging
 
 from buildgrid._exceptions import FailedPreconditionError, InvalidArgumentError, NotFoundError
 from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Action
-
-from ..job import Job
-from ...utils import get_hash_type
+from buildgrid.utils import get_hash_type
 
 
 class ExecutionInstance:
@@ -51,17 +49,16 @@ class ExecutionInstance:
         Queues an action and creates an Operation instance to be associated with
         this action.
         """
-
         action = self._storage.get_message(action_digest, Action)
 
         if not action:
             raise FailedPreconditionError("Could not get action from storage.")
 
-        job = Job(action, action_digest)
+        job = self._scheduler.queue_job(action, action_digest,
+                                        skip_cache_lookup=skip_cache_lookup)
+
         if peer is not None and message_queue is not None:
             job.register_operation_peer(peer, message_queue)
-
-        self._scheduler.queue_job(job, skip_cache_lookup)
 
         return job.operation
 

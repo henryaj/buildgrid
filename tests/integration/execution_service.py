@@ -106,12 +106,12 @@ def test_no_action_digest_in_storage(instance, context):
 
 
 def test_wait_execution(instance, controller, context):
-    j = job.Job(action, action_digest)
+    j = controller.execution_instance._scheduler.queue_job(action,
+                                                           action_digest,
+                                                           skip_cache_lookup=True)
     j._operation.done = True
 
     request = remote_execution_pb2.WaitExecutionRequest(name=j.name)
-
-    controller.execution_instance._scheduler.jobs[j.name] = j
 
     action_result_any = any_pb2.Any()
     action_result = remote_execution_pb2.ActionResult()
