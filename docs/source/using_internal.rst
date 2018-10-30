@@ -92,7 +92,7 @@ Upload the directory containing the C file:
 
    bgd cas upload-dir /path/to/test-buildgrid
 
-Now we send an execution request to the bot with the name of the epxected
+Now we send an execution request to the bot with the name of the expected
 ``output-file``, a boolean describing if it is executeable, the path to the
 directory we uploaded in order to calculate the digest and finally the command
 to run on the bot:
