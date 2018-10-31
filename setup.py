@@ -116,7 +116,7 @@ setup(
         'protobuf',
         'grpcio',
         'Click',
-        'pyaml',
+        'PyYAML',
         'boto3 < 1.8.0',
         'botocore < 1.11.0',
     ],
