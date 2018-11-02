@@ -87,8 +87,10 @@ class OperationsInstance:
             raise InvalidArgumentError("Operation name does not exist: [{}]".format(name))
 
     def stream_operation_updates(self, message_queue, operation_name):
-        operation = message_queue.get()
-        while not operation.done:
-            yield operation
-            operation = message_queue.get()
-        yield operation
+        job = message_queue.get()
+        while not job.operation.done:
+            yield job.operation
+            job = message_queue.get()
+            job.check_operation_status()
+
+        yield job.operation

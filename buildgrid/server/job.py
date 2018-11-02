@@ -109,11 +109,13 @@ class Job:
     def register_client(self, queue):
         """Subscribes to the job's :class:`Operation` stage change events.
 
+        Queues this :object:`Job` instance.
+
         Args:
             queue (queue.Queue): the event queue to register.
         """
         self._operation_update_queues.append(queue)
-        queue.put(self._operation)
+        queue.put(self)
 
     def unregister_client(self, queue):
         """Unsubscribes to the job's :class:`Operation` stage change events.
@@ -229,7 +231,16 @@ class Job:
         self._operation.metadata.Pack(self.__operation_metadata)
 
         for queue in self._operation_update_queues:
-            queue.put(self._operation)
+            queue.put(self)
+
+    def check_operation_status(self):
+        """Reports errors on unexpected job's :class:Operation state.
+
+        Raises:
+            CancelledError: if the job's :class:Operation was cancelled.
+        """
+        if self.__operation_cancelled:
+            raise CancelledError(self.__execute_response.status.message)
 
     def cancel_operation(self):
         """Triggers a job's :class:Operation cancellation.
