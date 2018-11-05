@@ -87,7 +87,7 @@ def get_cmdclass():
 
 tests_require = [
     'coverage >= 4.5.0',
-    'moto',
+    'moto < 1.3.7',
     'pep8',
     'psutil',
     'pytest >= 3.8.0',
