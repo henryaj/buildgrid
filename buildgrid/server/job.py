@@ -166,11 +166,18 @@ class Job:
         Args:
             peer (str): a unique string identifying the client.
             message_queue (queue.Queue): the event queue to register.
+
+        Returns:
+            str: The name of the subscribed :class:`Operation`.
         """
         if peer not in self.__operation_message_queues:
             self.__operation_message_queues[peer] = message_queue
 
-        message_queue.put(self)
+        message = (None, self._copy_operation(self._operation),)
+
+        message_queue.put(message)
+
+        return self._operation.name
 
     def unregister_operation_peer(self, peer):
         """Unsubscribes to the job's :class:`Operation` stage change.
@@ -297,17 +304,14 @@ class Job:
 
         self._operation.metadata.Pack(self.__operation_metadata)
 
+        if not self.__operation_cancelled:
+            message = (None, self._copy_operation(self._operation),)
+        else:
+            message = (CancelledError(self.__execute_response.status.message),
+                       self._copy_operation(self._operation),)
+
         for message_queue in self.__operation_message_queues.values():
-            message_queue.put(self)
-
-    def check_operation_status(self):
-        """Reports errors on unexpected job's :class:Operation state.
-
-        Raises:
-            CancelledError: if the job's :class:Operation was cancelled.
-        """
-        if self.__operation_cancelled:
-            raise CancelledError(self.__execute_response.status.message)
+            message_queue.put(message)
 
     def cancel_operation(self):
         """Triggers a job's :class:Operation cancellation.
@@ -331,3 +335,12 @@ class Job:
 
     def query_n_retries(self):
         return self._n_tries - 1 if self._n_tries > 0 else 0
+
+    # --- Private API ---
+
+    def _copy_operation(self, operation):
+        new_operation = operations_pb2.Operation()
+
+        new_operation.CopyFrom(operation)
+
+        return new_operation

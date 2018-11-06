@@ -86,8 +86,8 @@ def blank_instance(controller):
 
 # Queue an execution, get operation corresponding to that request
 def test_get_operation(instance, controller, execute_request, context):
-    response_execute = controller.execution_instance.execute(execute_request.action_digest,
-                                                             execute_request.skip_cache_lookup)
+    job_name = controller.execution_instance.execute(execute_request.action_digest,
+                                                     execute_request.skip_cache_lookup)
 
     request = operations_pb2.GetOperationRequest()
 
@@ -95,25 +95,23 @@ def test_get_operation(instance, controller, execute_request, context):
     # we're manually creating the instance here, it doesn't get a name.
     # Therefore we need to manually add the instance name to the operation
     # name in the GetOperation request.
-    request.name = "{}/{}".format(instance_name, response_execute.name)
+    request.name = "{}/{}".format(instance_name, job_name)
 
     response = instance.GetOperation(request, context)
-    assert response.name == "{}/{}".format(instance_name, response_execute.name)
-    assert response.done == response_execute.done
+    assert response.name == "{}/{}".format(instance_name, job_name)
 
 
 # Queue an execution, get operation corresponding to that request
 def test_get_operation_blank(blank_instance, controller, execute_request, context):
-    response_execute = controller.execution_instance.execute(execute_request.action_digest,
-                                                             execute_request.skip_cache_lookup)
+    job_name = controller.execution_instance.execute(execute_request.action_digest,
+                                                     execute_request.skip_cache_lookup)
 
     request = operations_pb2.GetOperationRequest()
 
-    request.name = response_execute.name
+    request.name = job_name
 
     response = blank_instance.GetOperation(request, context)
-    assert response.name == response_execute.name
-    assert response.done == response_execute.done
+    assert response.name == job_name
 
 
 def test_get_operation_fail(instance, context):
@@ -133,25 +131,25 @@ def test_get_operation_instance_fail(instance, context):
 
 
 def test_list_operations(instance, controller, execute_request, context):
-    response_execute = controller.execution_instance.execute(execute_request.action_digest,
-                                                             execute_request.skip_cache_lookup)
+    job_name = controller.execution_instance.execute(execute_request.action_digest,
+                                                     execute_request.skip_cache_lookup)
 
     request = operations_pb2.ListOperationsRequest(name=instance_name)
     response = instance.ListOperations(request, context)
 
     names = response.operations[0].name.split('/')
     assert names[0] == instance_name
-    assert names[1] == response_execute.name
+    assert names[1] == job_name
 
 
 def test_list_operations_blank(blank_instance, controller, execute_request, context):
-    response_execute = controller.execution_instance.execute(execute_request.action_digest,
-                                                             execute_request.skip_cache_lookup)
+    job_name = controller.execution_instance.execute(execute_request.action_digest,
+                                                     execute_request.skip_cache_lookup)
 
     request = operations_pb2.ListOperationsRequest(name='')
     response = blank_instance.ListOperations(request, context)
 
-    assert response.operations[0].name.split('/')[-1] == response_execute.name
+    assert response.operations[0].name.split('/')[-1] == job_name
 
 
 def test_list_operations_instance_fail(instance, controller, execute_request, context):
@@ -174,14 +172,14 @@ def test_list_operations_empty(instance, context):
 
 # Send execution off, delete, try to find operation should fail
 def test_delete_operation(instance, controller, execute_request, context):
-    response_execute = controller.execution_instance.execute(execute_request.action_digest,
-                                                             execute_request.skip_cache_lookup)
+    job_name = controller.execution_instance.execute(execute_request.action_digest,
+                                                     execute_request.skip_cache_lookup)
 
     request = operations_pb2.DeleteOperationRequest()
-    request.name = response_execute.name
+    request.name = job_name
     instance.DeleteOperation(request, context)
 
-    request_name = "{}/{}".format(instance_name, response_execute.name)
+    request_name = "{}/{}".format(instance_name, job_name)
 
     with pytest.raises(InvalidArgumentError):
         controller.operations_instance.get_operation(request_name)
@@ -189,14 +187,14 @@ def test_delete_operation(instance, controller, execute_request, context):
 
 # Send execution off, delete, try to find operation should fail
 def test_delete_operation_blank(blank_instance, controller, execute_request, context):
-    response_execute = controller.execution_instance.execute(execute_request.action_digest,
-                                                             execute_request.skip_cache_lookup)
+    job_name = controller.execution_instance.execute(execute_request.action_digest,
+                                                     execute_request.skip_cache_lookup)
 
     request = operations_pb2.DeleteOperationRequest()
-    request.name = response_execute.name
+    request.name = job_name
     blank_instance.DeleteOperation(request, context)
 
-    request_name = response_execute.name
+    request_name = job_name
 
     with pytest.raises(InvalidArgumentError):
         controller.operations_instance.get_operation(request_name)
@@ -211,11 +209,11 @@ def test_delete_operation_fail(instance, context):
 
 
 def test_cancel_operation(instance, controller, execute_request, context):
-    response_execute = controller.execution_instance.execute(execute_request.action_digest,
-                                                             execute_request.skip_cache_lookup)
+    job_name = controller.execution_instance.execute(execute_request.action_digest,
+                                                     execute_request.skip_cache_lookup)
 
     request = operations_pb2.CancelOperationRequest()
-    request.name = "{}/{}".format(instance_name, response_execute.name)
+    request.name = "{}/{}".format(instance_name, job_name)
 
     instance.CancelOperation(request, context)
 

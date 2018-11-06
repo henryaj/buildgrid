@@ -56,40 +56,45 @@ class Scheduler:
 
     # --- Public API ---
 
-    def register_operation_peer(self, job_name, peer, message_queue):
+    def register_operation_peer(self, operation_name, peer, message_queue):
         """Subscribes to one of the job's :class:`Operation` stage changes.
 
         Args:
-            job_name (str): name of the job subscribe to.
+            operation_name (str): name of the operation to subscribe to.
             peer (str): a unique string identifying the client.
             message_queue (queue.Queue): the event queue to register.
 
+        Returns:
+            str: The name of the subscribed :class:`Operation`.
+
         Raises:
-            NotFoundError: If no job with `job_name` exists.
+            NotFoundError: If no operation with `operation_name` exists.
         """
         try:
-            job = self.__jobs_by_name[job_name]
+            job = self.__jobs_by_name[operation_name]
 
         except KeyError:
-            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
+            raise NotFoundError("Operation name does not exist: [{}]"
+                                .format(operation_name))
 
-        job.register_operation_peer(peer, message_queue)
+        return job.register_operation_peer(peer, message_queue)
 
-    def unregister_operation_peer(self, job_name, peer):
+    def unregister_operation_peer(self, operation_name, peer):
         """Unsubscribes to one of the job's :class:`Operation` stage change.
 
         Args:
-            job_name (str): name of the job to unsubscribe from.
+            operation_name (str): name of the operation to unsubscribe from.
             peer (str): a unique string identifying the client.
 
         Raises:
-            NotFoundError: If no job with `job_name` exists.
+            NotFoundError: If no operation with `operation_name` exists.
         """
         try:
-            job = self.__jobs_by_name[job_name]
+            job = self.__jobs_by_name[operation_name]
 
         except KeyError:
-            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
+            raise NotFoundError("Operation name does not exist: [{}]"
+                                .format(operation_name))
 
         job.unregister_operation_peer(peer)
 
@@ -105,6 +110,9 @@ class Scheduler:
             priority (int): the execution job's priority.
             skip_cache_lookup (bool): whether or not to look for pre-computed
                 result for the given action.
+
+        Returns:
+            str: the newly created operation's name.
         """
         if action_digest.hash in self.__jobs_by_action:
             job = self.__jobs_by_action[action_digest.hash]
@@ -116,7 +124,7 @@ class Scheduler:
                 if job.operation_stage == OperationStage.QUEUED:
                     self._queue_job(job.name)
 
-            return job
+            return job.name
 
         job = Job(action, action_digest, priority=priority)
 
@@ -146,7 +154,7 @@ class Scheduler:
 
         self._update_job_operation_stage(job.name, operation_stage)
 
-        return job
+        return job.name
 
     def retry_job(self, job_name):
         try:
@@ -170,7 +178,7 @@ class Scheduler:
         self._update_job_operation_stage(job.name, operation_stage)
 
     def list_jobs(self):
-        return self.__jobs_by_name.values()
+        return self.__jobs_by_name.keys()
 
     def request_job_leases(self, worker_capabilities):
         """Generates a list of the highest priority leases to be run.

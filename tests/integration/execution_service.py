@@ -20,11 +20,11 @@
 import uuid
 from unittest import mock
 
-from google.protobuf import any_pb2
 import grpc
 from grpc._server import _Context
 import pytest
 
+from buildgrid._enums import OperationStage
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 
@@ -82,7 +82,7 @@ def test_execute(skip_cache_lookup, instance, context):
     assert isinstance(result, operations_pb2.Operation)
     metadata = remote_execution_pb2.ExecuteOperationMetadata()
     result.metadata.Unpack(metadata)
-    assert metadata.stage == job.OperationStage.QUEUED.value
+    assert metadata.stage == OperationStage.QUEUED.value
     operation_uuid = result.name.split('/')[-1]
     assert uuid.UUID(operation_uuid, version=4)
     assert result.done is False
@@ -106,18 +106,14 @@ def test_no_action_digest_in_storage(instance, context):
 
 
 def test_wait_execution(instance, controller, context):
-    j = controller.execution_instance._scheduler.queue_job(action,
-                                                           action_digest,
-                                                           skip_cache_lookup=True)
-    j._operation.done = True
+    job_name = controller.execution_instance._scheduler.queue_job(action,
+                                                                  action_digest,
+                                                                  skip_cache_lookup=True)
 
-    request = remote_execution_pb2.WaitExecutionRequest(name=j.name)
+    controller.execution_instance._scheduler._update_job_operation_stage(job_name,
+                                                                         OperationStage.COMPLETED)
 
-    action_result_any = any_pb2.Any()
-    action_result = remote_execution_pb2.ActionResult()
-    action_result_any.Pack(action_result)
-
-    j.update_operation_stage(job.OperationStage.COMPLETED)
+    request = remote_execution_pb2.WaitExecutionRequest(name=job_name)
 
     response = instance.WaitExecution(request, context)
 
@@ -127,7 +123,6 @@ def test_wait_execution(instance, controller, context):
     metadata = remote_execution_pb2.ExecuteOperationMetadata()
     result.metadata.Unpack(metadata)
     assert metadata.stage == job.OperationStage.COMPLETED.value
-    assert uuid.UUID(result.name, version=4)
     assert result.done is True
 
 

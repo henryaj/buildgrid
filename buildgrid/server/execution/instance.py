@@ -44,7 +44,7 @@ class ExecutionInstance:
     def hash_type(self):
         return get_hash_type()
 
-    def execute(self, action_digest, skip_cache_lookup, peer=None, message_queue=None):
+    def execute(self, action_digest, skip_cache_lookup):
         """ Sends a job for execution.
         Queues an action and creates an Operation instance to be associated with
         this action.
@@ -54,33 +54,36 @@ class ExecutionInstance:
         if not action:
             raise FailedPreconditionError("Could not get action from storage.")
 
-        job = self._scheduler.queue_job(action, action_digest,
-                                        skip_cache_lookup=skip_cache_lookup)
+        return self._scheduler.queue_job(action, action_digest,
+                                         skip_cache_lookup=skip_cache_lookup)
 
-        if peer is not None and message_queue is not None:
-            job.register_operation_peer(peer, message_queue)
-
-        return job.operation
-
-    def register_operation_peer(self, job_name, peer, message_queue):
+    def register_operation_peer(self, operation_name, peer, message_queue):
         try:
-            self._scheduler.register_operation_peer(job_name, peer, message_queue)
+            return self._scheduler.register_operation_peer(operation_name,
+                                                           peer, message_queue)
 
         except NotFoundError:
-            raise InvalidArgumentError("Operation name does not exist: [{}]".format(job_name))
+            raise InvalidArgumentError("Operation name does not exist: [{}]"
+                                       .format(operation_name))
 
-    def unregister_operation_peer(self, job_name, peer):
+    def unregister_operation_peer(self, operation_name, peer):
         try:
-            self._scheduler.unregister_operation_peer(job_name, peer)
+            self._scheduler.unregister_operation_peer(operation_name, peer)
 
         except NotFoundError:
-            raise InvalidArgumentError("Operation name does not exist: [{}]".format(job_name))
+            raise InvalidArgumentError("Operation name does not exist: [{}]"
+                                       .format(operation_name))
 
-    def stream_operation_updates(self, message_queue, operation_name):
-        job = message_queue.get()
-        while not job.operation.done:
-            yield job.operation
-            job = message_queue.get()
-            job.check_operation_status()
+    def stream_operation_updates(self, message_queue):
+        error, operation = message_queue.get()
+        if error is not None:
+            raise error
 
-        yield job.operation
+        while not operation.done:
+            yield operation
+
+            error, operation = message_queue.get()
+            if error is not None:
+                raise error
+
+        yield operation

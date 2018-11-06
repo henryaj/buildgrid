@@ -99,13 +99,14 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
         try:
             instance = self._get_instance(instance_name)
 
-            operation = instance.execute(request.action_digest,
-                                         request.skip_cache_lookup,
-                                         peer=peer,
-                                         message_queue=message_queue)
+            job_name = instance.execute(request.action_digest,
+                                        request.skip_cache_lookup)
+
+            operation_name = instance.register_operation_peer(job_name,
+                                                              peer, message_queue)
 
             context.add_callback(partial(self._rpc_termination_callback,
-                                         peer, instance_name, operation.name))
+                                         peer, instance_name, operation_name))
 
             if self._is_instrumented:
                 if peer not in self.__peers:
@@ -114,16 +115,13 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
                 else:
                     self.__peers[peer] += 1
 
-            instanced_op_name = "{}/{}".format(instance_name, operation.name)
+            operation_full_name = "{}/{}".format(instance_name, operation_name)
 
-            self.__logger.info("Operation name: [%s]", instanced_op_name)
+            self.__logger.info("Operation name: [%s]", operation_full_name)
 
-            for operation in instance.stream_operation_updates(message_queue,
-                                                               operation.name):
-                op = operations_pb2.Operation()
-                op.CopyFrom(operation)
-                op.name = instanced_op_name
-                yield op
+            for operation in instance.stream_operation_updates(message_queue):
+                operation.name = operation_full_name
+                yield operation
 
         except InvalidArgumentError as e:
             self.__logger.error(e)
@@ -162,8 +160,8 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
         try:
             instance = self._get_instance(instance_name)
 
-            instance.register_operation_peer(operation_name,
-                                             peer, message_queue)
+            operation_name = instance.register_operation_peer(operation_name,
+                                                              peer, message_queue)
 
             context.add_callback(partial(self._rpc_termination_callback,
                                          peer, instance_name, operation_name))
@@ -175,12 +173,11 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
                 else:
                     self.__peers[peer] += 1
 
-            for operation in instance.stream_operation_updates(message_queue,
-                                                               operation_name):
-                op = operations_pb2.Operation()
-                op.CopyFrom(operation)
-                op.name = request.name
-                yield op
+            operation_full_name = "{}/{}".format(instance_name, operation_name)
+
+            for operation in instance.stream_operation_updates(message_queue):
+                operation.name = operation_full_name
+                yield operation
 
         except InvalidArgumentError as e:
             self.__logger.error(e)
@@ -215,10 +212,10 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
     # --- Private API ---
 
-    def _rpc_termination_callback(self, peer, instance_name, job_name):
+    def _rpc_termination_callback(self, peer, instance_name, operation_name):
         instance = self._get_instance(instance_name)
 
-        instance.unregister_operation_peer(job_name, peer)
+        instance.unregister_operation_peer(operation_name, peer)
 
         if self._is_instrumented:
             if self.__peers[peer] > 1:

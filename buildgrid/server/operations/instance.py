@@ -52,11 +52,11 @@ class OperationsInstance:
         # TODO: Pages
         # Spec says number of pages and length of a page are optional
         response = operations_pb2.ListOperationsResponse()
+
         operations = []
-        for job in self._scheduler.list_jobs():
-            op = operations_pb2.Operation()
-            op.CopyFrom(job.operation)
-            operations.append(op)
+        for job_name in self._scheduler.list_jobs():
+            operation = self._scheduler.get_job_operation(job_name)
+            operations.append(operation)
 
         response.operations.extend(operations)
 
