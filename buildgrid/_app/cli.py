@@ -21,15 +21,13 @@ Any files in the commands/ folder with the name cmd_*.py
 will be attempted to be imported.
 """
 
-import os
 import logging
+import os
 
 import click
 import grpc
 
 from buildgrid.utils import read_file
-
-from . import _logging
 
 CONTEXT_SETTINGS = dict(auto_envvar_prefix='BUILDGRID')
 
@@ -146,7 +144,16 @@ class BuildGridCLI(click.MultiCommand):
 @pass_context
 def cli(context, verbose):
     """BuildGrid App"""
-    logger = _logging.bgd_logger()
+    logger = logging.getLogger()
+
+    # Clean-up root logger for any pre-configuration:
+    for log_handler in logger.handlers[:]:
+        logger.removeHandler(log_handler)
+    for log_filter in logger.filters[:]:
+        logger.removeFilter(log_filter)
+
+    logging.basicConfig(
+        format='%(asctime)s:%(name)32.32s][%(levelname)5.5s]: %(message)s')
 
     if verbose == 1:
         logger.setLevel(logging.WARNING)
