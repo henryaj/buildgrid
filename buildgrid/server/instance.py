@@ -146,7 +146,8 @@ class BuildGridServer:
             instance_name (str): Instance name.
         """
         if self._bots_service is None:
-            self._bots_service = BotsService(self.__grpc_server)
+            self._bots_service = BotsService(
+                self.__grpc_server, monitor=self._is_instrumented)
 
         self._bots_service.add_instance(instance_name, instance)
 
