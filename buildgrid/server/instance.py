@@ -130,7 +130,8 @@ class BuildGridServer:
             instance_name (str): Instance name.
         """
         if self._execution_service is None:
-            self._execution_service = ExecutionService(self.__grpc_server)
+            self._execution_service = ExecutionService(
+                self.__grpc_server, monitor=self._is_instrumented)
 
         self._execution_service.add_instance(instance_name, instance)
         self._add_capabilities_instance(instance_name, execution_instance=instance)
