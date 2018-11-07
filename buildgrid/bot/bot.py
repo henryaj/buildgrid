@@ -17,42 +17,52 @@
 Bot
 ====
 
-Creates a bot session.
+Creates a bot session and sends updates to the server.
 """
 
 import asyncio
 import logging
-
+import sys
 
 class Bot:
-    """
-    Creates a local BotSession.
-    """
+    """Creates a local BotSession."""
 
     def __init__(self, bot_session, update_period=1):
+        """
+        """
         self.__logger = logging.getLogger(__name__)
 
-        self._bot_session = bot_session
-        self._update_period = update_period
+        self.__bot_session = bot_session
+        self.__update_period = update_period
 
     def session(self, work, context):
-        loop = asyncio.get_event_loop()
-
-        self._bot_session.create_bot_session(work, context)
+        """Will create a session and periodically call the server."""
+        self.__loop = asyncio.get_event_loop()
+        self.__bot_session.create_bot_session(work, context)
 
         try:
-            task = asyncio.ensure_future(self._update_bot_session())
-            loop.run_forever()
+            task = asyncio.ensure_future(self.__update_bot_session())
+            self.__loop.run_until_complete(task)
+
         except KeyboardInterrupt:
             pass
-        finally:
-            task.cancel()
-            loop.close()
 
-    async def _update_bot_session(self):
-        """
-        Calls the server periodically to inform the server the client has not died.
-        """
-        while True:
-            self._bot_session.update_bot_session()
-            await asyncio.sleep(self._update_period)
+        self.__kill_everyone()
+        self.__logger.info("Bot shutdown.")
+
+    async def __update_bot_session(self):
+        """Calls the server periodically to inform the server the client has not died."""
+        try:
+            while True:
+                self.__bot_session.update_bot_session()
+                await asyncio.sleep(self.__update_period)
+
+        except asyncio.CancelledError:
+            pass
+
+    def __kill_everyone(self):
+        """Cancels and waits for them to stop."""
+        self.__logger.info("Cancelling remaining tasks...")
+        for task in asyncio.Task.all_tasks():
+            task.cancel()
+            self.__loop.run_until_complete(task)
