@@ -77,7 +77,8 @@ class Scheduler:
                 # TODO: Mark these jobs as done
             else:
                 job.update_operation_stage(OperationStage.QUEUED)
-                self.queue.appendleft(job)
+                job.update_lease_state(LeaseState.PENDING)
+                self.queue.append(job)
 
     def list_jobs(self):
         return self.jobs.values()
@@ -94,8 +95,12 @@ class Scheduler:
             return []
 
         job = self.queue.popleft()
-        # For now, one lease at a time:
-        lease = job.create_lease()
+
+        lease = job.lease
+
+        if not lease:
+            # For now, one lease at a time:
+            lease = job.create_lease()
 
         if lease:
             return [lease]
