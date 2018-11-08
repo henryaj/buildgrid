@@ -27,7 +27,7 @@ from buildgrid._protos.google.longrunning import operations_pb2
 class Job:
 
     def __init__(self, action, action_digest):
-        self.logger = logging.getLogger(__name__)
+        self.__logger = logging.getLogger(__name__)
 
         self._name = str(uuid.uuid4())
         self._action = remote_execution_pb2.Action()

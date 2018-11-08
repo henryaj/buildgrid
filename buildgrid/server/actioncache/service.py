@@ -32,7 +32,7 @@ from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_p
 class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
 
     def __init__(self, server):
-        self.logger = logging.getLogger(__name__)
+        self.__logger = logging.getLogger(__name__)
 
         self._instances = {}
 
@@ -43,37 +43,35 @@ class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
 
     def GetActionResult(self, request, context):
         try:
-            self.logger.debug("GetActionResult request from [{}]"
-                              .format(context.peer()))
+            self.__logger.debug("GetActionResult request from [%s]", context.peer())
             instance = self._get_instance(request.instance_name)
             return instance.get_action_result(request.action_digest)
 
         except InvalidArgumentError as e:
-            self.logger.error(e)
+            self.__logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
         except NotFoundError as e:
-            self.logger.debug(e)
+            self.__logger.debug(e)
             context.set_code(grpc.StatusCode.NOT_FOUND)
 
         return remote_execution_pb2.ActionResult()
 
     def UpdateActionResult(self, request, context):
         try:
-            self.logger.debug("UpdateActionResult request from [{}]"
-                              .format(context.peer()))
+            self.__logger.debug("UpdateActionResult request from [%s]", context.peer())
             instance = self._get_instance(request.instance_name)
             instance.update_action_result(request.action_digest, request.action_result)
             return request.action_result
 
         except InvalidArgumentError as e:
-            self.logger.error(e)
+            self.__logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
         except NotImplementedError as e:
-            self.logger.error(e)
+            self.__logger.error(e)
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
 
         return remote_execution_pb2.ActionResult()

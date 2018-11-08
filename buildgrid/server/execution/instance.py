@@ -30,7 +30,8 @@ from ..job import Job
 class ExecutionInstance:
 
     def __init__(self, scheduler, storage):
-        self.logger = logging.getLogger(__name__)
+        self.__logger = logging.getLogger(__name__)
+
         self._storage = storage
         self._scheduler = scheduler
 

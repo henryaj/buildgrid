@@ -26,6 +26,7 @@ the fallback.
 """
 
 import io
+import logging
 
 from .storage_abc import StorageABC
 
@@ -118,6 +119,8 @@ class _CachingTee(io.RawIOBase):
 class WithCacheStorage(StorageABC):
 
     def __init__(self, cache, fallback):
+        self.__logger = logging.getLogger(__name__)
+
         self._cache = cache
         self._fallback = fallback
 

@@ -28,7 +28,8 @@ from buildgrid._protos.google.longrunning import operations_pb2
 class OperationsInstance:
 
     def __init__(self, scheduler):
-        self.logger = logging.getLogger(__name__)
+        self.__logger = logging.getLogger(__name__)
+
         self._scheduler = scheduler
 
     def register_instance_with_server(self, instance_name, server):

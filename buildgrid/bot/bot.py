@@ -30,7 +30,7 @@ class Bot:
     """
 
     def __init__(self, bot_session, update_period=1):
-        self.logger = logging.getLogger(__name__)
+        self.__logger = logging.getLogger(__name__)
 
         self._bot_session = bot_session
         self._update_period = update_period

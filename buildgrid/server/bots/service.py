@@ -33,7 +33,7 @@ from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2_grp
 class BotsService(bots_pb2_grpc.BotsServicer):
 
     def __init__(self, server):
-        self.logger = logging.getLogger(__name__)
+        self.__logger = logging.getLogger(__name__)
 
         self._instances = {}
 
@@ -44,15 +44,14 @@ class BotsService(bots_pb2_grpc.BotsServicer):
 
     def CreateBotSession(self, request, context):
         try:
-            self.logger.debug("CreateBotSession request from [{}]"
-                              .format(context.peer()))
+            self.__logger.debug("CreateBotSession request from [%s]", context.peer())
             parent = request.parent
             instance = self._get_instance(request.parent)
             return instance.create_bot_session(parent,
                                                request.bot_session)
 
         except InvalidArgumentError as e:
-            self.logger.error(e)
+            self.__logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
@@ -60,8 +59,7 @@ class BotsService(bots_pb2_grpc.BotsServicer):
 
     def UpdateBotSession(self, request, context):
         try:
-            self.logger.debug("UpdateBotSession request from [{}]"
-                              .format(context.peer()))
+            self.__logger.debug("UpdateBotSession request from [%s]", context.peer())
             names = request.name.split("/")
             # Operation name should be in format:
             # {instance/name}/{uuid}
@@ -72,25 +70,24 @@ class BotsService(bots_pb2_grpc.BotsServicer):
                                                request.bot_session)
 
         except InvalidArgumentError as e:
-            self.logger.error(e)
+            self.__logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
         except OutOfSyncError as e:
-            self.logger.error(e)
+            self.__logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.DATA_LOSS)
 
         except NotImplementedError as e:
-            self.logger.error(e)
+            self.__logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
 
         return bots_pb2.BotSession()
 
     def PostBotEventTemp(self, request, context):
-        self.logger.debug("PostBotEventTemp request from [{}]"
-                          .format(context.peer()))
+        self.__logger.debug("PostBotEventTemp request from  [%s]", context.peer())
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         return Empty()
 

@@ -32,7 +32,7 @@ from buildgrid._protos.google.longrunning import operations_pb2_grpc, operations
 class OperationsService(operations_pb2_grpc.OperationsServicer):
 
     def __init__(self, server):
-        self.logger = logging.getLogger(__name__)
+        self.__logger = logging.getLogger(__name__)
 
         self._instances = {}
 
@@ -43,8 +43,7 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
 
     def GetOperation(self, request, context):
         try:
-            self.logger.debug("GetOperation request from [{}"
-                              .format(context.peer()))
+            self.__logger.debug("GetOperation request from [%s]", context.peer())
             name = request.name
 
             instance_name = self._parse_instance_name(name)
@@ -58,7 +57,7 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
             return op
 
         except InvalidArgumentError as e:
-            self.logger.error(e)
+            self.__logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
@@ -66,8 +65,7 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
 
     def ListOperations(self, request, context):
         try:
-            self.logger.debug("ListOperations request from [{}]"
-                              .format(context.peer()))
+            self.__logger.debug("ListOperations request from [%s]", context.peer())
             # The request name should be the collection name
             # In our case, this is just the instance_name
             instance_name = request.name
@@ -83,7 +81,7 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
             return result
 
         except InvalidArgumentError as e:
-            self.logger.error(e)
+            self.__logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
@@ -91,8 +89,7 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
 
     def DeleteOperation(self, request, context):
         try:
-            self.logger.debug("DeleteOperation request from [{}]"
-                              .format(context.peer()))
+            self.__logger.debug("DeleteOperation request from [%s]", context.peer())
             name = request.name
 
             instance_name = self._parse_instance_name(name)
@@ -102,7 +99,7 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
             instance.delete_operation(operation_name)
 
         except InvalidArgumentError as e:
-            self.logger.error(e)
+            self.__logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
@@ -110,8 +107,7 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
 
     def CancelOperation(self, request, context):
         try:
-            self.logger.debug("CancelOperation request from [{}]"
-                              .format(context.peer()))
+            self.__logger.debug("CancelOperation request from [%s]", context.peer())
             name = request.name
 
             instance_name = self._parse_instance_name(name)
@@ -121,12 +117,12 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
             instance.cancel_operation(operation_name)
 
         except NotImplementedError as e:
-            self.logger.error(e)
+            self.__logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
 
         except InvalidArgumentError as e:
-            self.logger.error(e)
+            self.__logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 

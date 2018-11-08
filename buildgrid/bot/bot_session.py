@@ -43,8 +43,7 @@ class BotSession:
         If a bot attempts to update an invalid session, it must be rejected and
         may be put in quarantine.
         """
-
-        self.logger = logging.getLogger(__name__)
+        self.__logger = logging.getLogger(__name__)
 
         self._bot_id = '{}.{}'.format(parent, platform.node())
         self._context = None
@@ -64,20 +63,20 @@ class BotSession:
         self._worker = worker
 
     def create_bot_session(self, work, context=None):
-        self.logger.debug("Creating bot session")
+        self.__logger.debug("Creating bot session")
         self._work = work
         self._context = context
 
         session = self._interface.create_bot_session(self._parent, self.get_pb2())
         self._name = session.name
 
-        self.logger.info("Created bot session with name: [{}]".format(self._name))
+        self.__logger.info("Created bot session with name: [%s]", self._name)
 
         for lease in session.leases:
             self._update_lease_from_server(lease)
 
     def update_bot_session(self):
-        self.logger.debug("Updating bot session: [{}]".format(self._bot_id))
+        self.__logger.debug("Updating bot session: [%s]", self._bot_id)
         session = self._interface.update_bot_session(self.get_pb2())
         for k, v in list(self._leases.items()):
             if v.state == LeaseState.COMPLETED.value:
@@ -113,25 +112,25 @@ class BotSession:
             asyncio.ensure_future(self.create_work(lease))
 
     async def create_work(self, lease):
-        self.logger.debug("Work created: [{}]".format(lease.id))
+        self.__logger.debug("Work created: [%s]", lease.id)
         loop = asyncio.get_event_loop()
 
         try:
             lease = await loop.run_in_executor(None, self._work, self._context, lease)
 
         except grpc.RpcError as e:
-            self.logger.error("RPC error thrown: [{}]".format(e))
+            self.__logger.error(e)
             lease.status.CopyFrom(e.code())
 
         except BotError as e:
-            self.logger.error("Internal bot error thrown: [{}]".format(e))
+            self.__logger.error(e)
             lease.status.code = code_pb2.INTERNAL
 
         except Exception as e:
-            self.logger.error("Exception thrown: [{}]".format(e))
+            self.__logger.error(e)
             lease.status.code = code_pb2.INTERNAL
 
-        self.logger.debug("Work complete: [{}]".format(lease.id))
+        self.__logger.debug("Work complete: [%s]", lease.id)
         self.lease_completed(lease)
 
 

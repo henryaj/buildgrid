@@ -20,6 +20,7 @@ Schedules jobs.
 """
 
 from collections import deque
+import logging
 
 from buildgrid._exceptions import NotFoundError
 
@@ -31,6 +32,8 @@ class Scheduler:
     MAX_N_TRIES = 5
 
     def __init__(self, action_cache=None):
+        self.__logger = logging.getLogger(__name__)
+
         self._action_cache = action_cache
         self.jobs = {}
         self.queue = deque()

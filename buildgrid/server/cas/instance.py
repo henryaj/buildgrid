@@ -19,6 +19,8 @@ Storage Instances
 Instances of CAS and ByteStream
 """
 
+import logging
+
 from buildgrid._exceptions import InvalidArgumentError, NotFoundError, OutOfRangeError
 from buildgrid._protos.google.bytestream import bytestream_pb2
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2 as re_pb2
@@ -28,6 +30,8 @@ from buildgrid.settings import HASH
 class ContentAddressableStorageInstance:
 
     def __init__(self, storage):
+        self.__logger = logging.getLogger(__name__)
+
         self._storage = storage
 
     def register_instance_with_server(self, instance_name, server):
@@ -60,6 +64,8 @@ class ByteStreamInstance:
     BLOCK_SIZE = 1 * 1024 * 1024  # 1 MB block size
 
     def __init__(self, storage):
+        self.__logger = logging.getLogger(__name__)
+
         self._storage = storage
 
     def register_instance_with_server(self, instance_name, server):

@@ -31,7 +31,7 @@ from ..job import LeaseState
 class BotsInterface:
 
     def __init__(self, scheduler):
-        self.logger = logging.getLogger(__name__)
+        self.__logger = logging.getLogger(__name__)
 
         self._bot_ids = {}
         self._bot_sessions = {}
@@ -64,7 +64,7 @@ class BotsInterface:
 
         self._bot_ids[name] = bot_id
         self._bot_sessions[name] = bot_session
-        self.logger.info("Created bot session name=[{}] with bot_id=[{}]".format(name, bot_id))
+        self.__logger.info("Created bot session name=[%s] with bot_id=[%s]", name, bot_id)
 
         # TODO: Send worker capabilities to the scheduler!
         leases = self._scheduler.request_job_leases({})
@@ -77,7 +77,7 @@ class BotsInterface:
         """ Client updates the server. Any changes in state to the Lease should be
         registered server side. Assigns available leases with work.
         """
-        self.logger.debug("Updating bot session name={}".format(name))
+        self.__logger.debug("Updating bot session name=[%s]", name)
         self._check_bot_ids(bot_session.bot_id, name)
 
         leases = filter(None, [self.check_states(lease) for lease in bot_session.leases])
@@ -173,12 +173,12 @@ class BotsInterface:
         if bot_id is None:
             raise InvalidArgumentError("Bot id does not exist: [{}]".format(name))
 
-        self.logger.debug("Attempting to close [{}] with name: [{}]".format(bot_id, name))
+        self.__logger.debug("Attempting to close [%s] with name: [%s]", bot_id, name)
         for lease in self._bot_sessions[name].leases:
             if lease.state != LeaseState.COMPLETED.value:
                 # TODO: Be wary here, may need to handle rejected leases in future
                 self._scheduler.retry_job(lease.id)
 
-        self.logger.debug("Closing bot session: [{}]".format(name))
+        self.__logger.debug("Closing bot session: [%s]", name)
         self._bot_ids.pop(name)
-        self.logger.info("Closed bot [{}] with name: [{}]".format(bot_id, name))
+        self.__logger.info("Closed bot [%s] with name: [%s]", bot_id, name)

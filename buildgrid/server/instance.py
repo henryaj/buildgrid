@@ -13,9 +13,9 @@
 # limitations under the License.
 
 
+from concurrent import futures
 import logging
 import os
-from concurrent import futures
 
 import grpc
 
@@ -40,8 +40,7 @@ class BuildGridServer:
         Args:
             max_workers (int, optional): A pool of max worker threads.
         """
-
-        self.logger = logging.getLogger(__name__)
+        self.__logger = logging.getLogger(__name__)
 
         if max_workers is None:
             # Use max_workers default from Python 3.5+
@@ -80,11 +79,11 @@ class BuildGridServer:
             credentials (:obj:`grpc.ChannelCredentials`): Credentials object.
         """
         if credentials is not None:
-            self.logger.info("Adding secure connection on: [{}]".format(address))
+            self.__logger.info("Adding secure connection on: [%s]", address)
             self._server.add_secure_port(address, credentials)
 
         else:
-            self.logger.info("Adding insecure connection on [{}]".format(address))
+            self.__logger.info("Adding insecure connection on [%s]", address)
             self._server.add_insecure_port(address)
 
     def add_execution_instance(self, instance, instance_name):

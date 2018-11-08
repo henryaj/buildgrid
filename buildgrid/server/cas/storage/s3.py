@@ -21,6 +21,7 @@ A storage provider that stores data in an Amazon S3 bucket.
 """
 
 import io
+import logging
 
 import boto3
 from botocore.exceptions import ClientError
@@ -31,6 +32,8 @@ from .storage_abc import StorageABC
 class S3Storage(StorageABC):
 
     def __init__(self, bucket, **kwargs):
+        self.__logger = logging.getLogger(__name__)
+
         self._bucket = bucket
         self._s3 = boto3.resource('s3', **kwargs)
 

@@ -35,7 +35,7 @@ from .storage_abc import StorageABC
 class RemoteStorage(StorageABC):
 
     def __init__(self, channel, instance_name):
-        self.logger = logging.getLogger(__name__)
+        self.__logger = logging.getLogger(__name__)
 
         self.instance_name = instance_name
         self.channel = channel

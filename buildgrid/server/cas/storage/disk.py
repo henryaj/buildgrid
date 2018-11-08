@@ -20,6 +20,7 @@ DiskStorage
 A CAS storage provider that stores files as blobs on disk.
 """
 
+import logging
 import os
 import tempfile
 
@@ -29,6 +30,8 @@ from .storage_abc import StorageABC
 class DiskStorage(StorageABC):
 
     def __init__(self, path):
+        self.__logger = logging.getLogger(__name__)
+
         if not os.path.isabs(path):
             self.__root_path = os.path.abspath(path)
         else:

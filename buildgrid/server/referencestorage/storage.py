@@ -23,6 +23,7 @@ For a given key, it
 """
 
 import collections
+import logging
 
 from buildgrid._exceptions import NotFoundError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
@@ -38,6 +39,8 @@ class ReferenceCache:
             max_cached_refs (int): maximum number of entries to be stored.
             allow_updates (bool): allow the client to write to storage
         """
+        self.__logger = logging.getLogger(__name__)
+
         self._allow_updates = allow_updates
         self._storage = storage
         self._max_cached_refs = max_cached_refs

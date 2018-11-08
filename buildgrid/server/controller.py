@@ -37,9 +37,9 @@ from .operations.instance import OperationsInstance
 class ExecutionController:
 
     def __init__(self, action_cache=None, storage=None):
-        scheduler = Scheduler(action_cache)
+        self.__logger = logging.getLogger(__name__)
 
-        self.logger = logging.getLogger(__name__)
+        scheduler = Scheduler(action_cache)
 
         self._execution_instance = ExecutionInstance(scheduler, storage)
         self._bots_interface = BotsInterface(scheduler)

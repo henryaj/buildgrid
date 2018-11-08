@@ -43,6 +43,8 @@ class _NullBytesIO(io.BufferedIOBase):
 class LRUMemoryCache(StorageABC):
 
     def __init__(self, limit):
+        self.__logger = logging.getLogger(__name__)
+
         self._limit = limit
         self._storage = collections.OrderedDict()
         self._bytes_stored = 0

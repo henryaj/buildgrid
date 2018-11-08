@@ -31,8 +31,8 @@ class BotInterface:
     """
 
     def __init__(self, channel):
-        self.logger = logging.getLogger(__name__)
-        self.logger.info(channel)
+        self.__logger = logging.getLogger(__name__)
+
         self._stub = bots_pb2_grpc.BotsStub(channel)
 
     def create_bot_session(self, parent, bot_session):

@@ -25,7 +25,7 @@ from buildgrid._protos.buildstream.v2 import buildstream_pb2_grpc
 class ReferenceStorageService(buildstream_pb2_grpc.ReferenceStorageServicer):
 
     def __init__(self, server):
-        self.logger = logging.getLogger(__name__)
+        self.__logger = logging.getLogger(__name__)
 
         self._instances = {}
 
@@ -43,12 +43,12 @@ class ReferenceStorageService(buildstream_pb2_grpc.ReferenceStorageServicer):
             return response
 
         except InvalidArgumentError as e:
-            self.logger.error(e)
+            self.__logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
         except NotFoundError as e:
-            self.logger.debug(e)
+            self.__logger.debug(e)
             context.set_code(grpc.StatusCode.NOT_FOUND)
 
         return buildstream_pb2.GetReferenceResponse()
@@ -62,7 +62,7 @@ class ReferenceStorageService(buildstream_pb2_grpc.ReferenceStorageServicer):
                 instance.update_reference(key, digest)
 
         except InvalidArgumentError as e:
-            self.logger.error(e)
+            self.__logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
@@ -78,7 +78,7 @@ class ReferenceStorageService(buildstream_pb2_grpc.ReferenceStorageServicer):
             return buildstream_pb2.StatusResponse(allow_updates=allow_updates)
 
         except InvalidArgumentError as e:
-            self.logger.error(e)
+            self.__logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
