@@ -20,7 +20,6 @@ Server command
 Create a BuildGrid server.
 """
 
-import asyncio
 import sys
 
 import click
@@ -51,18 +50,14 @@ def start(context, config):
         click.echo("ERROR: Could not parse config: {}.\n".format(str(e)), err=True)
         sys.exit(-1)
 
-    loop = asyncio.get_event_loop()
     try:
         server.start()
-        loop.run_forever()
 
     except KeyboardInterrupt:
         pass
 
     finally:
-        click.echo("Stopping server")
         server.stop()
-        loop.close()
 
 
 def _create_server_from_config(config):

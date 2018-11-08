@@ -13,18 +13,19 @@
 # limitations under the License.
 
 
+import asyncio
 from concurrent import futures
 import logging
 import os
 
 import grpc
 
-from .cas.service import ByteStreamService, ContentAddressableStorageService
-from .actioncache.service import ActionCacheService
-from .execution.service import ExecutionService
-from .operations.service import OperationsService
-from .bots.service import BotsService
-from .referencestorage.service import ReferenceStorageService
+from buildgrid.server.actioncache.service import ActionCacheService
+from buildgrid.server.bots.service import BotsService
+from buildgrid.server.cas.service import ByteStreamService, ContentAddressableStorageService
+from buildgrid.server.execution.service import ExecutionService
+from buildgrid.server.operations.service import OperationsService
+from buildgrid.server.referencestorage.service import ReferenceStorageService
 
 
 class BuildGridServer:
@@ -46,9 +47,10 @@ class BuildGridServer:
             # Use max_workers default from Python 3.5+
             max_workers = (os.cpu_count() or 1) * 5
 
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers))
+        self.__grpc_executor = futures.ThreadPoolExecutor(max_workers)
+        self.__grpc_server = grpc.server(self.__grpc_executor)
 
-        self._server = server
+        self.__main_loop = asyncio.get_event_loop()
 
         self._execution_service = None
         self._bots_service = None
@@ -59,14 +61,16 @@ class BuildGridServer:
         self._bytestream_service = None
 
     def start(self):
-        """Starts the server.
-        """
-        self._server.start()
+        """Starts the BuildGrid server."""
+        self.__grpc_server.start()
 
-    def stop(self, grace=0):
-        """Stops the server.
-        """
-        self._server.stop(grace)
+        self.__main_loop.run_forever()
+
+    def stop(self):
+        """Stops the BuildGrid server."""
+        self.__main_loop.close()
+
+        self.__grpc_server.stop(None)
 
     def add_port(self, address, credentials):
         """Adds a port to the server.
@@ -80,11 +84,11 @@ class BuildGridServer:
         """
         if credentials is not None:
             self.__logger.info("Adding secure connection on: [%s]", address)
-            self._server.add_secure_port(address, credentials)
+            self.__grpc_server.add_secure_port(address, credentials)
 
         else:
             self.__logger.info("Adding insecure connection on [%s]", address)
-            self._server.add_insecure_port(address)
+            self.__grpc_server.add_insecure_port(address)
 
     def add_execution_instance(self, instance, instance_name):
         """Adds an :obj:`ExecutionInstance` to the service.
@@ -96,7 +100,7 @@ class BuildGridServer:
             instance_name (str): Instance name.
         """
         if self._execution_service is None:
-            self._execution_service = ExecutionService(self._server)
+            self._execution_service = ExecutionService(self.__grpc_server)
 
         self._execution_service.add_instance(instance_name, instance)
 
@@ -110,7 +114,7 @@ class BuildGridServer:
             instance_name (str): Instance name.
         """
         if self._bots_service is None:
-            self._bots_service = BotsService(self._server)
+            self._bots_service = BotsService(self.__grpc_server)
 
         self._bots_service.add_instance(instance_name, instance)
 
@@ -124,7 +128,7 @@ class BuildGridServer:
             instance_name (str): Instance name.
         """
         if self._operations_service is None:
-            self._operations_service = OperationsService(self._server)
+            self._operations_service = OperationsService(self.__grpc_server)
 
         self._operations_service.add_instance(instance_name, instance)
 
@@ -138,7 +142,7 @@ class BuildGridServer:
             instance_name (str): Instance name.
         """
         if self._reference_storage_service is None:
-            self._reference_storage_service = ReferenceStorageService(self._server)
+            self._reference_storage_service = ReferenceStorageService(self.__grpc_server)
 
         self._reference_storage_service.add_instance(instance_name, instance)
 
@@ -152,7 +156,7 @@ class BuildGridServer:
             instance_name (str): Instance name.
         """
         if self._action_cache_service is None:
-            self._action_cache_service = ActionCacheService(self._server)
+            self._action_cache_service = ActionCacheService(self.__grpc_server)
 
         self._action_cache_service.add_instance(instance_name, instance)
 
@@ -166,7 +170,7 @@ class BuildGridServer:
             instance_name (str): Instance name.
         """
         if self._cas_service is None:
-            self._cas_service = ContentAddressableStorageService(self._server)
+            self._cas_service = ContentAddressableStorageService(self.__grpc_server)
 
         self._cas_service.add_instance(instance_name, instance)
 
@@ -180,6 +184,6 @@ class BuildGridServer:
             instance_name (str): Instance name.
         """
         if self._bytestream_service is None:
-            self._bytestream_service = ByteStreamService(self._server)
+            self._bytestream_service = ByteStreamService(self.__grpc_server)
 
         self._bytestream_service.add_instance(instance_name, instance)
