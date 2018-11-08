@@ -112,13 +112,15 @@ setup(
     license="Apache License, Version 2.0",
     description="A remote execution service",
     packages=find_packages(),
+    python_requires='>= 3.5.3',  # janus requirement
     install_requires=[
-        'protobuf',
-        'grpcio',
-        'Click',
-        'PyYAML',
         'boto3 < 1.8.0',
         'botocore < 1.11.0',
+        'click',
+        'grpcio',
+        'janus',
+        'protobuf',
+        'pyyaml',
     ],
     entry_points={
         'console_scripts': [
