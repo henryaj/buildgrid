@@ -35,6 +35,8 @@ class ReferenceStorageService(buildstream_pb2_grpc.ReferenceStorageServicer):
         self._instances[name] = instance
 
     def GetReference(self, request, context):
+        self.__logger.debug("GetReference request from [%s]", context.peer())
+
         try:
             instance = self._get_instance(request.instance_name)
             digest = instance.get_digest_reference(request.key)
@@ -54,6 +56,8 @@ class ReferenceStorageService(buildstream_pb2_grpc.ReferenceStorageServicer):
         return buildstream_pb2.GetReferenceResponse()
 
     def UpdateReference(self, request, context):
+        self.__logger.debug("UpdateReference request from [%s]", context.peer())
+
         try:
             instance = self._get_instance(request.instance_name)
             digest = request.digest
@@ -72,6 +76,8 @@ class ReferenceStorageService(buildstream_pb2_grpc.ReferenceStorageServicer):
         return buildstream_pb2.UpdateReferenceResponse()
 
     def Status(self, request, context):
+        self.__logger.debug("Status request from [%s]", context.peer())
+
         try:
             instance = self._get_instance(request.instance_name)
             allow_updates = instance.allow_updates

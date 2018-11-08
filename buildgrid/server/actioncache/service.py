@@ -42,8 +42,9 @@ class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
         self._instances[name] = instance
 
     def GetActionResult(self, request, context):
+        self.__logger.debug("GetActionResult request from [%s]", context.peer())
+
         try:
-            self.__logger.debug("GetActionResult request from [%s]", context.peer())
             instance = self._get_instance(request.instance_name)
             return instance.get_action_result(request.action_digest)
 
@@ -59,8 +60,9 @@ class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
         return remote_execution_pb2.ActionResult()
 
     def UpdateActionResult(self, request, context):
+        self.__logger.debug("UpdateActionResult request from [%s]", context.peer())
+
         try:
-            self.__logger.debug("UpdateActionResult request from [%s]", context.peer())
             instance = self._get_instance(request.instance_name)
             instance.update_action_result(request.action_digest, request.action_result)
             return request.action_result

@@ -89,7 +89,7 @@ def test_bytestream_read(mocked, data_to_read, instance):
     request.resource_name += "blobs/{}/{}".format(HASH(data_to_read).hexdigest(), len(data_to_read))
 
     data = b""
-    for response in servicer.Read(request, None):
+    for response in servicer.Read(request, context):
         data += response.data
     assert data == data_to_read
 
@@ -111,7 +111,7 @@ def test_bytestream_read_many(mocked, instance):
     request.resource_name += "blobs/{}/{}".format(HASH(data_to_read).hexdigest(), len(data_to_read))
 
     data = b""
-    for response in servicer.Read(request, None):
+    for response in servicer.Read(request, context):
         data += response.data
     assert data == data_to_read
 
@@ -137,7 +137,7 @@ def test_bytestream_write(mocked, instance, extra_data):
         bytestream_pb2.WriteRequest(data=b'def', write_offset=3, finish_write=True)
     ]
 
-    response = servicer.Write(requests, None)
+    response = servicer.Write(requests, context)
     assert response.committed_size == 6
     assert len(storage.data) == 1
     assert (hash_, 6) in storage.data
@@ -178,7 +178,7 @@ def test_cas_find_missing_blobs(mocked, instance):
         re_pb2.Digest(hash=HASH(b'ghij').hexdigest(), size_bytes=4)
     ]
     request = re_pb2.FindMissingBlobsRequest(instance_name=instance, blob_digests=digests)
-    response = servicer.FindMissingBlobs(request, None)
+    response = servicer.FindMissingBlobs(request, context)
     assert len(response.missing_blob_digests) == 1
     assert response.missing_blob_digests[0] == digests[1]
 
@@ -201,7 +201,7 @@ def test_cas_batch_update_blobs(mocked, instance):
     ]
 
     request = re_pb2.BatchUpdateBlobsRequest(instance_name=instance, requests=update_requests)
-    response = servicer.BatchUpdateBlobs(request, None)
+    response = servicer.BatchUpdateBlobs(request, context)
     assert len(response.responses) == 2
 
     for blob_response in response.responses:

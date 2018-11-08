@@ -45,11 +45,12 @@ class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressa
         self._instances[name] = instance
 
     def FindMissingBlobs(self, request, context):
+        self.__logger.debug("FindMissingBlobs request from [%s]", context.peer())
+
         try:
-            self.__logger.debug("FindMissingBlobs request: [%s]", request)
             instance = self._get_instance(request.instance_name)
             response = instance.find_missing_blobs(request.blob_digests)
-            self.__logger.debug("FindMissingBlobs response: [%s]", response)
+
             return response
 
         except InvalidArgumentError as e:
@@ -60,11 +61,12 @@ class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressa
         return remote_execution_pb2.FindMissingBlobsResponse()
 
     def BatchUpdateBlobs(self, request, context):
+        self.__logger.debug("BatchUpdateBlobs request from [%s]", context.peer())
+
         try:
-            self.__logger.debug("BatchUpdateBlobs request: [%s]", request)
             instance = self._get_instance(request.instance_name)
             response = instance.batch_update_blobs(request.requests)
-            self.__logger.debug("FindMissingBlobs response: [%s]", response)
+
             return response
 
         except InvalidArgumentError as e:
@@ -75,12 +77,16 @@ class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressa
         return remote_execution_pb2.BatchReadBlobsResponse()
 
     def BatchReadBlobs(self, request, context):
+        self.__logger.debug("BatchReadBlobs request from [%s]", context.peer())
+
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
 
         return remote_execution_pb2.BatchReadBlobsResponse()
 
     def GetTree(self, request, context):
+        self.__logger.debug("GetTree request from [%s]", context.peer())
+
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
 
@@ -107,8 +113,9 @@ class ByteStreamService(bytestream_pb2_grpc.ByteStreamServicer):
         self._instances[name] = instance
 
     def Read(self, request, context):
+        self.__logger.debug("Read request from [%s]", context.peer())
+
         try:
-            self.__logger.debug("Read request: [%s]", request)
             path = request.resource_name.split("/")
             instance_name = path[0]
 
@@ -148,13 +155,12 @@ class ByteStreamService(bytestream_pb2_grpc.ByteStreamServicer):
             context.set_code(grpc.StatusCode.OUT_OF_RANGE)
             yield bytestream_pb2.ReadResponse()
 
-            self.__logger.debug("Read finished.")
-
     def Write(self, requests, context):
+        self.__logger.debug("Write request from [%s]", context.peer())
+
         try:
             requests, request_probe = tee(requests, 2)
             first_request = next(request_probe)
-            self.__logger.debug("First write request: [%s]", first_request)
 
             path = first_request.resource_name.split("/")
 
@@ -175,7 +181,7 @@ class ByteStreamService(bytestream_pb2_grpc.ByteStreamServicer):
 
             instance = self._get_instance(instance_name)
             response = instance.write(requests)
-            self.__logger.debug("Write response: [%s]", response)
+
             return response
 
         except NotImplementedError as e:
