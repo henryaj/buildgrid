@@ -15,26 +15,29 @@
 
 import asyncio
 from concurrent import futures
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
+import logging.handlers
 import os
 import signal
+import sys
 import time
 
 import grpc
+import janus
 
-from buildgrid._enums import BotStatus, MetricRecordDomain, MetricRecordType
+from buildgrid._enums import BotStatus, LogRecordLevel, MetricRecordDomain, MetricRecordType
 from buildgrid._protos.buildgrid.v2 import monitoring_pb2
 from buildgrid.server.actioncache.service import ActionCacheService
 from buildgrid.server.bots.service import BotsService
+from buildgrid.server.capabilities.instance import CapabilitiesInstance
+from buildgrid.server.capabilities.service import CapabilitiesService
 from buildgrid.server.cas.service import ByteStreamService, ContentAddressableStorageService
 from buildgrid.server.execution.service import ExecutionService
 from buildgrid.server._monitoring import MonitoringBus, MonitoringOutputType, MonitoringOutputFormat
 from buildgrid.server.operations.service import OperationsService
 from buildgrid.server.referencestorage.service import ReferenceStorageService
-from buildgrid.server.capabilities.instance import CapabilitiesInstance
-from buildgrid.server.capabilities.service import CapabilitiesService
-from buildgrid.settings import MONITORING_PERIOD
+from buildgrid.settings import LOG_RECORD_FORMAT, MONITORING_PERIOD
 
 
 class BuildGridServer:
@@ -60,9 +63,16 @@ class BuildGridServer:
         self.__grpc_server = grpc.server(self.__grpc_executor)
 
         self.__main_loop = asyncio.get_event_loop()
+
         self.__monitoring_bus = None
 
+        self.__logging_queue = janus.Queue(loop=self.__main_loop)
+        self.__logging_handler = logging.handlers.QueueHandler(self.__logging_queue.sync_q)
+        self.__logging_formatter = logging.Formatter(fmt=LOG_RECORD_FORMAT)
+        self.__print_log_records = True
+
         self.__state_monitoring_task = None
+        self.__logging_task = None
 
         # We always want a capabilities service
         self._capabilities_service = CapabilitiesService(self.__grpc_server)
@@ -85,6 +95,17 @@ class BuildGridServer:
                 self.__main_loop, endpoint_type=MonitoringOutputType.STDOUT,
                 serialisation_format=MonitoringOutputFormat.JSON)
 
+        # Setup the main logging handler:
+        root_logger = logging.getLogger()
+
+        for log_filter in root_logger.filters[:]:
+            self.__logging_handler.addFilter(log_filter)
+            root_logger.removeFilter(log_filter)
+
+        for log_handler in root_logger.handlers[:]:
+            root_logger.removeHandler(log_handler)
+        root_logger.addHandler(self.__logging_handler)
+
     # --- Public API ---
 
     def start(self):
@@ -98,6 +119,9 @@ class BuildGridServer:
                 self._state_monitoring_worker(period=MONITORING_PERIOD),
                 loop=self.__main_loop)
 
+        self.__logging_task = asyncio.ensure_future(
+            self._logging_worker(), loop=self.__main_loop)
+
         self.__main_loop.add_signal_handler(signal.SIGTERM, self.stop)
 
         self.__main_loop.run_forever()
@@ -109,6 +133,9 @@ class BuildGridServer:
                 self.__state_monitoring_task.cancel()
 
             self.__monitoring_bus.stop()
+
+        if self.__logging_task is not None:
+            self.__logging_task.cancel()
 
         self.__main_loop.stop()
 
@@ -277,6 +304,53 @@ class BuildGridServer:
                                                          action_cache_instance,
                                                          execution_instance)
             self._capabilities_service.add_instance(instance_name, capabilities_instance)
+
+    async def _logging_worker(self):
+        """Publishes log records to the monitoring bus."""
+        async def __logging_worker():
+            log_record = await self.__logging_queue.async_q.get()
+
+            # Print log records to stdout, if required:
+            if self.__print_log_records:
+                record = self.__logging_formatter.format(log_record)
+
+                # TODO: Investigate if async write would be worth here.
+                sys.stdout.write('{}\n'.format(record))
+                sys.stdout.flush()
+
+            # Emit a log record if server is instrumented:
+            if self._is_instrumented:
+                log_record_level = LogRecordLevel(int(log_record.levelno / 10))
+                log_record_creation_time = datetime.fromtimestamp(log_record.created)
+                # logging.LogRecord.extra must be a str to str dict:
+                if 'extra' in log_record.__dict__ and log_record.extra:
+                    log_record_metadata = log_record.extra
+                else:
+                    log_record_metadata = None
+                record = self._forge_log_record(
+                    log_record.name, log_record_level, log_record.message,
+                    log_record_creation_time, metadata=log_record_metadata)
+
+                await self.__monitoring_bus.send_record(record)
+
+        try:
+            while True:
+                await __logging_worker()
+
+        except asyncio.CancelledError:
+            pass
+
+    def _forge_log_record(self, domain, level, message, creation_time, metadata=None):
+        log_record = monitoring_pb2.LogRecord()
+
+        log_record.creation_timestamp.FromDatetime(creation_time)
+        log_record.domain = domain
+        log_record.level = level.value
+        log_record.message = message
+        if metadata is not None:
+            log_record.metadata.update(metadata)
+
+        return log_record
 
     async def _state_monitoring_worker(self, period=1.0):
         """Periodically publishes state metrics to the monitoring bus."""
