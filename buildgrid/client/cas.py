@@ -171,7 +171,7 @@ class Downloader:
 
         return messages
 
-    def download_file(self, digest, file_path, queue=True):
+    def download_file(self, digest, file_path, is_executable=False, queue=True):
         """Retrieves a file from the remote CAS server.
 
         If queuing is allowed (`queue=True`), the download request **may** be
@@ -181,6 +181,7 @@ class Downloader:
         Args:
             digest (:obj:`Digest`): the file's digest to fetch.
             file_path (str): absolute or relative path to the local file to write.
+            is_executable (bool): whether the file is executable or not.
             queue (bool, optional): whether or not the download request may be
                 queued and submitted as part of a batch upload request. Defaults
                 to True.
@@ -193,9 +194,9 @@ class Downloader:
             file_path = os.path.abspath(file_path)
 
         if not queue or digest.size_bytes > FILE_SIZE_THRESHOLD:
-            self._fetch_file(digest, file_path)
+            self._fetch_file(digest, file_path, is_executable=is_executable)
         else:
-            self._queue_file(digest, file_path)
+            self._queue_file(digest, file_path, is_executable=is_executable)
 
     def download_directory(self, digest, directory_path):
         """Retrieves a :obj:`Directory` from the remote CAS server.
@@ -311,7 +312,7 @@ class Downloader:
 
         return read_blobs
 
-    def _fetch_file(self, digest, file_path):
+    def _fetch_file(self, digest, file_path, is_executable=False):
         """Fetches a file using ByteStream.Read()"""
         if self.instance_name:
             resource_name = '/'.join([self.instance_name, 'blobs',
@@ -332,7 +333,10 @@ class Downloader:
 
             assert byte_file.tell() == digest.size_bytes
 
-    def _queue_file(self, digest, file_path):
+        if is_executable:
+            os.chmod(file_path, 0o755)  # rwxr-xr-x / 755
+
+    def _queue_file(self, digest, file_path, is_executable=False):
         """Queues a file for later batch download"""
         if self.__file_request_size + digest.ByteSize() > MAX_REQUEST_SIZE:
             self.flush()
@@ -341,21 +345,24 @@ class Downloader:
         elif self.__file_request_count >= MAX_REQUEST_COUNT:
             self.flush()
 
-        self.__file_requests[digest.hash] = (digest, file_path)
+        self.__file_requests[digest.hash] = (digest, file_path, is_executable)
         self.__file_request_count += 1
         self.__file_request_size += digest.ByteSize()
         self.__file_response_size += digest.size_bytes
 
     def _fetch_file_batch(self, batch):
         """Sends queued data using ContentAddressableStorage.BatchReadBlobs()"""
-        batch_digests = [digest for digest, _ in batch.values()]
+        batch_digests = [digest for digest, _, _ in batch.values()]
         batch_blobs = self._fetch_blob_batch(batch_digests)
 
-        for (_, file_path), file_blob in zip(batch.values(), batch_blobs):
+        for (_, file_path, is_executable), file_blob in zip(batch.values(), batch_blobs):
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
             with open(file_path, 'wb') as byte_file:
                 byte_file.write(file_blob)
+
+            if is_executable:
+                os.chmod(file_path, 0o755)  # rwxr-xr-x / 755
 
     def _fetch_directory(self, digest, directory_path):
         """Fetches a file using ByteStream.GetTree()"""
@@ -414,7 +421,7 @@ class Downloader:
         for file_node in root_directory.files:
             file_path = os.path.join(root_path, file_node.name)
 
-            self._queue_file(file_node.digest, file_path)
+            self._queue_file(file_node.digest, file_path, is_executable=file_node.is_executable)
 
         for directory_node in root_directory.directories:
             directory_path = os.path.join(root_path, directory_node.name)
