@@ -32,39 +32,30 @@ side effects and quirks the feature may have introduced. More on this below in
 
 .. _BuildGrid mailing list: https://lists.buildgrid.build/cgi-bin/mailman/listinfo/buildgrid
 
-
 .. _patch-submissions:
 
 Patch submissions
 -----------------
 
-We are running `trunk based development`_. The idea behind this is that merge
-requests to the trunk will be small and made often, thus making the review and
-merge process as fast as possible. We do not want to end up with a huge backlog
-of outstanding merge requests. If possible, it is preferred that merge requests
-address specific points and clearly outline what problem they are solving.
-
-Branches must be submitted as merge requests (MR) on GitLab and should be
-associated with an issue, whenever possible. If it's a small change, we'll
-accept an MR without it being associated to an issue, but generally we prefer an
-issue to be raised in advance. This is so that we can track the work that is
+Branches must be submitted as merge requests (MR) on GitLab and should have a 
+corresponding issue raised in advance (whenever possible). If it's a small change,
+an MR without it being associated to an issue is okay, but generally we prefer an
+issue to be raised in advance so that we can track the work that is
 currently in progress on the project.
+
+When submitting a merge request, please obtain a review from another committer 
+who is familiar with the area of the code base which the branch effects. An 
+approval from another committer who is not the patch author will be needed 
+before any merge (we use Gitlab's 'approval' feature for this).
 
 Below is a list of good patch submission good practice:
 
 - Each commit should address a specific issue number in the commit message. This
   is really important for provenance reasons.
-- Merge requests that are not yet ready for review must be prefixed with the
-  ``WIP:`` identifier, but if we stick to trunk based development then the
-  ``WIP:`` identifier will not stay around for very long on a merge request.
-- When a merge request is ready for review, please find someone willing to do
-  the review (ideally a maintainer) and assign them the MR, leaving a comment
-  asking for their review.
+- Merge requests that are not yet ready for review should be prefixed with the
+  ``WIP:`` identifier.
 - Submitted branches should not contain a history of work done.
 - Unit tests should be a separate commit.
-
-.. _trunk based development: https://trunkbaseddevelopment.com
-
 
 Commit messages
 ~~~~~~~~~~~~~~~
@@ -88,6 +79,57 @@ mentioned somewhere in the commit message.
 For more tips, please read `The seven rules of a great Git commit message`_.
 
 .. _The seven rules of a great Git commit message: https://chris.beams.io/posts/git-commit/#seven-rules
+
+.. _committer-access:
+
+Committer access
+----------------
+
+Committers in the BuildGrid project are those folks to whom the right to 
+directly commit changes to our version controlled resources has been granted. 
+While every contribution is 
+valued regardless of its source, not every person who contributes code to the 
+project will earn commit access. The `COMMITTERS`_ file lists all committers.
+
+.. _COMMITTERS: https://gitlab.com/BuildGrid/buildgrid/blob/master/COMMITTERS.md
+.. _Subversion: http://subversion.apache.org/docs/community-guide/roles.html#committers
+
+
+How commit access is granted
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+After someone has successfully contributed a few non-trivial patches, some full
+committer, usually whoever has reviewed and applied the most patches from that
+contributor, proposes them for commit access. This proposal is sent only to the
+other full committers -- the ensuing discussion is private, so that everyone can
+feel comfortable speaking their minds. Assuming there are no objections, the
+contributor is granted commit access. The decision is made by consensus; there
+are no formal rules governing the procedure, though generally if someone strongly
+objects the access is not offered, or is offered on a provisional basis.
+
+This of course relies on contributors being responsive and showing willingness
+to address any problems that may arise after landing patches. However, the primary
+criterion for commit access is good judgment.
+
+You do not have to be a technical wizard, or demonstrate deep knowledge of the
+entire codebase to become a committer. You just need to know what you don't
+know. If your patches adhere to the guidelines in this file, adhere to all the usual
+unquantifiable rules of coding (code should be readable, robust, maintainable, etc.),
+and respect the Hippocratic Principle of "first, do no harm", then you will probably
+get commit access pretty quickly. The size, complexity, and quantity of your patches
+do not matter as much as the degree of care you show in avoiding bugs and minimizing
+unnecessary impact on the rest of the code. Many full committers are people who have
+not made major code contributions, but rather lots of small, clean fixes, each of
+which was an unambiguous improvement to the code. (Of course, this does not mean the
+project needs a bunch of very trivial patches whose only purpose is to gain commit
+access; knowing what's worth a patch post and what's not is part of showing good
+judgement.)
+
+When submitting a merge request, please obtain a review from another committer
+who is familiar with the area of the code base which the branch effects. Asking on
+slack is probably the best way to go about this. An approval from a committer
+who is not the patch author will be needed before any merge (we use Gitlab's
+'approval' feature for this).
 
 
 .. _coding-style:
@@ -197,35 +239,6 @@ detailed `coverage report`_ is produced and publish for any change merged to the
 trunk.
 
 .. _coverage report: https://buildgrid.gitlab.io/buildgrid/coverage/
-
-
-.. _committer-access:
-
-Committer access
-----------------
-
-We'll hand out commit access to anyone who has successfully landed a single
-patch to the code base. Please request this via Slack or the mailing list.
-
-This of course relies on contributors being responsive and showing willingness 
-to address any problems that may arise after landing branches.
-
-When submitting a merge request, please obtain a review from another committer 
-who is familiar with the area of the code base which the branch effects. An 
-approval from another committer who is not the patch author will be needed 
-before any merge (we use gitlab's 'approval' feature for this).
-
-What we are expecting of committers here in general is basically to escalate the
-review in cases of uncertainty.
-
-.. note::
-
-   We don't have any detailed policy for "bad actors", but will of course handle
-   things on a case by case basis - commit access should not result in commit
-   wars or be used as a tool to subvert the project when disagreements arise.
-   Such incidents (if any) would surely lead to temporary suspension of commit
-   rights.
-
 
 .. _gitlab-features:
 
