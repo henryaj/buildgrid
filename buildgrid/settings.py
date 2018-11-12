@@ -30,3 +30,8 @@ MAX_REQUEST_SIZE = 2 * 1024 * 1024
 
 # Maximum number of elements per gRPC request:
 MAX_REQUEST_COUNT = 500
+
+# String format for log records:
+LOG_RECORD_FORMAT = '%(asctime)s:[%(name)36.36s][%(levelname)5.5s]: %(message)s'
+# The different log record attributes are documented here:
+# https://docs.python.org/3/library/logging.html#logrecord-attributes
