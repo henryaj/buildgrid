@@ -13,10 +13,11 @@
 # limitations under the License.
 
 
+from datetime import datetime
 import logging
 import uuid
 
-from google.protobuf import timestamp_pb2
+from google.protobuf import duration_pb2, timestamp_pb2
 
 from buildgrid._enums import LeaseState, OperationStage
 from buildgrid._exceptions import CancelledError
@@ -40,6 +41,7 @@ class Job:
         self.__operation_metadata = remote_execution_pb2.ExecuteOperationMetadata()
 
         self.__queued_timestamp = timestamp_pb2.Timestamp()
+        self.__queued_time_duration = duration_pb2.Duration()
         self.__worker_start_timestamp = timestamp_pb2.Timestamp()
         self.__worker_completed_timestamp = timestamp_pb2.Timestamp()
 
@@ -55,6 +57,8 @@ class Job:
         self._operation.name = self._name
         self._operation.done = False
         self._n_tries = 0
+
+    # --- Public API ---
 
     @property
     def name(self):
@@ -193,7 +197,7 @@ class Job:
                 result.Unpack(action_result)
 
             action_metadata = action_result.execution_metadata
-            action_metadata.queued_timestamp.CopyFrom(self.__worker_start_timestamp)
+            action_metadata.queued_timestamp.CopyFrom(self.__queued_timestamp)
             action_metadata.worker_start_timestamp.CopyFrom(self.__worker_start_timestamp)
             action_metadata.worker_completed_timestamp.CopyFrom(self.__worker_completed_timestamp)
 
@@ -226,6 +230,10 @@ class Job:
             if self.__queued_timestamp.ByteSize() == 0:
                 self.__queued_timestamp.GetCurrentTime()
             self._n_tries += 1
+
+        elif self.__operation_metadata.stage == OperationStage.EXECUTING.value:
+            queue_in, queue_out = self.__queued_timestamp.ToDatetime(), datetime.now()
+            self.__queued_time_duration.FromTimedelta(queue_out - queue_in)
 
         elif self.__operation_metadata.stage == OperationStage.COMPLETED.value:
             if self.__execute_response is not None:
@@ -260,3 +268,11 @@ class Job:
         self.__execute_response.status.message = "Operation cancelled by client."
 
         self.update_operation_stage(OperationStage.COMPLETED)
+
+    # --- Public API: Monitoring ---
+
+    def query_queue_time(self):
+        return self.__queued_time_duration.ToTimedelta()
+
+    def query_n_retries(self):
+        return self._n_tries - 1 if self._n_tries > 0 else 0
