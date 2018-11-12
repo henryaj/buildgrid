@@ -37,6 +37,10 @@ class BotsInterface:
         self._assigned_leases = {}
         self._scheduler = scheduler
 
+    @property
+    def scheduler(self):
+        return self._scheduler
+
     def register_instance_with_server(self, instance_name, server):
         server.add_bots_interface(self, instance_name)
 

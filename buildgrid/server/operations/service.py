@@ -38,8 +38,18 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
 
         operations_pb2_grpc.add_OperationsServicer_to_server(self, server)
 
-    def add_instance(self, name, instance):
-        self._instances[name] = instance
+    # --- Public API ---
+
+    def add_instance(self, instance_name, instance):
+        """Registers a new servicer instance.
+
+        Args:
+            instance_name (str): The new instance's name.
+            instance (OperationsInstance): The new instance itself.
+        """
+        self._instances[instance_name] = instance
+
+    # --- Public API: Servicer ---
 
     def GetOperation(self, request, context):
         self.__logger.debug("GetOperation request from [%s]", context.peer())
@@ -126,6 +136,8 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
         return Empty()
+
+    # --- Private API ---
 
     def _parse_instance_name(self, name):
         """ If the instance name is not blank, 'name' will have the form

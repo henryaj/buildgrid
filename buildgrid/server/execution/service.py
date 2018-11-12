@@ -52,10 +52,32 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
     # --- Public API ---
 
     def add_instance(self, instance_name, instance):
+        """Registers a new servicer instance.
+
+        Args:
+            instance_name (str): The new instance's name.
+            instance (ExecutionInstance): The new instance itself.
+        """
         self._instances[instance_name] = instance
 
         if self._is_instrumented:
             self.__peers_by_instance[instance_name] = set()
+
+    def get_scheduler(self, instance_name):
+        """Retrieves a reference to the scheduler for an instance.
+
+        Args:
+            instance_name (str): The name of the instance to query.
+
+        Returns:
+            Scheduler: A reference to the scheduler for `instance_name`.
+
+        Raises:
+            InvalidArgumentError: If no instance named `instance_name` exists.
+        """
+        instance = self._get_instance(instance_name)
+
+        return instance.scheduler
 
     # --- Public API: Servicer ---
 

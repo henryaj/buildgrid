@@ -36,6 +36,10 @@ class ExecutionInstance:
         self._storage = storage
         self._scheduler = scheduler
 
+    @property
+    def scheduler(self):
+        return self._scheduler
+
     def register_instance_with_server(self, instance_name, server):
         server.add_execution_instance(self, instance_name)
 
