@@ -140,12 +140,39 @@ class BuildGridCLI(click.MultiCommand):
         return mod.cli
 
 
+class DebugFilter(logging.Filter):
+
+    def __init__(self, debug_domains, name=''):
+        super().__init__(name=name)
+        self.__domains_tree = {}
+
+        for domain in debug_domains.split(':'):
+            domains_tree = self.__domains_tree
+            for label in domain.split('.'):
+                if all(key not in domains_tree for key in [label, '*']):
+                    domains_tree[label] = {}
+                domains_tree = domains_tree[label]
+
+    def filter(self, record):
+        domains_tree, last_match = self.__domains_tree, None
+        for label in record.name.split('.'):
+            if all(key not in domains_tree for key in [label, '*']):
+                return False
+            last_match = label if label in domains_tree else '*'
+            domains_tree = domains_tree[last_match]
+        if domains_tree and '*' not in domains_tree:
+            return False
+        return True
+
+
 def setup_logging(verbosity=0, debug_mode=False):
     """Deals with loggers verbosity"""
     asyncio_logger = logging.getLogger('asyncio')
     root_logger = logging.getLogger()
 
     log_handler = logging.StreamHandler(stream=sys.stdout)
+    for log_filter in root_logger.filters:
+        log_handler.addFilter(log_filter)
 
     logging.basicConfig(format=LOG_RECORD_FORMAT, handlers=[log_handler])
 
@@ -176,3 +203,8 @@ def cli(context):
         root_logger.removeHandler(log_handler)
     for log_filter in root_logger.filters[:]:
         root_logger.removeFilter(log_filter)
+
+    # Filter debug messages using BGD_MESSAGE_DEBUG value:
+    debug_domains = os.environ.get('BGD_MESSAGE_DEBUG', None)
+    if debug_domains:
+        root_logger.addFilter(DebugFilter(debug_domains))
