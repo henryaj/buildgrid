@@ -16,8 +16,12 @@
 from enum import Enum
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
+from buildgrid._protos.buildgrid.v2 import monitoring_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 
+
+# RWAPI enumerations
+# From google/devtools/remoteworkers/v1test2/bots.proto:
 
 class BotStatus(Enum):
     # Initially unknown state.
@@ -45,6 +49,9 @@ class LeaseState(Enum):
     CANCELLED = bots_pb2.LeaseState.Value('CANCELLED')
 
 
+# REAPI enumerations
+# From build/bazel/remote/execution/v2/remote_execution.proto:
+
 class OperationStage(Enum):
     # Initially unknown stage.
     UNKNOWN = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('UNKNOWN')
@@ -56,3 +63,41 @@ class OperationStage(Enum):
     EXECUTING = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('EXECUTING')
     # Finished execution.
     COMPLETED = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('COMPLETED')
+
+
+# Internal enumerations
+# From buildgrid.v2/monitoring.proto:
+
+class LogRecordLevel(Enum):
+    # Initially unknown level.
+    NOTSET = monitoring_pb2.LogRecord.Level.Value('NOTSET')
+    # Debug message severity level.
+    DEBUG = monitoring_pb2.LogRecord.Level.Value('DEBUG')
+    # Information message severity level.
+    INFO = monitoring_pb2.LogRecord.Level.Value('INFO')
+    # Warning message severity level.
+    WARNING = monitoring_pb2.LogRecord.Level.Value('WARNING')
+    # Error message severity level.
+    ERROR = monitoring_pb2.LogRecord.Level.Value('ERROR')
+    # Critical message severity level.
+    CRITICAL = monitoring_pb2.LogRecord.Level.Value('CRITICAL')
+
+
+class MetricRecordDomain(Enum):
+    # Initially unknown domain.
+    UNKNOWN = monitoring_pb2.MetricRecord.Domain.Value('UNKNOWN')
+    # A server state related metric.
+    STATE = monitoring_pb2.MetricRecord.Domain.Value('STATE')
+    # A build execution related metric.
+    BUILD = monitoring_pb2.MetricRecord.Domain.Value('BUILD')
+
+
+class MetricRecordType(Enum):
+    # Initially unknown type.
+    NONE = monitoring_pb2.MetricRecord.Type.Value('NONE')
+    # A metric for counting.
+    COUNTER = monitoring_pb2.MetricRecord.Type.Value('COUNTER')
+    # A metric for mesuring a duration.
+    TIMER = monitoring_pb2.MetricRecord.Type.Value('TIMER')
+    # A metric in arbitrary value.
+    GAUGE = monitoring_pb2.MetricRecord.Type.Value('GAUGE')
