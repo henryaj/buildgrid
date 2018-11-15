@@ -34,6 +34,8 @@ class Scheduler:
     def __init__(self, action_cache=None, monitor=False):
         self.__logger = logging.getLogger(__name__)
 
+        self.__build_metadata_queues = None
+
         self.__operations_by_stage = None
         self.__leases_by_state = None
         self.__queue_time_average = None
@@ -46,6 +48,8 @@ class Scheduler:
         self._is_instrumented = monitor
 
         if self._is_instrumented:
+            self.__build_metadata_queues = []
+
             self.__operations_by_stage = {}
             self.__leases_by_state = {}
             self.__queue_time_average = 0, timedelta()
@@ -228,6 +232,10 @@ class Scheduler:
     def is_instrumented(self):
         return self._is_instrumented
 
+    def register_build_metadata_watcher(self, message_queue):
+        if self.__build_metadata_queues is not None:
+            self.__build_metadata_queues.append(message_queue)
+
     def query_n_jobs(self):
         return len(self.jobs)
 
@@ -319,3 +327,12 @@ class Scheduler:
                     average_time = average_time + ((queue_time - average_time) / average_order)
 
                 self.__queue_time_average = average_order, average_time
+
+                if not job.holds_cached_action_result:
+                    execution_metadata = job.action_result.execution_metadata
+                    context_metadata = {'job-is': job.name}
+
+                    message = (execution_metadata, context_metadata,)
+
+                    for message_queue in self.__build_metadata_queues:
+                        message_queue.put(message)
