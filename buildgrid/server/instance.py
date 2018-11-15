@@ -71,7 +71,10 @@ class BuildGridServer:
         self.__logging_formatter = logging.Formatter(fmt=LOG_RECORD_FORMAT)
         self.__print_log_records = True
 
+        self.__build_metadata_queues = None
+
         self.__state_monitoring_task = None
+        self.__build_monitoring_tasks = None
         self.__logging_task = None
 
         # We always want a capabilities service
@@ -94,6 +97,8 @@ class BuildGridServer:
             self.__monitoring_bus = MonitoringBus(
                 self.__main_loop, endpoint_type=MonitoringOutputType.STDOUT,
                 serialisation_format=MonitoringOutputFormat.JSON)
+
+            self.__build_monitoring_tasks = []
 
         # Setup the main logging handler:
         root_logger = logging.getLogger()
@@ -119,6 +124,18 @@ class BuildGridServer:
                 self._state_monitoring_worker(period=MONITORING_PERIOD),
                 loop=self.__main_loop)
 
+            self.__build_monitoring_tasks.clear()
+            for instance_name, scheduler in self._schedulers.items():
+                if not scheduler.is_instrumented:
+                    continue
+
+                message_queue = janus.Queue(loop=self.__main_loop)
+                scheduler.register_build_metadata_watcher(message_queue.sync_q)
+
+                self.__build_monitoring_tasks.append(asyncio.ensure_future(
+                    self._build_monitoring_worker(instance_name, message_queue),
+                    loop=self.__main_loop))
+
         self.__logging_task = asyncio.ensure_future(
             self._logging_worker(), loop=self.__main_loop)
 
@@ -131,6 +148,10 @@ class BuildGridServer:
         if self._is_instrumented:
             if self.__state_monitoring_task is not None:
                 self.__state_monitoring_task.cancel()
+
+            for build_monitoring_task in self.__build_monitoring_tasks:
+                build_monitoring_task.cancel()
+            self.__build_monitoring_tasks.clear()
 
             self.__monitoring_bus.stop()
 
@@ -351,6 +372,60 @@ class BuildGridServer:
             log_record.metadata.update(metadata)
 
         return log_record
+
+    async def _build_monitoring_worker(self, instance_name, message_queue):
+        """Publishes builds metadata to the monitoring bus."""
+        async def __build_monitoring_worker():
+            metadata, context = await message_queue.async_q.get()
+
+            context.update({'instance-name': instance_name or 'void'})
+
+            # Emit build inputs fetching time record:
+            fetch_start = metadata.input_fetch_start_timestamp.ToDatetime()
+            fetch_completed = metadata.input_fetch_completed_timestamp.ToDatetime()
+            input_fetch_time = fetch_completed - fetch_start
+            timer_record = self._forge_timer_metric_record(
+                MetricRecordDomain.BUILD, 'inputs-fetching-time', input_fetch_time,
+                metadata=context)
+
+            await self.__monitoring_bus.send_record(timer_record)
+
+            # Emit build execution time record:
+            execution_start = metadata.execution_start_timestamp.ToDatetime()
+            execution_completed = metadata.execution_completed_timestamp.ToDatetime()
+            execution_time = execution_completed - execution_start
+            timer_record = self._forge_timer_metric_record(
+                MetricRecordDomain.BUILD, 'execution-time', execution_time,
+                metadata=context)
+
+            await self.__monitoring_bus.send_record(timer_record)
+
+            # Emit build outputs uploading time record:
+            upload_start = metadata.output_upload_start_timestamp.ToDatetime()
+            upload_completed = metadata.output_upload_completed_timestamp.ToDatetime()
+            output_upload_time = upload_completed - upload_start
+            timer_record = self._forge_timer_metric_record(
+                MetricRecordDomain.BUILD, 'outputs-uploading-time', output_upload_time,
+                metadata=context)
+
+            await self.__monitoring_bus.send_record(timer_record)
+
+            # Emit total build handling time record:
+            queued = metadata.queued_timestamp.ToDatetime()
+            worker_completed = metadata.worker_completed_timestamp.ToDatetime()
+            total_handling_time = worker_completed - queued
+            timer_record = self._forge_timer_metric_record(
+                MetricRecordDomain.BUILD, 'total-handling-time', total_handling_time,
+                metadata=context)
+
+            await self.__monitoring_bus.send_record(timer_record)
+
+        try:
+            while True:
+                await __build_monitoring_worker()
+
+        except asyncio.CancelledError:
+            pass
 
     async def _state_monitoring_worker(self, period=1.0):
         """Periodically publishes state metrics to the monitoring bus."""
