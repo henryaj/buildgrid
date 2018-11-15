@@ -84,6 +84,13 @@ class Job:
             return None
 
     @property
+    def holds_cached_action_result(self):
+        if self.__execute_response is not None:
+            return self.__execute_response.cached_result
+        else:
+            return False
+
+    @property
     def operation(self):
         return self._operation
 
