@@ -22,7 +22,7 @@ from buildgrid.server.operations.service import OperationsService
 from buildgrid.server.bots.service import BotsService
 from buildgrid.server.referencestorage.service import ReferenceStorageService
 
-from .utils.cas import run_in_subprocess
+from .utils.utils import run_in_subprocess
 
 
 config = """

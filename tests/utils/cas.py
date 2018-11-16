@@ -21,7 +21,6 @@ import signal
 import tempfile
 
 import grpc
-import psutil
 import pytest_cov
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
@@ -40,43 +39,6 @@ def serve_cas(instances):
         yield server
     finally:
         server.quit()
-
-
-def kill_process_tree(pid):
-    proc = psutil.Process(pid)
-    children = proc.children(recursive=True)
-
-    def kill_proc(p):
-        try:
-            p.kill()
-        except psutil.AccessDenied:
-            # Ignore this error, it can happen with
-            # some setuid bwrap processes.
-            pass
-
-    # Bloody Murder
-    for child in children:
-        kill_proc(child)
-    kill_proc(proc)
-
-
-def run_in_subprocess(function, *arguments):
-    queue = multiprocessing.Queue()
-    # Use subprocess to avoid creation of gRPC threads in main process
-    # See https://github.com/grpc/grpc/blob/master/doc/fork_support.md
-    process = multiprocessing.Process(target=function,
-                                      args=(queue, *arguments))
-
-    try:
-        process.start()
-
-        result = queue.get()
-        process.join()
-    except KeyboardInterrupt:
-        kill_process_tree(process.pid)
-        raise
-
-    return result
 
 
 class Server:
