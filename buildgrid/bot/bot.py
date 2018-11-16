@@ -13,16 +13,9 @@
 # limitations under the License.
 
 
-"""
-Bot
-====
-
-Creates a bot session and sends updates to the server.
-"""
-
 import asyncio
 import logging
-import sys
+
 
 class Bot:
     """Creates a local BotSession."""
@@ -35,10 +28,13 @@ class Bot:
         self.__bot_session = bot_session
         self.__update_period = update_period
 
-    def session(self, work, context):
+        self.__loop = None
+
+    def session(self):
         """Will create a session and periodically call the server."""
+
         self.__loop = asyncio.get_event_loop()
-        self.__bot_session.create_bot_session(work, context)
+        self.__bot_session.create_bot_session()
 
         try:
             task = asyncio.ensure_future(self.__update_bot_session())

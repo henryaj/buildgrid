@@ -27,8 +27,11 @@ from urllib.parse import urlparse
 import click
 import grpc
 
-from buildgrid.bot import bot, bot_interface
-from buildgrid.bot.bot_session import BotSession, Device, Worker
+from buildgrid.bot import bot, interface, session
+from buildgrid.bot.hardware.interface import HardwareInterface
+from buildgrid.bot.hardware.device import Device
+from buildgrid.bot.hardware.worker import Worker
+
 
 from ..bots import buildbox, dummy, host
 from ..cli import pass_context
@@ -121,15 +124,13 @@ def cli(context, parent, update_period, remote, client_key, client_cert, server_
 
     click.echo("Starting for remote=[{}]".format(context.remote))
 
-    interface = bot_interface.BotInterface(context.channel)
-
+    bot_interface = interface.BotInterface(context.channel)
     worker = Worker()
     worker.add_device(Device())
+    hardware_interface = HardwareInterface(worker)
 
-    bot_session = BotSession(parent, interface)
-    bot_session.add_worker(worker)
-
-    context.bot_session = bot_session
+    context.bot_interface = bot_interface
+    context.hardware_interface = hardware_interface
 
 
 @cli.command('dummy', short_help="Run a dummy session simply returning leases.")
@@ -139,9 +140,10 @@ def run_dummy(context):
     Creates a session, accepts leases, does fake work and updates the server.
     """
     try:
-        b = bot.Bot(context.bot_session, context.update_period)
-        b.session(dummy.work_dummy,
-                  context)
+        bot_session = session.BotSession(context.parent, context.bot_interface, context.hardware_interface,
+                                         dummy.work_dummy, context)
+        b = bot.Bot(bot_session, context.update_period)
+        b.session()
     except KeyboardInterrupt:
         pass
 
@@ -154,9 +156,10 @@ def run_host_tools(context):
     result back to CAS.
     """
     try:
-        b = bot.Bot(context.bot_session, context.update_period)
-        b.session(host.work_host_tools,
-                  context)
+        bot_session = session.BotSession(context.parent, context.bot_interface, context.hardware_interface,
+                                         host.work_host_tools, context)
+        b = bot.Bot(bot_session, context.update_period)
+        b.session()
     except KeyboardInterrupt:
         pass
 
@@ -175,8 +178,9 @@ def run_buildbox(context, local_cas, fuse_dir):
     context.fuse_dir = fuse_dir
 
     try:
-        b = bot.Bot(context.bot_session, context.update_period)
-        b.session(buildbox.work_buildbox,
-                  context)
+        bot_session = session.BotSession(context.parent, context.bot_interface, context.hardware_interface,
+                                         buildbox.work_buildbox, context)
+        b = bot.Bot(bot_session, context.update_period)
+        b.session()
     except KeyboardInterrupt:
         pass

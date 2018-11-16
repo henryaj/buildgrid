@@ -20,7 +20,7 @@ from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_p
 from buildgrid.utils import get_hostname
 
 
-def work_dummy(context, lease):
+def work_dummy(lease, context, event):
     """ Just returns lease after some random time
     """
     action_result = remote_execution_pb2.ActionResult()

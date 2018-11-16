@@ -25,7 +25,7 @@ from buildgrid.settings import HASH_LENGTH
 from buildgrid.utils import read_file, write_file
 
 
-def work_buildbox(context, lease):
+def work_buildbox(lease, context, event):
     """Executes a lease for a build action, using buildbox.
     """
     local_cas_directory = context.local_cas
