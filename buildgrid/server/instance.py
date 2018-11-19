@@ -17,6 +17,7 @@ import asyncio
 from concurrent import futures
 import logging
 import os
+import signal
 
 import grpc
 
@@ -77,6 +78,8 @@ class BuildGridServer:
 
         if self._is_instrumented:
             self.__monitoring_bus.start()
+
+        self.__main_loop.add_signal_handler(signal.SIGTERM, self.stop)
 
         self.__main_loop.run_forever()
 
