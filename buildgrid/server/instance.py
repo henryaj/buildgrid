@@ -101,14 +101,19 @@ class BuildGridServer:
         Args:
             address (str): The address with port number.
             credentials (:obj:`grpc.ChannelCredentials`): Credentials object.
+
+        Returns:
+            int: Number of the bound port.
         """
         if credentials is not None:
             self.__logger.info("Adding secure connection on: [%s]", address)
-            self.__grpc_server.add_secure_port(address, credentials)
+            port_number = self.__grpc_server.add_secure_port(address, credentials)
 
         else:
             self.__logger.info("Adding insecure connection on [%s]", address)
-            self.__grpc_server.add_insecure_port(address)
+            port_number = self.__grpc_server.add_insecure_port(address)
+
+        return port_number
 
     def add_execution_instance(self, instance, instance_name):
         """Adds an :obj:`ExecutionInstance` to the service.
