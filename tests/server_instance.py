@@ -13,19 +13,24 @@
 # limitations under the License.
 
 
-from buildgrid._app.settings import parser
-from buildgrid._app.commands.cmd_server import _create_server_from_config
-from buildgrid.server.cas.service import ByteStreamService, ContentAddressableStorageService
-from buildgrid.server.actioncache.service import ActionCacheService
-from buildgrid.server.execution.service import ExecutionService
-from buildgrid.server.operations.service import OperationsService
-from buildgrid.server.bots.service import BotsService
-from buildgrid.server.referencestorage.service import ReferenceStorageService
+import grpc
+
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc
+from buildgrid._protos.buildstream.v2 import buildstream_pb2
+from buildgrid._protos.buildstream.v2 import buildstream_pb2_grpc
+from buildgrid._protos.google.bytestream import bytestream_pb2
+from buildgrid._protos.google.bytestream import bytestream_pb2_grpc
+from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
+from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2_grpc
+from buildgrid._protos.google.longrunning import operations_pb2
+from buildgrid._protos.google.longrunning import operations_pb2_grpc
 
 from .utils.utils import run_in_subprocess
+from .utils.server import serve
 
 
-config = """
+CONFIGURATION = """
 server:
   - !channel
     port: 50051
@@ -72,24 +77,102 @@ instances:
 
 def test_create_server():
     # Actual test function, to be run in a subprocess:
-    def __test_create_server(queue, config_data):
-        settings = parser.get_parser().safe_load(config)
-        server = _create_server_from_config(settings)
-
-        server.start()
-        server.stop()
+    def __test_create_server(queue, remote):
+        # Open a channel to the remote server:
+        channel = grpc.insecure_channel(remote)
 
         try:
-            assert isinstance(server._execution_service, ExecutionService)
-            assert isinstance(server._operations_service, OperationsService)
-            assert isinstance(server._bots_service, BotsService)
-            assert isinstance(server._reference_storage_service, ReferenceStorageService)
-            assert isinstance(server._action_cache_service, ActionCacheService)
-            assert isinstance(server._cas_service, ContentAddressableStorageService)
-            assert isinstance(server._bytestream_service, ByteStreamService)
+            stub = remote_execution_pb2_grpc.ExecutionStub(channel)
+            request = remote_execution_pb2.ExecuteRequest(instance_name='main')
+            response = next(stub.Execute(request))
+
+            assert response.DESCRIPTOR is operations_pb2.Operation.DESCRIPTOR
+
+        except grpc.RpcError as e:
+            if e.code() == grpc.StatusCode.UNIMPLEMENTED:
+                queue.put(False)
         except AssertionError:
             queue.put(False)
-        else:
-            queue.put(True)
 
-    assert run_in_subprocess(__test_create_server, config)
+        try:
+            stub = remote_execution_pb2_grpc.ActionCacheStub(channel)
+            request = remote_execution_pb2.GetActionResultRequest(instance_name='main')
+            response = stub.GetActionResult(request)
+
+            assert response.DESCRIPTOR is remote_execution_pb2.ActionResult.DESCRIPTOR
+
+        except grpc.RpcError as e:
+            if e.code() == grpc.StatusCode.UNIMPLEMENTED:
+                queue.put(False)
+        except AssertionError:
+            queue.put(False)
+
+        try:
+            stub = remote_execution_pb2_grpc.ContentAddressableStorageStub(channel)
+            request = remote_execution_pb2.BatchUpdateBlobsRequest(instance_name='main')
+            response = stub.BatchUpdateBlobs(request)
+
+            assert response.DESCRIPTOR is remote_execution_pb2.BatchUpdateBlobsResponse.DESCRIPTOR
+
+        except grpc.RpcError as e:
+            if e.code() == grpc.StatusCode.UNIMPLEMENTED:
+                queue.put(False)
+        except AssertionError:
+            queue.put(False)
+
+        try:
+            stub = buildstream_pb2_grpc.ReferenceStorageStub(channel)
+            request = buildstream_pb2.GetReferenceRequest(instance_name='main')
+            response = stub.GetReference(request)
+
+            assert response.DESCRIPTOR is buildstream_pb2.GetReferenceResponse.DESCRIPTOR
+
+        except grpc.RpcError as e:
+            if e.code() == grpc.StatusCode.UNIMPLEMENTED:
+                queue.put(False)
+        except AssertionError:
+            queue.put(False)
+
+        try:
+            stub = bytestream_pb2_grpc.ByteStreamStub(channel)
+            request = bytestream_pb2.ReadRequest()
+            response = stub.Read(request)
+
+            assert next(response).DESCRIPTOR is bytestream_pb2.ReadResponse.DESCRIPTOR
+
+        except grpc.RpcError as e:
+            if e.code() == grpc.StatusCode.UNIMPLEMENTED:
+                queue.put(False)
+        except AssertionError:
+            queue.put(False)
+
+        try:
+            stub = operations_pb2_grpc.OperationsStub(channel)
+            request = operations_pb2.ListOperationsRequest(name='main')
+            response = stub.ListOperations(request)
+
+            assert response.DESCRIPTOR is operations_pb2.ListOperationsResponse.DESCRIPTOR
+
+        except grpc.RpcError as e:
+            if e.code() == grpc.StatusCode.UNIMPLEMENTED:
+                queue.put(False)
+        except AssertionError:
+            queue.put(False)
+
+        try:
+            stub = bots_pb2_grpc.BotsStub(channel)
+            request = bots_pb2.CreateBotSessionRequest()
+            response = stub.CreateBotSession(request)
+
+            assert response.DESCRIPTOR is bots_pb2.BotSession.DESCRIPTOR
+
+        except grpc.RpcError as e:
+            if e.code() == grpc.StatusCode.UNIMPLEMENTED:
+                queue.put(False)
+        except AssertionError:
+            queue.put(False)
+
+        queue.put(True)
+
+    with serve(CONFIGURATION) as server:
+        assert run_in_subprocess(__test_create_server, server.remote)
