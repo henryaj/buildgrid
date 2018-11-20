@@ -1,0 +1,81 @@
+# Copyright (C) 2018 Bloomberg LP
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#  <http://www.apache.org/licenses/LICENSE-2.0>
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+import logging
+
+from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
+
+
+class CapabilitiesInstance:
+
+    def __init__(self, cas_instance=None, action_cache_instance=None, execution_instance=None):
+        self.__logger = logging.getLogger(__name__)
+        self.__cas_instance = cas_instance
+        self.__action_cache_instance = action_cache_instance
+        self.__execution_instance = execution_instance
+
+    def register_instance_with_server(self, instance_name, server):
+        server.add_capabilities_instance(self, instance_name)
+
+    def add_cas_instance(self, cas_instance):
+        self.__cas_instance = cas_instance
+
+    def add_action_cache_instance(self, action_cache_instance):
+        self.__action_cache_instance = action_cache_instance
+
+    def add_execution_instance(self, execution_instance):
+        self.__execution_instance = execution_instance
+
+    def get_capabilities(self):
+        server_capabilities = remote_execution_pb2.ServerCapabilities()
+        server_capabilities.cache_capabilities.CopyFrom(self._get_cache_capabilities())
+        server_capabilities.execution_capabilities.CopyFrom(self._get_capabilities_execution())
+        # TODO
+        # When API is stable, fill out SemVer values
+        # server_capabilities.deprecated_api_version =
+        # server_capabilities.low_api_version =
+        # server_capabilities.low_api_version =
+        # server_capabilities.hig_api_version =
+        return server_capabilities
+
+    def _get_cache_capabilities(self):
+        capabilities = remote_execution_pb2.CacheCapabilities()
+        action_cache_update_capabilities = remote_execution_pb2.ActionCacheUpdateCapabilities()
+
+        if self.__cas_instance:
+            capabilities.digest_function.extend([self.__cas_instance.hash_type()])
+            capabilities.max_batch_total_size_bytes = self.__cas_instance.max_batch_total_size_bytes()
+            capabilities.symlink_absolute_path_strategy = self.__cas_instance.symlink_absolute_path_strategy()
+            # TODO: execution priority #102
+            # capabilities.cache_priority_capabilities =
+
+        if self.__action_cache_instance:
+            action_cache_update_capabilities.update_enabled = self.__action_cache_instance.allow_updates
+
+        capabilities.action_cache_update_capabilities.CopyFrom(action_cache_update_capabilities)
+        return capabilities
+
+    def _get_capabilities_execution(self):
+        capabilities = remote_execution_pb2.ExecutionCapabilities()
+        if self.__execution_instance:
+            capabilities.exec_enabled = True
+            capabilities.digest_function = self.__execution_instance.hash_type()
+            # TODO: execution priority #102
+            # capabilities.execution_priority =
+
+        else:
+            capabilities.exec_enabled = False
+
+        return capabilities
