@@ -21,7 +21,6 @@ Implements the Content Addressable Storage API and ByteStream API.
 """
 
 
-from itertools import tee
 import logging
 
 import grpc
@@ -115,27 +114,30 @@ class ByteStreamService(bytestream_pb2_grpc.ByteStreamServicer):
     def Read(self, request, context):
         self.__logger.debug("Read request from [%s]", context.peer())
 
+        names = request.resource_name.split('/')
+
         try:
-            path = request.resource_name.split("/")
-            instance_name = path[0]
+            instance_name = ''
+            # Format: "{instance_name}/blobs/{hash}/{size}":
+            if len(names) < 3 or names[-3] != 'blobs':
+                raise InvalidArgumentError("Invalid resource name: [{}]"
+                                           .format(request.resource_name))
 
-            # TODO: Decide on default instance name
-            if path[0] == "blobs":
-                if len(path) < 3 or not path[2].isdigit():
-                    raise InvalidArgumentError("Invalid resource name: [{}]".format(request.resource_name))
-                instance_name = ""
+            elif names[0] != 'blobs':
+                index = names.index('blobs')
+                instance_name = '/'.join(names[:index])
+                names = names[index:]
 
-            elif path[1] == "blobs":
-                if len(path) < 4 or not path[3].isdigit():
-                    raise InvalidArgumentError("Invalid resource name: [{}]".format(request.resource_name))
+            if len(names) < 3:
+                raise InvalidArgumentError("Invalid resource name: [{}]"
+                                           .format(request.resource_name))
 
-            else:
-                raise InvalidArgumentError("Invalid resource name: [{}]".format(request.resource_name))
+            hash_, size_bytes = names[1], names[2]
 
             instance = self._get_instance(instance_name)
-            yield from instance.read(path,
-                                     request.read_offset,
-                                     request.read_limit)
+
+            yield from instance.read(hash_, size_bytes,
+                                     request.read_offset, request.read_limit)
 
         except InvalidArgumentError as e:
             self.__logger.error(e)
@@ -158,31 +160,31 @@ class ByteStreamService(bytestream_pb2_grpc.ByteStreamServicer):
     def Write(self, requests, context):
         self.__logger.debug("Write request from [%s]", context.peer())
 
+        request = next(requests)
+        names = request.resource_name.split('/')
+
         try:
-            requests, request_probe = tee(requests, 2)
-            first_request = next(request_probe)
+            instance_name = ''
+            # Format: "{instance_name}/uploads/{uuid}/blobs/{hash}/{size}/{anything}":
+            if len(names) < 5 or 'uploads' not in names or 'blobs' not in names:
+                raise InvalidArgumentError("Invalid resource name: [{}]"
+                                           .format(request.resource_name))
 
-            path = first_request.resource_name.split("/")
+            elif names[0] != 'uploads':
+                index = names.index('uploads')
+                instance_name = '/'.join(names[:index])
+                names = names[index:]
 
-            instance_name = path[0]
+            if len(names) < 5:
+                raise InvalidArgumentError("Invalid resource name: [{}]"
+                                           .format(request.resource_name))
 
-            # TODO: Sort out no instance name
-            if path[0] == "uploads":
-                if len(path) < 5 or path[2] != "blobs" or not path[4].isdigit():
-                    raise InvalidArgumentError("Invalid resource name: [{}]".format(first_request.resource_name))
-                instance_name = ""
-
-            elif path[1] == "uploads":
-                if len(path) < 6 or path[3] != "blobs" or not path[5].isdigit():
-                    raise InvalidArgumentError("Invalid resource name: [{}]".format(first_request.resource_name))
-
-            else:
-                raise InvalidArgumentError("Invalid resource name: [{}]".format(first_request.resource_name))
+            _, hash_, size_bytes = names[1], names[3], names[4]
 
             instance = self._get_instance(instance_name)
-            response = instance.write(requests)
 
-            return response
+            return instance.write(hash_, size_bytes, request.data,
+                                  [request.data for request in requests])
 
         except NotImplementedError as e:
             self.__logger.error(e)

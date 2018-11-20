@@ -24,7 +24,7 @@ import logging
 from buildgrid._exceptions import InvalidArgumentError, NotFoundError, OutOfRangeError
 from buildgrid._protos.google.bytestream import bytestream_pb2
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2 as re_pb2
-from buildgrid.settings import HASH
+from buildgrid.settings import HASH, HASH_LENGTH
 
 
 class ContentAddressableStorageInstance:
@@ -71,15 +71,12 @@ class ByteStreamInstance:
     def register_instance_with_server(self, instance_name, server):
         server.add_bytestream_instance(self, instance_name)
 
-    def read(self, path, read_offset, read_limit):
-        storage = self._storage
+    def read(self, digest_hash, digest_size, read_offset, read_limit):
+        if len(digest_hash) != HASH_LENGTH or not digest_size.isdigit():
+            raise InvalidArgumentError("Invalid digest [{}/{}]"
+                                       .format(digest_hash, digest_size))
 
-        if path[0] == "blobs":
-            path = [""] + path
-
-        # Parse/verify resource name.
-        # Read resource names look like "[instance/]blobs/abc123hash/99".
-        digest = re_pb2.Digest(hash=path[2], size_bytes=int(path[3]))
+        digest = re_pb2.Digest(hash=digest_hash, size_bytes=int(digest_size))
 
         # Check the given read offset and limit.
         if read_offset < 0 or read_offset > digest.size_bytes:
@@ -95,7 +92,7 @@ class ByteStreamInstance:
             raise InvalidArgumentError("Negative read_limit is invalid")
 
         # Read the blob from storage and send its contents to the client.
-        result = storage.get_blob(digest)
+        result = self._storage.get_blob(digest)
         if result is None:
             raise NotFoundError("Blob not found")
 
@@ -110,51 +107,35 @@ class ByteStreamInstance:
                 data=result.read(min(self.BLOCK_SIZE, bytes_remaining)))
             bytes_remaining -= self.BLOCK_SIZE
 
-    def write(self, requests):
-        storage = self._storage
+    def write(self, digest_hash, digest_size, first_block, other_blocks):
+        if len(digest_hash) != HASH_LENGTH or not digest_size.isdigit():
+            raise InvalidArgumentError("Invalid digest [{}/{}]"
+                                       .format(digest_hash, digest_size))
 
-        first_request = next(requests)
-        path = first_request.resource_name.split("/")
+        digest = re_pb2.Digest(hash=digest_hash, size_bytes=int(digest_size))
 
-        if path[0] == "uploads":
-            path = [""] + path
-
-        digest = re_pb2.Digest(hash=path[4], size_bytes=int(path[5]))
-        write_session = storage.begin_write(digest)
+        write_session = self._storage.begin_write(digest)
 
         # Start the write session and write the first request's data.
-        write_session.write(first_request.data)
-        hash_ = HASH(first_request.data)
-        bytes_written = len(first_request.data)
-        finished = first_request.finish_write
+        write_session.write(first_block)
+
+        computed_hash = HASH(first_block)
+        bytes_written = len(first_block)
 
         # Handle subsequent write requests.
-        while not finished:
+        for next_block in other_blocks:
+            write_session.write(next_block)
 
-            for request in requests:
-                if finished:
-                    raise InvalidArgumentError("Write request sent after write finished")
-
-                elif request.write_offset != bytes_written:
-                    raise InvalidArgumentError("Invalid write offset")
-
-                elif request.resource_name and request.resource_name != first_request.resource_name:
-                    raise InvalidArgumentError("Resource name changed mid-write")
-
-                finished = request.finish_write
-                bytes_written += len(request.data)
-                if bytes_written > digest.size_bytes:
-                    raise InvalidArgumentError("Wrote too much data to blob")
-
-                write_session.write(request.data)
-                hash_.update(request.data)
+            computed_hash.update(next_block)
+            bytes_written += len(next_block)
 
         # Check that the data matches the provided digest.
-        if bytes_written != digest.size_bytes or not finished:
+        if bytes_written != digest.size_bytes:
             raise NotImplementedError("Cannot close stream before finishing write")
 
-        elif hash_.hexdigest() != digest.hash:
+        elif computed_hash.hexdigest() != digest.hash:
             raise InvalidArgumentError("Data does not match hash")
 
-        storage.commit_write(digest, write_session)
+        self._storage.commit_write(digest, write_session)
+
         return bytestream_pb2.WriteResponse(committed_size=bytes_written)

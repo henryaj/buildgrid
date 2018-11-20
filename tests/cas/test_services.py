@@ -137,7 +137,7 @@ def test_bytestream_write(mocked, instance, extra_data):
         bytestream_pb2.WriteRequest(data=b'def', write_offset=3, finish_write=True)
     ]
 
-    response = servicer.Write(requests, context)
+    response = servicer.Write(iter(requests), context)
     assert response.committed_size == 6
     assert len(storage.data) == 1
     assert (hash_, 6) in storage.data
@@ -159,7 +159,7 @@ def test_bytestream_write_rejects_wrong_hash(mocked):
         bytestream_pb2.WriteRequest(resource_name=resource_name, data=data, finish_write=True)
     ]
 
-    servicer.Write(requests, context)
+    servicer.Write(iter(requests), context)
     context.set_code.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT)
 
     assert not storage.data
