@@ -25,6 +25,7 @@ from buildgrid._exceptions import FailedPreconditionError, InvalidArgumentError
 from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Action
 
 from ..job import Job
+from ...utils import get_hash_type
 
 
 class ExecutionInstance:
@@ -37,6 +38,9 @@ class ExecutionInstance:
 
     def register_instance_with_server(self, instance_name, server):
         server.add_execution_instance(self, instance_name)
+
+    def hash_type(self):
+        return get_hash_type()
 
     def execute(self, action_digest, skip_cache_lookup, message_queue=None):
         """ Sends a job for execution.
