@@ -28,6 +28,8 @@ from buildgrid.server.execution.service import ExecutionService
 from buildgrid.server._monitoring import MonitoringBus, MonitoringOutputType, MonitoringOutputFormat
 from buildgrid.server.operations.service import OperationsService
 from buildgrid.server.referencestorage.service import ReferenceStorageService
+from buildgrid.server.capabilities.instance import CapabilitiesInstance
+from buildgrid.server.capabilities.service import CapabilitiesService
 
 
 class BuildGridServer:
@@ -54,6 +56,9 @@ class BuildGridServer:
 
         self.__main_loop = asyncio.get_event_loop()
         self.__monitoring_bus = None
+
+        # We always want a capabilities service
+        self._capabilities_service = CapabilitiesService(self.__grpc_server)
 
         self._execution_service = None
         self._bots_service = None
@@ -128,6 +133,7 @@ class BuildGridServer:
             self._execution_service = ExecutionService(self.__grpc_server)
 
         self._execution_service.add_instance(instance_name, instance)
+        self._add_capabilities_instance(instance_name, execution_instance=instance)
 
     def add_bots_interface(self, instance, instance_name):
         """Adds a :obj:`BotsInterface` to the service.
@@ -184,9 +190,10 @@ class BuildGridServer:
             self._action_cache_service = ActionCacheService(self.__grpc_server)
 
         self._action_cache_service.add_instance(instance_name, instance)
+        self._add_capabilities_instance(instance_name, action_cache_instance=instance)
 
     def add_cas_instance(self, instance, instance_name):
-        """Stores a :obj:`ContentAddressableStorageInstance` to the service.
+        """Adds a :obj:`ContentAddressableStorageInstance` to the service.
 
         If no service exists, it creates one.
 
@@ -198,9 +205,10 @@ class BuildGridServer:
             self._cas_service = ContentAddressableStorageService(self.__grpc_server)
 
         self._cas_service.add_instance(instance_name, instance)
+        self._add_capabilities_instance(instance_name, cas_instance=instance)
 
     def add_bytestream_instance(self, instance, instance_name):
-        """Stores a :obj:`ByteStreamInstance` to the service.
+        """Adds a :obj:`ByteStreamInstance` to the service.
 
         If no service exists, it creates one.
 
@@ -212,6 +220,31 @@ class BuildGridServer:
             self._bytestream_service = ByteStreamService(self.__grpc_server)
 
         self._bytestream_service.add_instance(instance_name, instance)
+
+    def _add_capabilities_instance(self, instance_name,
+                                   cas_instance=None,
+                                   action_cache_instance=None,
+                                   execution_instance=None):
+        """Adds a :obj:`CapabilitiesInstance` to the service.
+
+        Args:
+            instance (:obj:`CapabilitiesInstance`): Instance to add.
+            instance_name (str): Instance name.
+        """
+
+        try:
+            if cas_instance:
+                self._capabilities_service.add_cas_instance(instance_name, cas_instance)
+            if action_cache_instance:
+                self._capabilities_service.add_action_cache_instance(instance_name, action_cache_instance)
+            if execution_instance:
+                self._capabilities_service.add_execution_instance(instance_name, execution_instance)
+
+        except KeyError:
+            capabilities_instance = CapabilitiesInstance(cas_instance,
+                                                         action_cache_instance,
+                                                         execution_instance)
+            self._capabilities_service.add_instance(instance_name, capabilities_instance)
 
     # --- Public API: Monitoring ---
 
