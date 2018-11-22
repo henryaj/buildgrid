@@ -20,7 +20,6 @@ Execute command
 Request work to be executed and monitor status of jobs.
 """
 
-import logging
 import os
 import stat
 import sys
@@ -64,8 +63,7 @@ def cli(context, remote, instance_name, client_key, client_cert, server_cert):
 
         context.channel = grpc.secure_channel(context.remote, credentials)
 
-    context.logger = logging.getLogger(__name__)
-    context.logger.debug("Starting for remote {}".format(context.remote))
+    click.echo("Starting for remote=[{}]".format(context.remote))
 
 
 @cli.command('request-dummy', short_help="Send a dummy action.")
@@ -76,7 +74,7 @@ def cli(context, remote, instance_name, client_key, client_cert, server_cert):
 @pass_context
 def request_dummy(context, number, wait_for_completion):
 
-    context.logger.info("Sending execution request...")
+    click.echo("Sending execution request...")
     action = remote_execution_pb2.Action(do_not_cache=True)
     action_digest = create_digest(action.SerializeToString())
 
@@ -96,7 +94,7 @@ def request_dummy(context, number, wait_for_completion):
             result = None
             for stream in response:
                 result = stream
-                context.logger.info(result)
+                click.echo(result)
 
             if not result.done:
                 click.echo("Result did not return True." +
@@ -104,7 +102,7 @@ def request_dummy(context, number, wait_for_completion):
                 sys.exit(-1)
 
         else:
-            context.logger.info(next(response))
+            click.echo(next(response))
 
 
 @cli.command('command', short_help="Send a command to be executed.")
@@ -132,12 +130,12 @@ def run_command(context, input_root, commands, output_file, output_directory):
 
         command_digest = uploader.put_message(command, queue=True)
 
-        context.logger.info('Sent command: {}'.format(command_digest))
+        click.echo("Sent command=[{}]".format(command_digest))
 
         # TODO: Check for missing blobs
         input_root_digest = uploader.upload_directory(input_root)
 
-        context.logger.info('Sent input: {}'.format(input_root_digest))
+        click.echo("Sent input=[{}]".format(input_root_digest))
 
         action = remote_execution_pb2.Action(command_digest=command_digest,
                                              input_root_digest=input_root_digest,
@@ -145,7 +143,7 @@ def run_command(context, input_root, commands, output_file, output_directory):
 
         action_digest = uploader.put_message(action, queue=True)
 
-        context.logger.info("Sent action: {}".format(action_digest))
+        click.echo("Sent action=[{}]".format(action_digest))
 
     request = remote_execution_pb2.ExecuteRequest(instance_name=context.instance_name,
                                                   action_digest=action_digest,
@@ -154,7 +152,7 @@ def run_command(context, input_root, commands, output_file, output_directory):
 
     stream = None
     for stream in response:
-        context.logger.info(stream)
+        click.echo(stream)
 
     execute_response = remote_execution_pb2.ExecuteResponse()
     stream.response.Unpack(execute_response)
