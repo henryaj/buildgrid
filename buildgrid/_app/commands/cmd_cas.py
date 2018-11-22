@@ -20,7 +20,6 @@ Execute command
 Request work to be executed and monitor status of jobs.
 """
 
-import logging
 import os
 import sys
 from urllib.parse import urlparse
@@ -63,8 +62,7 @@ def cli(context, remote, instance_name, client_key, client_cert, server_cert):
 
         context.channel = grpc.secure_channel(context.remote, credentials)
 
-    context.logger = logging.getLogger(__name__)
-    context.logger.debug("Starting for remote {}".format(context.remote))
+    click.echo("Starting for remote=[{}]".format(context.remote))
 
 
 @cli.command('upload-dummy', short_help="Upload a dummy action. Should be used with `execute dummy-request`")
@@ -75,7 +73,7 @@ def upload_dummy(context):
         action_digest = uploader.put_message(action)
 
     if action_digest.ByteSize():
-        click.echo('Success: Pushed digest "{}/{}"'
+        click.echo('Success: Pushed digest=["{}/{}]"'
                    .format(action_digest.hash, action_digest.size_bytes))
     else:
         click.echo("Error: Failed pushing empty message.", err=True)
@@ -92,7 +90,7 @@ def upload_file(context, file_path, verify):
         for path in file_path:
             if not os.path.isabs(path):
                 path = os.path.abspath(path)
-            context.logger.debug("Queueing {}".format(path))
+            click.echo("Queueing path=[{}]".format(path))
 
             file_digest = uploader.upload_file(path, queue=True)
 
@@ -102,12 +100,12 @@ def upload_file(context, file_path, verify):
     for file_digest in sent_digests:
         file_path = os.path.relpath(files_map[file_digest.hash])
         if verify and file_digest.size_bytes != os.stat(file_path).st_size:
-            click.echo('Error: Failed to verify "{}"'.format(file_path), err=True)
+            click.echo("Error: Failed to verify '{}'".format(file_path), err=True)
         elif file_digest.ByteSize():
-            click.echo('Success: Pushed "{}" with digest "{}/{}"'
+            click.echo("Success: Pushed path=[{}] with digest=[{}/{}]"
                        .format(file_path, file_digest.hash, file_digest.size_bytes))
         else:
-            click.echo('Error: Failed pushing "{}"'.format(file_path), err=True)
+            click.echo("Error: Failed pushing path=[{}]".format(file_path), err=True)
 
 
 @cli.command('upload-dir', short_help="Upload a directory to the CAS server.")
@@ -121,7 +119,7 @@ def upload_directory(context, directory_path, verify):
         for node, blob, path in merkle_tree_maker(directory_path):
             if not os.path.isabs(path):
                 path = os.path.abspath(path)
-            context.logger.debug("Queueing {}".format(path))
+            click.echo("Queueing path=[{}]".format(path))
 
             node_digest = uploader.put_blob(blob, digest=node.digest, queue=True)
 
@@ -134,12 +132,12 @@ def upload_directory(context, directory_path, verify):
             node_path = os.path.relpath(node_path)
         if verify and (os.path.isfile(node_path) and
                        node_digest.size_bytes != os.stat(node_path).st_size):
-            click.echo('Error: Failed to verify "{}"'.format(node_path), err=True)
+            click.echo("Error: Failed to verify path=[{}]".format(node_path), err=True)
         elif node_digest.ByteSize():
-            click.echo('Success: Pushed "{}" with digest "{}/{}"'
+            click.echo("Success: Pushed path=[{}] with digest=[{}/{}]"
                        .format(node_path, node_digest.hash, node_digest.size_bytes))
         else:
-            click.echo('Error: Failed pushing "{}"'.format(node_path), err=True)
+            click.echo("Error: Failed pushing path=[{}]".format(node_path), err=True)
 
 
 def _create_digest(digest_string):
@@ -160,8 +158,8 @@ def _create_digest(digest_string):
 @pass_context
 def download_file(context, digest_string, file_path, verify):
     if os.path.exists(file_path):
-        click.echo('Error: Invalid value for "file-path": ' +
-                   'Path "{}" already exists.'.format(file_path), err=True)
+        click.echo("Error: Invalid value for " +
+                   "path=[{}] already exists.".format(file_path), err=True)
         return
 
     digest = _create_digest(digest_string)
@@ -171,11 +169,11 @@ def download_file(context, digest_string, file_path, verify):
     if verify:
         file_digest = create_digest(read_file(file_path))
         if file_digest != digest:
-            click.echo('Error: Failed to verify "{}"'.format(file_path), err=True)
+            click.echo("Error: Failed to verify path=[{}]".format(file_path), err=True)
             return
 
     if os.path.isfile(file_path):
-        click.echo('Success: Pulled "{}" from digest "{}/{}"'
+        click.echo("Success: Pulled path=[{}] from digest=[{}/{}]"
                    .format(file_path, digest.hash, digest.size_bytes))
     else:
         click.echo('Error: Failed pulling "{}"'.format(file_path), err=True)
@@ -190,8 +188,8 @@ def download_file(context, digest_string, file_path, verify):
 def download_directory(context, digest_string, directory_path, verify):
     if os.path.exists(directory_path):
         if not os.path.isdir(directory_path) or os.listdir(directory_path):
-            click.echo('Error: Invalid value for "directory-path": ' +
-                       'Path "{}" already exists.'.format(directory_path), err=True)
+            click.echo("Error: Invalid value, " +
+                       "path=[{}] already exists.".format(directory_path), err=True)
             return
 
     digest = _create_digest(digest_string)
@@ -204,11 +202,11 @@ def download_directory(context, digest_string, directory_path, verify):
             if node.DESCRIPTOR is remote_execution_pb2.DirectoryNode.DESCRIPTOR:
                 last_directory_node = node
         if last_directory_node.digest != digest:
-            click.echo('Error: Failed to verify "{}"'.format(directory_path), err=True)
+            click.echo("Error: Failed to verify path=[{}]".format(directory_path), err=True)
             return
 
     if os.path.isdir(directory_path):
-        click.echo('Success: Pulled "{}" from digest "{}/{}"'
+        click.echo("Success: Pulled path=[{}] from digest=[{}/{}]"
                    .format(directory_path, digest.hash, digest.size_bytes))
     else:
-        click.echo('Error: Failed pulling "{}"'.format(directory_path), err=True)
+        click.echo("Error: Failed pulling path=[{}]".format(directory_path), err=True)
