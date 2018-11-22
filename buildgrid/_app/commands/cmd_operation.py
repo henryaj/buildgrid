@@ -21,7 +21,6 @@ Check the status of operations
 """
 
 from collections import OrderedDict
-import logging
 from operator import attrgetter
 from urllib.parse import urlparse
 import sys
@@ -67,8 +66,7 @@ def cli(context, remote, instance_name, client_key, client_cert, server_cert):
 
         context.channel = grpc.secure_channel(context.remote, credentials)
 
-    context.logger = logging.getLogger(__name__)
-    context.logger.debug("Starting for remote {}".format(context.remote))
+    click.echo("Starting for remote=[{}]".format(context.remote))
 
 
 def _print_operation_status(operation, print_details=False):
