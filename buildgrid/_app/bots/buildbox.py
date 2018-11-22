@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import logging
 import os
 import subprocess
 import tempfile
@@ -29,7 +30,8 @@ def work_buildbox(context, lease):
     """
     local_cas_directory = context.local_cas
     # instance_name = context.parent
-    logger = context.logger
+
+    logger = logging.getLogger(__name__)
 
     action_digest = remote_execution_pb2.Digest()
 
