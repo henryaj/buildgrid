@@ -26,7 +26,7 @@ from functools import partial
 
 import grpc
 
-from buildgrid._exceptions import FailedPreconditionError, InvalidArgumentError
+from buildgrid._exceptions import FailedPreconditionError, InvalidArgumentError, CancelledError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc
 from buildgrid._protos.google.longrunning import operations_pb2
 
@@ -79,6 +79,12 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
             yield operations_pb2.Operation()
 
+        except CancelledError as e:
+            self.__logger.error(e)
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.CANCELLED)
+            yield operations_pb2.Operation()
+
     def WaitExecution(self, request, context):
         self.__logger.debug("WaitExecution request from [%s]", context.peer())
 
@@ -109,6 +115,12 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             self.__logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            yield operations_pb2.Operation()
+
+        except CancelledError as e:
+            self.__logger.error(e)
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.CANCELLED)
             yield operations_pb2.Operation()
 
     def _get_instance(self, name):
