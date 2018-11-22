@@ -20,7 +20,6 @@ Bot command
 Create a bot interface and request work
 """
 
-import logging
 from pathlib import Path, PurePath
 import sys
 from urllib.parse import urlparse
@@ -120,8 +119,7 @@ def cli(context, parent, update_period, remote, client_key, client_cert, server_
         context.cas_client_cert = context.client_cert
         context.cas_server_cert = context.server_cert
 
-    context.logger = logging.getLogger(__name__)
-    context.logger.debug("Starting for remote {}".format(context.remote))
+    click.echo("Starting for remote=[{}]".format(context.remote))
 
     interface = bot_interface.BotInterface(context.channel)
 
