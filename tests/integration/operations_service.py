@@ -24,6 +24,7 @@ import grpc
 from grpc._server import _Context
 import pytest
 
+from buildgrid._enums import OperationStage
 from buildgrid._exceptions import InvalidArgumentError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
@@ -236,12 +237,24 @@ def test_delete_operation_fail(instance, context):
     context.set_code.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT)
 
 
-def test_cancel_operation(instance, context):
+def test_cancel_operation(instance, controller, execute_request, context):
+    response_execute = controller.execution_instance.execute(execute_request.action_digest,
+                                                             execute_request.skip_cache_lookup)
+
     request = operations_pb2.CancelOperationRequest()
-    request.name = "{}/{}".format(instance_name, "runner")
+    request.name = "{}/{}".format(instance_name, response_execute.name)
+
     instance.CancelOperation(request, context)
 
-    context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
+    request = operations_pb2.ListOperationsRequest(name=instance_name)
+    response = instance.ListOperations(request, context)
+
+    assert len(response.operations) is 1
+
+    for operation in response.operations:
+        operation_metadata = remote_execution_pb2.ExecuteOperationMetadata()
+        operation.metadata.Unpack(operation_metadata)
+        assert operation_metadata.stage == OperationStage.COMPLETED.value
 
 
 def test_cancel_operation_blank(blank_instance, context):
@@ -249,7 +262,7 @@ def test_cancel_operation_blank(blank_instance, context):
     request.name = "runner"
     blank_instance.CancelOperation(request, context)
 
-    context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_code.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT)
 
 
 def test_cancel_operation_instance_fail(instance, context):
