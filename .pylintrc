@@ -185,6 +185,7 @@ ignore-on-opaque-inference=yes
 # for classes with dynamically set attributes). This supports the use of
 # qualified names.
 ignored-classes=google.protobuf.any_pb2.Any,
+                google.protobuf.duration_pb2.Duration,
                 google.protobuf.timestamp_pb2.Timestamp
 
 # List of module names for which member attributes should not be checked
