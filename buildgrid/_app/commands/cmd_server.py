@@ -21,7 +21,6 @@ Create a BuildGrid server.
 """
 
 import asyncio
-import logging
 import sys
 
 import click
@@ -35,7 +34,7 @@ from ..settings import parser
 @click.group(name='server', short_help="Start a local server instance.")
 @pass_context
 def cli(context):
-    context.logger = logging.getLogger(__name__)
+    pass
 
 
 @cli.command('start', short_help="Setup a new server instance.")
@@ -61,7 +60,7 @@ def start(context, config):
         pass
 
     finally:
-        context.logger.info("Stopping server")
+        click.echo("Stopping server")
         server.stop()
         loop.close()
 
