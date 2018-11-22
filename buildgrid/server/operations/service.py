@@ -120,11 +120,6 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
             operation_name = self._parse_operation_name(name)
             instance.cancel_operation(operation_name)
 
-        except NotImplementedError as e:
-            self.__logger.error(e)
-            context.set_details(str(e))
-            context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-
         except InvalidArgumentError as e:
             self.__logger.error(e)
             context.set_details(str(e))
