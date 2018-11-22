@@ -25,6 +25,7 @@ from buildgrid._exceptions import InvalidArgumentError, NotFoundError, OutOfRang
 from buildgrid._protos.google.bytestream import bytestream_pb2
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2 as re_pb2
 from buildgrid.settings import HASH, HASH_LENGTH
+from buildgrid.utils import get_hash_type
 
 
 class ContentAddressableStorageInstance:
@@ -36,6 +37,19 @@ class ContentAddressableStorageInstance:
 
     def register_instance_with_server(self, instance_name, server):
         server.add_cas_instance(self, instance_name)
+
+    def hash_type(self):
+        return get_hash_type()
+
+    def max_batch_total_size_bytes(self):
+        # TODO: link with max size
+        # Should be added from settings in MR !119
+        return 2000000
+
+    def symlink_absolute_path_strategy(self):
+        # Currently this strategy is hardcoded into BuildGrid
+        # With no setting to reference
+        return re_pb2.CacheCapabilities().DISALLOWED
 
     def find_missing_blobs(self, blob_digests):
         storage = self._storage
