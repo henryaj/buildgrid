@@ -32,7 +32,8 @@ from buildgrid.server.cas.storage.s3 import S3Storage
 from buildgrid.server.cas.storage.with_cache import WithCacheStorage
 from buildgrid.settings import HASH
 
-from ..utils.cas import serve_cas, run_in_subprocess
+from ..utils.cas import serve_cas
+from ..utils.utils import run_in_subprocess
 
 
 BLOBS = [(b'abc', b'defg', b'hijk', b'')]

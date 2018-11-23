@@ -26,7 +26,8 @@ from buildgrid.client.cas import download, upload
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid.utils import create_digest
 
-from ..utils.cas import serve_cas, run_in_subprocess
+from ..utils.cas import serve_cas
+from ..utils.utils import run_in_subprocess
 
 
 INTANCES = ['', 'instance']
