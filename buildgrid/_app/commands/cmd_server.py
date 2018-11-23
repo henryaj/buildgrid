@@ -26,7 +26,7 @@ import click
 
 from buildgrid.server.instance import BuildGridServer
 
-from ..cli import pass_context
+from ..cli import pass_context, setup_logging
 from ..settings import parser
 
 
@@ -37,9 +37,14 @@ def cli(context):
 
 
 @cli.command('start', short_help="Setup a new server instance.")
-@click.argument('CONFIG', type=click.Path(file_okay=True, dir_okay=False, writable=False))
+@click.argument('CONFIG',
+                type=click.Path(file_okay=True, dir_okay=False, writable=False))
+@click.option('-v', '--verbose', count=True,
+              help='Increase log verbosity level.')
 @pass_context
-def start(context, config):
+def start(context, config, verbose):
+    setup_logging(verbosity=verbose)
+
     with open(config) as f:
         settings = parser.get_parser().safe_load(f)
 

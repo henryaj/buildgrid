@@ -34,7 +34,7 @@ from buildgrid.bot.hardware.worker import Worker
 
 
 from ..bots import buildbox, dummy, host
-from ..cli import pass_context
+from ..cli import pass_context, setup_logging
 
 
 @click.group(name='bot', short_help="Create and register bot clients.")
@@ -58,9 +58,12 @@ from ..cli import pass_context
               help="Time period for bot updates to the server in seconds.")
 @click.option('--parent', type=click.STRING, default='main', show_default=True,
               help="Targeted farm resource.")
+@click.option('-v', '--verbose', count=True,
+              help='Increase log verbosity level.')
 @pass_context
 def cli(context, parent, update_period, remote, client_key, client_cert, server_cert,
-        remote_cas, cas_client_key, cas_client_cert, cas_server_cert):
+        remote_cas, cas_client_key, cas_client_cert, cas_server_cert, verbose):
+    setup_logging(verbosity=verbose)
     # Setup the remote execution server channel:
     url = urlparse(remote)
 
@@ -122,9 +125,8 @@ def cli(context, parent, update_period, remote, client_key, client_cert, server_
         context.cas_client_cert = context.client_cert
         context.cas_server_cert = context.server_cert
 
-    click.echo("Starting for remote=[{}]".format(context.remote))
-
     bot_interface = interface.BotInterface(context.channel)
+
     worker = Worker()
     worker.add_device(Device())
     hardware_interface = HardwareInterface(worker)

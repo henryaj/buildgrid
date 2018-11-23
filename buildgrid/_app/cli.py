@@ -23,10 +23,12 @@ will be attempted to be imported.
 
 import logging
 import os
+import sys
 
 import click
 import grpc
 
+from buildgrid.settings import LOG_RECORD_FORMAT
 from buildgrid.utils import read_file
 
 CONTEXT_SETTINGS = dict(auto_envvar_prefix='BUILDGRID')
@@ -138,28 +140,39 @@ class BuildGridCLI(click.MultiCommand):
         return mod.cli
 
 
+def setup_logging(verbosity=0, debug_mode=False):
+    """Deals with loggers verbosity"""
+    asyncio_logger = logging.getLogger('asyncio')
+    root_logger = logging.getLogger()
+
+    log_handler = logging.StreamHandler(stream=sys.stdout)
+
+    logging.basicConfig(format=LOG_RECORD_FORMAT, handlers=[log_handler])
+
+    if verbosity == 1:
+        root_logger.setLevel(logging.WARNING)
+    elif verbosity == 2:
+        root_logger.setLevel(logging.INFO)
+    elif verbosity >= 3:
+        root_logger.setLevel(logging.DEBUG)
+    else:
+        root_logger.setLevel(logging.ERROR)
+
+    if not debug_mode:
+        asyncio_logger.setLevel(logging.CRITICAL)
+    else:
+        asyncio_logger.setLevel(logging.DEBUG)
+        root_logger.setLevel(logging.DEBUG)
+
+
 @click.command(cls=BuildGridCLI, context_settings=CONTEXT_SETTINGS)
-@click.option('-v', '--verbose', count=True,
-              help='Increase log verbosity level.')
 @pass_context
-def cli(context, verbose):
+def cli(context):
     """BuildGrid App"""
-    logger = logging.getLogger()
+    root_logger = logging.getLogger()
 
     # Clean-up root logger for any pre-configuration:
-    for log_handler in logger.handlers[:]:
-        logger.removeHandler(log_handler)
-    for log_filter in logger.filters[:]:
-        logger.removeFilter(log_filter)
-
-    logging.basicConfig(
-        format='%(asctime)s:%(name)32.32s][%(levelname)5.5s]: %(message)s')
-
-    if verbose == 1:
-        logger.setLevel(logging.WARNING)
-    elif verbose == 2:
-        logger.setLevel(logging.INFO)
-    elif verbose >= 3:
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.ERROR)
+    for log_handler in root_logger.handlers[:]:
+        root_logger.removeHandler(log_handler)
+    for log_filter in root_logger.filters[:]:
+        root_logger.removeFilter(log_filter)
