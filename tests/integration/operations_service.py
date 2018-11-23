@@ -28,10 +28,8 @@ from buildgrid._enums import OperationStage
 from buildgrid._exceptions import InvalidArgumentError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
-from buildgrid._protos.google.rpc import status_pb2
 from buildgrid.server.cas.storage import lru_memory_cache
 from buildgrid.server.controller import ExecutionController
-from buildgrid.server.job import LeaseState
 from buildgrid.server.operations import service
 from buildgrid.server.operations.service import OperationsService
 from buildgrid.utils import create_digest
@@ -164,31 +162,6 @@ def test_list_operations_instance_fail(instance, controller, execute_request, co
     instance.ListOperations(request, context)
 
     context.set_code.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT)
-
-
-def test_list_operations_with_result(instance, controller, execute_request, context):
-    response_execute = controller.execution_instance.execute(execute_request.action_digest,
-                                                             execute_request.skip_cache_lookup)
-
-    action_result = remote_execution_pb2.ActionResult()
-    output_file = remote_execution_pb2.OutputFile(path='unicorn')
-    action_result.output_files.extend([output_file])
-
-    controller.operations_instance._scheduler.jobs[response_execute.name].create_lease()
-    controller.operations_instance._scheduler.update_job_lease_state(response_execute.name,
-                                                                     LeaseState.COMPLETED,
-                                                                     lease_status=status_pb2.Status(),
-                                                                     lease_result=_pack_any(action_result))
-
-    request = operations_pb2.ListOperationsRequest(name=instance_name)
-    response = instance.ListOperations(request, context)
-
-    assert response.operations[0].name.split('/')[-1] == response_execute.name
-
-    execute_response = remote_execution_pb2.ExecuteResponse()
-    response.operations[0].response.Unpack(execute_response)
-
-    assert execute_response.result.output_files == action_result.output_files
 
 
 def test_list_operations_empty(instance, context):
