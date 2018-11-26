@@ -169,7 +169,7 @@ def test_list_operations_empty(instance, context):
 
     response = instance.ListOperations(request, context)
 
-    assert len(response.operations) is 0
+    assert not response.operations
 
 
 # Send execution off, delete, try to find operation should fail
@@ -222,7 +222,7 @@ def test_cancel_operation(instance, controller, execute_request, context):
     request = operations_pb2.ListOperationsRequest(name=instance_name)
     response = instance.ListOperations(request, context)
 
-    assert len(response.operations) is 1
+    assert len(response.operations) == 1
 
     for operation in response.operations:
         operation_metadata = remote_execution_pb2.ExecuteOperationMetadata()

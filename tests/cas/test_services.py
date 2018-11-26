@@ -162,7 +162,7 @@ def test_bytestream_write_rejects_wrong_hash(mocked):
     servicer.Write(requests, context)
     context.set_code.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT)
 
-    assert len(storage.data) is 0
+    assert not storage.data
 
 
 @pytest.mark.parametrize("instance", instances)
