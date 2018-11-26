@@ -2,7 +2,7 @@
 image: python:3.5-stretch
 
 variables:
-  BGD: bgd --verbose
+  BGD: bgd
 
 stages:
   - test
