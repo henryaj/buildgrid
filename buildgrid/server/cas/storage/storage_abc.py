@@ -34,7 +34,7 @@ class StorageABC(abc.ABC):
     @abc.abstractmethod
     def has_blob(self, digest):
         """Return True if the blob with the given instance/digest exists."""
-        pass
+        raise NotImplementedError()
 
     @abc.abstractmethod
     def get_blob(self, digest):
@@ -42,14 +42,14 @@ class StorageABC(abc.ABC):
 
         If the blob isn't present in storage, return None.
         """
-        pass
+        raise NotImplementedError()
 
     @abc.abstractmethod
     def begin_write(self, digest):
         """Return a file-like object to which a blob's contents could be
         written.
         """
-        pass
+        raise NotImplementedError()
 
     @abc.abstractmethod
     def commit_write(self, digest, write_session):
@@ -60,7 +60,7 @@ class StorageABC(abc.ABC):
         written to the write_session actually matches the digest. The caller
         must do that.
         """
-        pass
+        raise NotImplementedError()
 
     def missing_blobs(self, digests):
         """Return a container containing the blobs not present in CAS."""
