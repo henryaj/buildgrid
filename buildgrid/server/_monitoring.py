@@ -156,8 +156,10 @@ class MonitoringBus:
                 output_writers.append(output_file)
 
                 while True:
-                    if await __streaming_worker(iter(output_file)):
+                    if await __streaming_worker([output_file]):
                         self.__sequence_number += 1
+
+                        output_file.flush()
 
             else:
                 output_writers.append(sys.stdout.buffer)
