@@ -29,6 +29,7 @@ import janus
 from buildgrid._enums import BotStatus, LogRecordLevel, MetricRecordDomain, MetricRecordType
 from buildgrid._protos.buildgrid.v2 import monitoring_pb2
 from buildgrid.server.actioncache.service import ActionCacheService
+from buildgrid.server._authentication import AuthMetadataMethod, AuthMetadataAlgorithm, AuthMetadataServerInterceptor
 from buildgrid.server.bots.service import BotsService
 from buildgrid.server.capabilities.instance import CapabilitiesInstance
 from buildgrid.server.capabilities.service import CapabilitiesService
@@ -47,11 +48,22 @@ class BuildGridServer:
     requisite services.
     """
 
-    def __init__(self, max_workers=None, monitor=False):
+    def __init__(self, max_workers=None, monitor=False, auth_method=AuthMetadataMethod.NONE,
+                 auth_secret=None, auth_algorithm=AuthMetadataAlgorithm.UNSPECIFIED):
         """Initializes a new :class:`BuildGridServer` instance.
 
         Args:
             max_workers (int, optional): A pool of max worker threads.
+            monitor (bool, optional): Whether or not to globally activate server
+                monitoring. Defaults to ``False``.
+            auth_method (AuthMetadataMethod, optional): Authentication method to
+                be used for request authorization. Defaults to ``NONE``.
+            auth_secret (str, optional): The secret or key to be used for
+                authorizing request using `auth_method`. Defaults to ``None``.
+            auth_algorithm (AuthMetadataAlgorithm, optional): The crytographic
+                algorithm to be uses in combination with `auth_secret` for
+                authorizing request using `auth_method`. Defaults to
+                ``UNSPECIFIED``.
         """
         self.__logger = logging.getLogger(__name__)
 
@@ -59,8 +71,17 @@ class BuildGridServer:
             # Use max_workers default from Python 3.5+
             max_workers = (os.cpu_count() or 1) * 5
 
+        self.__grpc_auth_interceptor = None
+        if auth_method != AuthMetadataMethod.NONE:
+            self.__grpc_auth_interceptor = AuthMetadataServerInterceptor(
+                method=auth_method, secret=auth_secret, algorithm=auth_algorithm)
         self.__grpc_executor = futures.ThreadPoolExecutor(max_workers)
-        self.__grpc_server = grpc.server(self.__grpc_executor)
+
+        if self.__grpc_auth_interceptor is not None:
+            self.__grpc_server = grpc.server(
+                self.__grpc_executor, interceptors=(self.__grpc_auth_interceptor,))
+        else:
+            self.__grpc_server = grpc.server(self.__grpc_executor)
 
         self.__main_loop = asyncio.get_event_loop()
 
