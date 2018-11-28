@@ -21,8 +21,8 @@ import tempfile
 
 import boto3
 import grpc
-import pytest
 from moto import mock_s3
+import pytest
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid.server.cas.storage.remote import RemoteStorage
