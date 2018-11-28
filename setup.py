@@ -85,6 +85,11 @@ def get_cmdclass():
     }
     return cmdclass
 
+auth_require = [
+    'cryptography >= 1.8.0',  # Required by pyjwt for RSA
+    'pyjwt >= 1.5.0',
+]
+
 tests_require = [
     'coverage >= 4.5.0',
     'moto < 1.3.7',
@@ -130,6 +135,7 @@ setup(
     setup_requires=['pytest-runner'],
     tests_require=tests_require,
     extras_require={
+        'auth': auth_require,
         'docs': docs_require,
         'tests': tests_require,
     },

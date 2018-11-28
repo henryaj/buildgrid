@@ -59,20 +59,20 @@ have to adjust your ``PATH``, in ``~/.bashrc``, with:
 
 .. note::
 
-   The ``setup.py`` script defines two extra targets, ``docs`` and ``tests``,
-   that declare required dependency for, respectively, generating documentation
-   and running unit-tests. They can be use as helpers for setting up a
-   development environment. To use them simply run:
+   The ``setup.py`` script defines three extra targets, ``auth``, ``docs`` and
+   ``tests``. They declare required dependency for, respectively, authentication
+   and authorization management, generating documentation and running
+   unit-tests. They can be use as helpers for setting up a development
+   environment. To use them simply run:
 
    .. code-block:: sh
 
-      pip3 install --user --editable ".[docs,tests]"
-
+      pip3 install --user --editable ".[auth,docs,tests]"
 
 
 .. install-docker:
 
-Installation through docker
+Installation through Docker
 ---------------------------
 
 How to build a Docker image that runs BuildGrid.
