@@ -4,9 +4,11 @@
 BuildStream client
 ==================
 
-`BuildStream`_  is a free software tool for building and integrating software
+`BuildStream`_ is a free software tool for building and integrating software
 stacks. It supports remote build execution using the remote execution API
-(REAPI) v2.
+(REAPI) v2. The project's documentation has a detailed section about its
+`remote execution subsystem architecture`_ that you are very recommanded to
+read first.
 
 .. note::
 
@@ -15,6 +17,7 @@ stacks. It supports remote build execution using the remote execution API
    remote execution.
 
 .. _BuildStream: https://buildstream.build
+.. _remote execution subsystem architecture: https://buildstream.gitlab.io/buildstream/arch_remote_execution.html
 .. _install it from sources: https://buildstream.build/source_install.html
 
 
@@ -43,23 +46,23 @@ Project configuration
 In order to activate remote build execution at project-level, the project's
 ``project.conf`` file must declare two specific configuration nodes:
 
-- ``artifacts`` for `remote CAS endpoint details`_.
+- ``artifacts`` for `remote cache endpoint details`_.
 - ``remote-execution`` for `remote execution endpoint details`_.
 
 .. important::
 
    BuildStream does not support multi-instance remote execution servers and will
    always submit remote execution request omitting the instance name parameter.
-   Thus, you must declare an unnamed `""` instance  in your server configuration
+   Thus, you must declare an unnamed `''` instance  in your server configuration
    to workaround this.
 
 .. important::
 
-   If you are using BuildGrid's artifact server, the server instance **must**
-   accept pushes from your client for remote execution to be possible.
+   If you are using BuildStream's artifact server, the server instance pointed
+   by the ``storage-service`` key **must** accept pushes from your client for
+   remote execution to be possible.
 
-
-.. _remote CAS endpoint details: https://buildstream.gitlab.io/buildstream/install_artifacts.html#user-configuration
+.. _remote cache endpoint details: https://buildstream.gitlab.io/buildstream/format_project.html#artifact-server
 .. _remote execution endpoint details: https://buildstream.gitlab.io/buildstream/format_project.html#remote-execution
 
 
@@ -167,7 +170,15 @@ append at the end of the ``project.conf`` file from the root directory:
      push: true
 
    remote-execution:
-     url: http://localhost:50051
+     execution-service:
+       url: http://localhost:50051
+     storage-service:
+       url: http://localhost:50051
+       client-key: ''
+       client-cert: ''
+       server-cert: ''
+     action-cache-service:
+       url: http://localhost:50051
 
 This activates BuildGrid's remote execution mode and points to the unnamed
 remote execution server instance at ``localhost:50051``.
