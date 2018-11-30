@@ -23,18 +23,12 @@ from buildgrid._exceptions import NotFoundError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
 from buildgrid._protos.google.bytestream import bytestream_pb2, bytestream_pb2_grpc
 from buildgrid._protos.google.rpc import code_pb2
-from buildgrid.settings import HASH
+from buildgrid.settings import HASH, MAX_REQUEST_SIZE, MAX_REQUEST_COUNT
 from buildgrid.utils import merkle_tree_maker
 
 
 # Maximum size for a queueable file:
 FILE_SIZE_THRESHOLD = 1 * 1024 * 1024
-
-# Maximum size for a single gRPC request:
-MAX_REQUEST_SIZE = 2 * 1024 * 1024
-
-# Maximum number of elements per gRPC request:
-MAX_REQUEST_COUNT = 500
 
 
 class _CallCache:
@@ -390,11 +384,10 @@ class Downloader:
                 assert digest.hash in directories
 
                 directory = directories[digest.hash]
-                self._write_directory(digest.hash, directory_path,
+                self._write_directory(directory, directory_path,
                                       directories=directories, root_barrier=directory_path)
 
                 directory_fetched = True
-
             except grpc.RpcError as e:
                 status_code = e.code()
                 if status_code == grpc.StatusCode.UNIMPLEMENTED:

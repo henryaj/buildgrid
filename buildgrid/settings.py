@@ -24,3 +24,9 @@ HASH_LENGTH = HASH().digest_size * 2
 
 # Period, in seconds, for the monitoring cycle:
 MONITORING_PERIOD = 5.0
+
+# Maximum size for a single gRPC request:
+MAX_REQUEST_SIZE = 2 * 1024 * 1024
+
+# Maximum number of elements per gRPC request:
+MAX_REQUEST_COUNT = 500

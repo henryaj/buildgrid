@@ -24,7 +24,7 @@ import logging
 from buildgrid._exceptions import InvalidArgumentError, NotFoundError, OutOfRangeError
 from buildgrid._protos.google.bytestream import bytestream_pb2
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2 as re_pb2
-from buildgrid.settings import HASH, HASH_LENGTH
+from buildgrid.settings import HASH, HASH_LENGTH, MAX_REQUEST_SIZE, MAX_REQUEST_COUNT
 from buildgrid.utils import get_hash_type
 
 
@@ -42,9 +42,7 @@ class ContentAddressableStorageInstance:
         return get_hash_type()
 
     def max_batch_total_size_bytes(self):
-        # TODO: link with max size
-        # Should be added from settings in MR !119
-        return 2000000
+        return MAX_REQUEST_SIZE
 
     def symlink_absolute_path_strategy(self):
         # Currently this strategy is hardcoded into BuildGrid
@@ -71,6 +69,41 @@ class ContentAddressableStorageInstance:
             response_proto.status.CopyFrom(status)
 
         return response
+
+    def get_tree(self, request):
+        storage = self._storage
+
+        response = re_pb2.GetTreeResponse()
+        page_size = request.page_size
+
+        if not request.page_size:
+            request.page_size = MAX_REQUEST_COUNT
+
+        root_digest = request.root_digest
+        page_size = request.page_size
+
+        def __get_tree(node_digest):
+            nonlocal response, page_size, request
+
+            if not page_size:
+                page_size = request.page_size
+                yield response
+                response = re_pb2.GetTreeResponse()
+
+            if response.ByteSize() >= (MAX_REQUEST_SIZE):
+                yield response
+                response = re_pb2.GetTreeResponse()
+
+            directory_from_digest = storage.get_message(node_digest, re_pb2.Directory)
+            page_size -= 1
+            response.directories.extend([directory_from_digest])
+
+            for directory in directory_from_digest.directories:
+                yield from __get_tree(directory.digest)
+
+            yield response
+
+        return __get_tree(root_digest)
 
 
 class ByteStreamInstance:

@@ -86,10 +86,16 @@ class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressa
     def GetTree(self, request, context):
         self.__logger.debug("GetTree request from [%s]", context.peer())
 
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
+        try:
+            instance = self._get_instance(request.instance_name)
+            yield from instance.get_tree(request)
 
-        return iter([remote_execution_pb2.GetTreeResponse()])
+        except InvalidArgumentError as e:
+            self.__logger.error(e)
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+
+            yield remote_execution_pb2.GetTreeResponse()
 
     def _get_instance(self, instance_name):
         try:
