@@ -20,6 +20,7 @@ before_script:
   variables:
     PYTEST_ADDOPTS: "--color=yes"
   script:
+    - python3 -m pip install --user --editable ".[auth]"
     - python3 setup.py test
     - mkdir -p coverage/
     - cp .coverage coverage/coverage."${CI_JOB_NAME}"
