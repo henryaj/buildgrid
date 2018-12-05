@@ -38,7 +38,7 @@ def cli(context):
 
 @cli.command('start', short_help="Setup a new server instance.")
 @click.argument('CONFIG',
-                type=click.Path(file_okay=True, dir_okay=False, writable=False))
+                type=click.Path(file_okay=True, dir_okay=False, exists=True, writable=False))
 @click.option('-v', '--verbose', count=True,
               help='Increase log verbosity level.')
 @pass_context
