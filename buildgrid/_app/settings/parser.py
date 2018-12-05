@@ -46,6 +46,8 @@ class YamlFactory(yaml.YAMLObject):
 
         else:
             values = loader.construct_mapping(node, deep=True)
+            for key, value in dict(values).items():
+                values[key.replace('-', '_')] = values.pop(key)
             return cls(**values)
 
 
