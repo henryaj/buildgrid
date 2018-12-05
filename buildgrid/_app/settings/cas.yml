@@ -1,11 +1,11 @@
 server:
   - !channel
     port: 50052
-    insecure_mode: true
-#    credentials:
-#      tls-server-key: null
-#      tls-server-cert: null
-#      tls-client-certs: null
+    insecure-mode: true
+    # credentials:
+    #   tls-server-key: null
+    #   tls-server-cert: null
+    #   tls-client-certs: null
 
 description: |
   Just a CAS with some reference storage.
@@ -16,8 +16,8 @@ instances:
       The main server
 
     storages:
-        - !disk-storage &main-storage
-          path: !expand-path $HOME/cas/
+      - !disk-storage &main-storage
+        path: !expand-path $HOME/cas
 
     services:
       - !cas
@@ -28,5 +28,5 @@ instances:
 
       - !reference-cache
         storage: *main-storage
-        max_cached_refs: 256
-        allow_updates: true
+        max-cached-refs: 256
+        allow-updates: true
