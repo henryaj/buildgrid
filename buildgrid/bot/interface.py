@@ -37,22 +37,25 @@ class BotInterface:
         self._stub = bots_pb2_grpc.BotsStub(channel)
 
     def create_bot_session(self, parent, bot_session):
+        """ Create bot session request
+        Returns BotSession if correct else a grpc StatusCode
+        """
         request = bots_pb2.CreateBotSessionRequest(parent=parent,
                                                    bot_session=bot_session)
-        try:
-            return self._stub.CreateBotSession(request)
-
-        except grpc.RpcError as e:
-            self.__logger.error(e)
-            raise
+        return self._bot_call(self._stub.CreateBotSession, request)
 
     def update_bot_session(self, bot_session, update_mask=None):
+        """ Update bot session request
+        Returns BotSession if correct else a grpc StatusCode
+        """
         request = bots_pb2.UpdateBotSessionRequest(name=bot_session.name,
                                                    bot_session=bot_session,
                                                    update_mask=update_mask)
-        try:
-            return self._stub.UpdateBotSession(request)
+        return self._bot_call(self._stub.UpdateBotSession, request)
 
+    def _bot_call(self, call, request):
+        try:
+            return call(request)
         except grpc.RpcError as e:
-            self.__logger.error(e)
-            raise
+            self.__logger.error(e.code())
+            return e.code()

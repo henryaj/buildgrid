@@ -143,8 +143,8 @@ def run_dummy(context):
     """
     try:
         bot_session = session.BotSession(context.parent, context.bot_interface, context.hardware_interface,
-                                         dummy.work_dummy, context)
-        b = bot.Bot(bot_session, context.update_period)
+                                         dummy.work_dummy, context, context.update_period)
+        b = bot.Bot(bot_session)
         b.session()
     except KeyboardInterrupt:
         pass
@@ -159,8 +159,8 @@ def run_host_tools(context):
     """
     try:
         bot_session = session.BotSession(context.parent, context.bot_interface, context.hardware_interface,
-                                         host.work_host_tools, context)
-        b = bot.Bot(bot_session, context.update_period)
+                                         host.work_host_tools, context, context.update_period)
+        b = bot.Bot(bot_session)
         b.session()
     except KeyboardInterrupt:
         pass
@@ -181,8 +181,8 @@ def run_buildbox(context, local_cas, fuse_dir):
 
     try:
         bot_session = session.BotSession(context.parent, context.bot_interface, context.hardware_interface,
-                                         buildbox.work_buildbox, context)
-        b = bot.Bot(bot_session, context.update_period)
+                                         buildbox.work_buildbox, context, context.update_period)
+        b = bot.Bot(bot_session)
         b.session()
     except KeyboardInterrupt:
         pass

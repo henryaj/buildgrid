@@ -19,8 +19,10 @@ Bot Session
 
 Allows connections
 """
+import asyncio
 import logging
 import platform
+import grpc
 
 from buildgrid._enums import BotStatus, LeaseState
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
@@ -32,7 +34,8 @@ from .tenantmanager import TenantManager
 
 
 class BotSession:
-    def __init__(self, parent, bots_interface, hardware_interface, work, context=None):
+    def __init__(self, parent, bots_interface, hardware_interface, work,
+                 context=None, update_period=1):
         """ Unique bot ID within the farm used to identify this bot
         Needs to be human readable.
         All prior sessions with bot_id of same ID are invalidated.
@@ -54,14 +57,37 @@ class BotSession:
         self._work = work
         self._context = context
 
+        self.__connected = False
+        self.__update_period = update_period
+
     @property
     def bot_id(self):
         return self.__bot_id
+
+    @property
+    def connected(self):
+        return self.__connected
+
+    async def run(self):
+        try:
+            while True:
+                if not self.connected:
+                    self.create_bot_session()
+                else:
+                    self.update_bot_session()
+
+                await asyncio.sleep(self.__update_period)
+        except asyncio.CancelledError:
+            pass
 
     def create_bot_session(self):
         self.__logger.debug("Creating bot session")
 
         session = self._bots_interface.create_bot_session(self.__parent, self.get_pb2())
+        if session in list(grpc.StatusCode):
+            self.__connected = False
+            return
+        self.__connected = True
         self.__name = session.name
 
         self.__logger.info("Created bot session with name: [%s]", self.__name)
@@ -73,6 +99,10 @@ class BotSession:
         self.__logger.debug("Updating bot session: [%s]", self.__bot_id)
 
         session = self._bots_interface.update_bot_session(self.get_pb2())
+        if session in list(grpc.StatusCode):
+            self.__connected = False
+            return
+        self.__connected = True
         server_ids = []
 
         for lease in session.leases:
