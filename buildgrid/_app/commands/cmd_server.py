@@ -24,7 +24,9 @@ import sys
 
 import click
 
+from buildgrid.server._authentication import AuthMetadataMethod, AuthMetadataAlgorithm
 from buildgrid.server.instance import BuildGridServer
+from buildgrid.utils import read_file
 
 from ..cli import pass_context, setup_logging
 from ..settings import parser
@@ -43,6 +45,7 @@ def cli(context):
               help='Increase log verbosity level.')
 @pass_context
 def start(context, config, verbose):
+    """Entry point for the bgd-server CLI command group."""
     setup_logging(verbosity=verbose)
 
     with open(config) as f:
@@ -65,20 +68,40 @@ def start(context, config, verbose):
         server.stop()
 
 
-def _create_server_from_config(config):
-    server_settings = config['server']
-
-    server = BuildGridServer()
+def _create_server_from_config(configuration):
+    """Parses configuration and setup a fresh server instance."""
+    kargs = {}
 
     try:
-        for channel in server_settings:
-            server.add_port(channel.address, channel.credentials)
+        network = configuration['server']
+        instances = configuration['instances']
 
-    except (AttributeError, TypeError) as e:
-        click.echo("Error: Use list of `!channel` tags: {}.\n".format(e), err=True)
+    except KeyError as e:
+        click.echo("Error: Section missing from configuration: {}.".format(e), err=True)
         sys.exit(-1)
 
-    instances = config['instances']
+    if 'authorization' in configuration:
+        authorization = configuration['authorization']
+
+        try:
+            if 'method' in authorization:
+                kargs['auth_method'] = AuthMetadataMethod(authorization['method'])
+
+            if 'secret' in authorization:
+                kargs['auth_secret'] = read_file(authorization['secret']).decode().strip()
+
+            if 'algorithm' in authorization:
+                kargs['auth_algorithm'] = AuthMetadataAlgorithm(authorization['algorithm'])
+
+        except (ValueError, OSError) as e:
+            click.echo("Error: Configuration, {}.".format(e), err=True)
+            sys.exit(-1)
+
+    server = BuildGridServer(**kargs)
+
+    for channel in network:
+        server.add_port(channel.address, channel.credentials)
+
     for instance in instances:
         instance_name = instance['name']
         services = instance['services']
