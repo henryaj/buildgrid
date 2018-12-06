@@ -139,6 +139,9 @@ class BuildGridServer:
             root_logger.removeHandler(log_handler)
         root_logger.addHandler(self.__logging_handler)
 
+        if self._is_instrumented and self.__monitoring_bus.prints_records:
+            self.__print_log_records = False
+
     # --- Public API ---
 
     def start(self):
