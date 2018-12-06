@@ -48,20 +48,7 @@ class Scheduler:
         self._is_instrumented = monitor
 
         if self._is_instrumented:
-            self.__build_metadata_queues = []
-
-            self.__operations_by_stage = {}
-            self.__leases_by_state = {}
-            self.__queue_time_average = 0, timedelta()
-
-            self.__operations_by_stage[OperationStage.CACHE_CHECK] = set()
-            self.__operations_by_stage[OperationStage.QUEUED] = set()
-            self.__operations_by_stage[OperationStage.EXECUTING] = set()
-            self.__operations_by_stage[OperationStage.COMPLETED] = set()
-
-            self.__leases_by_state[LeaseState.PENDING] = set()
-            self.__leases_by_state[LeaseState.ACTIVE] = set()
-            self.__leases_by_state[LeaseState.COMPLETED] = set()
+            self.activate_monitoring()
 
     # --- Public API ---
 
@@ -231,6 +218,43 @@ class Scheduler:
     @property
     def is_instrumented(self):
         return self._is_instrumented
+
+    def activate_monitoring(self):
+        """Activated jobs monitoring."""
+        if self._is_instrumented:
+            return
+
+        self.__build_metadata_queues = []
+
+        self.__operations_by_stage = {}
+        self.__leases_by_state = {}
+        self.__queue_time_average = 0, timedelta()
+        self.__retries_count = 0
+
+        self.__operations_by_stage[OperationStage.CACHE_CHECK] = set()
+        self.__operations_by_stage[OperationStage.QUEUED] = set()
+        self.__operations_by_stage[OperationStage.EXECUTING] = set()
+        self.__operations_by_stage[OperationStage.COMPLETED] = set()
+
+        self.__leases_by_state[LeaseState.PENDING] = set()
+        self.__leases_by_state[LeaseState.ACTIVE] = set()
+        self.__leases_by_state[LeaseState.COMPLETED] = set()
+
+        self._is_instrumented = True
+
+    def deactivate_monitoring(self):
+        """Deactivated jobs monitoring."""
+        if not self._is_instrumented:
+            return
+
+        self._is_instrumented = False
+
+        self.__build_metadata_queues = None
+
+        self.__operations_by_stage = None
+        self.__leases_by_state = None
+        self.__queue_time_average = None
+        self.__retries_count = 0
 
     def register_build_metadata_watcher(self, message_queue):
         if self.__build_metadata_queues is not None:
