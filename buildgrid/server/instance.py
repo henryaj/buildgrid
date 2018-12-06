@@ -232,6 +232,9 @@ class BuildGridServer:
         self._schedulers[instance_name] = instance.scheduler
         self._instances.add(instance_name)
 
+        if self._is_instrumented:
+            instance.scheduler.activate_monitoring()
+
     def add_bots_interface(self, instance, instance_name):
         """Adds a :obj:`BotsInterface` to the service.
 
