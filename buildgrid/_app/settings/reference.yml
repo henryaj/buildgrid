@@ -103,3 +103,30 @@ instances:
         ##
         # Whether or not writing to the cache is allowed.
         allow-updates: true
+
+##
+# Server's internal monitoring configuration.
+monitoring:
+  ##
+  # Whether or not to activate the monitoring subsytem.
+  enabled: false
+
+  ##
+  # Type of the monitoring bus endpoint.
+  #  stdout  - Standard output stream.
+  #  file    - On-disk file.
+  #  socket  - UNIX domain socket.
+  endpoint-type: socket
+
+  ##
+  # Location for the monitoring bus endpoint. Only
+  # necessary for 'file' and 'socket' `endpoint-type`.
+  # Full path is expected for 'file', name
+  # only for 'socket'.
+  endpoint-location: monitoring_bus_socket
+
+  ##
+  # Messages serialisation format.
+  #  binary  - Protobuf binary format.
+  #  json    - JSON format.
+  serialization-format: binary
