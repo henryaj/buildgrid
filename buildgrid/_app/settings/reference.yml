@@ -1,0 +1,105 @@
+##
+# Server's configuration desciption.
+description: |
+  BuildGrid's server reference configuration.
+
+##
+# Server's network configuration.
+server:
+  - !channel
+    ##
+    # TCP port number.
+    port: 50051
+    ##
+    # Whether or not to activate SSL/TLS encryption.
+    insecure-mode: true
+    ##
+    # SSL/TLS credentials.
+    credentials:
+      tls-server-key: !expand-path ~/.config/buildgrid/server.key
+      tls-server-cert: !expand-path ~/.config/buildgrid/server.cert
+      tls-client-certs: !expand-path ~/.config/buildgrid/client.cert
+
+##
+# Server's authorization configuration.
+authorization:
+  ##
+  # Type of authorization method.
+  #  none  - Bypass the authorization mechanism
+  #  jwt   - OAuth 2.0 bearer with JWT tokens
+  method: jwt
+  ##
+  # Location for the file containing the secret, pass
+  # or key needed by 'method' to authorize requests.
+  secret: !expand-path ~/.config/buildgrid/auth.secret
+  ##
+  # Encryption algorithm to be used together with 'secret'
+  # by 'method' to authorize requests (optinal).
+  #  hs256  - HMAC+SHA-256 for JWT method
+  #  rs256  - RSASSA-PKCS1-v1_5+SHA-256 for JWT method
+  algorithm: rs256
+
+##
+# Server's instances configuration.
+instances:
+  - name: main
+    description: |
+      The 'main' server instance.
+    ##
+    # List of storage backends for the instance.
+    #  disk         - On-disk storage.
+    #  lru-storage  - In-memory storage (non-persistant).
+    #  remote       - Proxy to remote storage.
+    #  s3-storage   - Amazon S3 storage.
+    storages:
+      - !disk-storage &main-storage
+        ##
+        # Path to the local storage folder.
+        path: !expand-path $HOME/cas
+    ##
+    # List of services for the instance.
+    #  action-cache     - REAPI ActionCache service.
+    #  bytestream       - Google APIs ByteStream service.
+    #  cas              - REAPI ContentAddressableStorage service.
+    #  execution        - REAPI Execution + RWAPI ots services.
+    #  reference-cache  - BuildStream ReferenceStorage service.
+    services:
+      - !action-cache &main-action
+        ##
+        # Alias to a storage backend, see 'storages'.
+        storage: *memory-storage
+        ##
+        # Maximum number of entires kept in cache.
+        max-cached-refs: 256
+        ##
+        # Whether or not writing to the cache is allowed.
+        allow-updates: true
+
+      - !execution
+        ##
+        # Alias to a storage backend, see 'storages'.
+        storage: *main-storage
+        ##
+        # Alias to an action-cache service.
+        action-cache: *main-action
+
+      - !cas
+        ##
+        # Alias to a storage backend, see 'storages'.
+        storage: *main-storage
+
+      - !bytestream
+        ##
+        # Alias to a storage backend, see 'storages'.
+        storage: *main-storage
+
+      - !reference-cache
+        ##
+        # Alias to a storage backend, see 'storages'.
+        storage: *main-storage
+        ##
+        # Maximum number of entires kept in cache.
+        max-cached-refs: 256
+        ##
+        # Whether or not writing to the cache is allowed.
+        allow-updates: true
