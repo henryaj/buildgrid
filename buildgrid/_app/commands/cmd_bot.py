@@ -141,13 +141,10 @@ def run_dummy(context):
     """
     Creates a session, accepts leases, does fake work and updates the server.
     """
-    try:
-        bot_session = session.BotSession(context.parent, context.bot_interface, context.hardware_interface,
-                                         dummy.work_dummy, context, context.update_period)
-        b = bot.Bot(bot_session)
-        b.session()
-    except KeyboardInterrupt:
-        pass
+    bot_session = session.BotSession(context.parent, context.bot_interface, context.hardware_interface,
+                                     dummy.work_dummy, context, context.update_period)
+    b = bot.Bot(bot_session)
+    b.session()
 
 
 @cli.command('host-tools', short_help="Runs commands using the host's tools.")
@@ -157,13 +154,10 @@ def run_host_tools(context):
     Downloads inputs from CAS, runs build commands using host-tools and uploads
     result back to CAS.
     """
-    try:
-        bot_session = session.BotSession(context.parent, context.bot_interface, context.hardware_interface,
-                                         host.work_host_tools, context, context.update_period)
-        b = bot.Bot(bot_session)
-        b.session()
-    except KeyboardInterrupt:
-        pass
+    bot_session = session.BotSession(context.parent, context.bot_interface, context.hardware_interface,
+                                     host.work_host_tools, context, context.update_period)
+    b = bot.Bot(bot_session)
+    b.session()
 
 
 @cli.command('buildbox', short_help="Run commands using the BuildBox tool.")
@@ -179,10 +173,7 @@ def run_buildbox(context, local_cas, fuse_dir):
     context.local_cas = local_cas
     context.fuse_dir = fuse_dir
 
-    try:
-        bot_session = session.BotSession(context.parent, context.bot_interface, context.hardware_interface,
-                                         buildbox.work_buildbox, context, context.update_period)
-        b = bot.Bot(bot_session)
-        b.session()
-    except KeyboardInterrupt:
-        pass
+    bot_session = session.BotSession(context.parent, context.bot_interface, context.hardware_interface,
+                                     buildbox.work_buildbox, context, context.update_period)
+    b = bot.Bot(bot_session)
+    b.session()
