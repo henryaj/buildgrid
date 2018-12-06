@@ -20,6 +20,7 @@ import sys
 
 from google.protobuf import json_format
 
+from buildgrid._exceptions import InvalidArgumentError
 from buildgrid._protos.buildgrid.v2 import monitoring_pb2
 
 
@@ -53,6 +54,7 @@ class MonitoringBus:
         self.__output_location = None
         self.__async_output = False
         self.__json_output = False
+        self.__print_output = False
 
         if endpoint_type == MonitoringOutputType.FILE:
             self.__output_location = endpoint_location
@@ -61,10 +63,22 @@ class MonitoringBus:
             self.__output_location = endpoint_location
             self.__async_output = True
 
+        elif endpoint_type == MonitoringOutputType.STDOUT:
+            self.__print_output = True
+
+        else:
+            raise InvalidArgumentError("Invalid endpoint output type: [{}]"
+                                       .format(endpoint_type))
+
         if serialisation_format == MonitoringOutputFormat.JSON:
             self.__json_output = True
 
     # --- Public API ---
+
+    @property
+    def prints_records(self):
+        """Whether or not messages are printed to standard output."""
+        return self.__print_output
 
     def start(self):
         """Starts the monitoring bus worker task."""
@@ -161,7 +175,7 @@ class MonitoringBus:
 
                         output_file.flush()
 
-            else:
+            elif self.__print_output:
                 output_writers.append(sys.stdout.buffer)
 
                 while True:
