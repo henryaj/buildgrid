@@ -378,7 +378,7 @@ class BuildGridServer:
         async def __build_monitoring_worker():
             metadata, context = await message_queue.async_q.get()
 
-            context.update({'instance-name': instance_name or 'void'})
+            context.update({'instance-name': instance_name or ''})
 
             # Emit build inputs fetching time record:
             fetch_start = metadata.input_fetch_start_timestamp.ToDatetime()
@@ -538,7 +538,7 @@ class BuildGridServer:
         n_clients = self._execution_service.query_n_clients_for_instance(instance_name)
         gauge_record = self._forge_gauge_metric_record(
             MetricRecordDomain.STATE, 'clients-count', n_clients,
-            metadata={'instance-name': instance_name or 'void'})
+            metadata={'instance-name': instance_name or ''})
 
         return n_clients, gauge_record
 
@@ -555,7 +555,7 @@ class BuildGridServer:
         n_bots = self._bots_service.query_n_bots_for_instance(instance_name)
         gauge_record = self._forge_gauge_metric_record(
             MetricRecordDomain.STATE, 'bots-count', n_bots,
-            metadata={'instance-name': instance_name or 'void'})
+            metadata={'instance-name': instance_name or ''})
 
         return n_bots, gauge_record
 
@@ -573,6 +573,6 @@ class BuildGridServer:
         am_queue_time = self._schedulers[instance_name].query_am_queue_time()
         timer_record = self._forge_timer_metric_record(
             MetricRecordDomain.STATE, 'average-queue-time', am_queue_time,
-            metadata={'instance-name': instance_name or 'void'})
+            metadata={'instance-name': instance_name or ''})
 
         return am_queue_time, timer_record
