@@ -48,8 +48,14 @@ class BuildGridServer:
     requisite services.
     """
 
-    def __init__(self, max_workers=None, monitor=False, auth_method=AuthMetadataMethod.NONE,
-                 auth_secret=None, auth_algorithm=AuthMetadataAlgorithm.UNSPECIFIED):
+    def __init__(self,
+                 max_workers=None, monitor=False,
+                 mon_endpoint_type=MonitoringOutputType.STDOUT,
+                 mon_endpoint_location=None,
+                 mon_serialisation_format=MonitoringOutputFormat.JSON,
+                 auth_method=AuthMetadataMethod.NONE,
+                 auth_secret=None,
+                 auth_algorithm=AuthMetadataAlgorithm.UNSPECIFIED):
         """Initializes a new :class:`BuildGridServer` instance.
 
         Args:
@@ -116,8 +122,9 @@ class BuildGridServer:
 
         if self._is_instrumented:
             self.__monitoring_bus = MonitoringBus(
-                self.__main_loop, endpoint_type=MonitoringOutputType.STDOUT,
-                serialisation_format=MonitoringOutputFormat.JSON)
+                self.__main_loop, endpoint_type=mon_endpoint_type,
+                endpoint_location=mon_endpoint_location,
+                serialisation_format=mon_serialisation_format)
 
             self.__build_monitoring_tasks = []
 
