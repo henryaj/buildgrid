@@ -26,6 +26,7 @@ import click
 
 from buildgrid.server._authentication import AuthMetadataMethod, AuthMetadataAlgorithm
 from buildgrid.server.instance import BuildGridServer
+from buildgrid.server._monitoring import MonitoringOutputType, MonitoringOutputFormat
 from buildgrid.utils import read_file
 
 from ..cli import pass_context, setup_logging
@@ -92,6 +93,26 @@ def _create_server_from_config(configuration):
 
             if 'algorithm' in authorization:
                 kargs['auth_algorithm'] = AuthMetadataAlgorithm(authorization['algorithm'])
+
+        except (ValueError, OSError) as e:
+            click.echo("Error: Configuration, {}.".format(e), err=True)
+            sys.exit(-1)
+
+    if 'monitoring' in configuration:
+        monitoring = configuration['monitoring']
+
+        try:
+            if 'enabled' in monitoring:
+                kargs['monitor'] = monitoring['enabled']
+
+            if 'endpoint-type' in monitoring:
+                kargs['mon_endpoint_type'] = MonitoringOutputType(monitoring['endpoint-type'])
+
+            if 'endpoint-location' in monitoring:
+                kargs['mon_endpoint_location'] = monitoring['endpoint-location']
+
+            if 'serialization-format' in monitoring:
+                kargs['mon_serialisation_format'] = MonitoringOutputFormat(monitoring['serialization-format'])
 
         except (ValueError, OSError) as e:
             click.echo("Error: Configuration, {}.".format(e), err=True)
