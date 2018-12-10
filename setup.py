@@ -124,7 +124,7 @@ setup(
         'click',
         'grpcio',
         'janus',
-        'protobuf',
+        'protobuf >= 3.6.1',
         'pyyaml',
     ],
     entry_points={
