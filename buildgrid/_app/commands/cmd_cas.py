@@ -45,7 +45,7 @@ from ..cli import pass_context
               help="Public client certificate for TLS (PEM-encoded).")
 @click.option('--server-cert', type=click.Path(exists=True, dir_okay=False), default=None,
               help="Public server certificate for TLS (PEM-encoded)")
-@click.option('--instance-name', type=click.STRING, default='main', show_default=True,
+@click.option('--instance-name', type=click.STRING, default=None, show_default=True,
               help="Targeted farm instance name.")
 @pass_context
 def cli(context, remote, instance_name, auth_token, client_key, client_cert, server_cert):

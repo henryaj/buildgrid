@@ -11,7 +11,7 @@ description: |
   Just a CAS with some reference storage.
 
 instances:
-  - name: main
+  - name: ''
     description: |
       The main server
 

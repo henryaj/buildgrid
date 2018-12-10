@@ -57,7 +57,7 @@ from ..cli import pass_context, setup_logging
               help="Public CAS server certificate for TLS (PEM-encoded).")
 @click.option('--update-period', type=click.FLOAT, default=0.5, show_default=True,
               help="Time period for bot updates to the server in seconds.")
-@click.option('--parent', type=click.STRING, default='main', show_default=True,
+@click.option('--parent', type=click.STRING, default=None, show_default=True,
               help="Targeted farm resource.")
 @click.option('-v', '--verbose', count=True,
               help='Increase log verbosity level.')

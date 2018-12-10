@@ -7,7 +7,7 @@ description: |
   A single default instance with remote storage.
 
 instances:
-  - name: main
+  - name: ''
     description: |
       The main server
 
