@@ -126,7 +126,7 @@ class BotsInterface:
             # Job does not exist, remove from bot.
             return None
 
-        self._scheduler.update_job_lease(lease.id, lease)
+        self._scheduler.update_job_lease_state(lease.id, lease)
 
         if lease_state == LeaseState.COMPLETED:
             return None
@@ -164,7 +164,7 @@ class BotsInterface:
                 self.__logger.error("Assigned lease id=[%s],"
                                     " not found on bot with name=[%s] and id=[%s]."
                                     " Retrying job", lease_id, bot_session.name, bot_session.bot_id)
-                self._scheduler.retry_job(lease_id)
+                self._scheduler.retry_job_lease(lease_id)
 
     def _close_bot_session(self, name):
         """ Before removing the session, close any leases and
@@ -177,7 +177,7 @@ class BotsInterface:
 
         self.__logger.debug("Attempting to close [%s] with name: [%s]", bot_id, name)
         for lease_id in self._assigned_leases[name]:
-            self._scheduler.retry_job(lease_id)
+            self._scheduler.retry_job_lease(lease_id)
         self._assigned_leases.pop(name)
 
         self.__logger.debug("Closing bot session: [%s]", name)

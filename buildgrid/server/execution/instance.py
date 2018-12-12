@@ -54,13 +54,13 @@ class ExecutionInstance:
         if not action:
             raise FailedPreconditionError("Could not get action from storage.")
 
-        return self._scheduler.queue_job(action, action_digest,
-                                         skip_cache_lookup=skip_cache_lookup)
+        return self._scheduler.queue_job_action(action, action_digest,
+                                                skip_cache_lookup=skip_cache_lookup)
 
     def register_operation_peer(self, operation_name, peer, message_queue):
         try:
-            return self._scheduler.register_operation_peer(operation_name,
-                                                           peer, message_queue)
+            return self._scheduler.register_job_operation_peer(operation_name,
+                                                               peer, message_queue)
 
         except NotFoundError:
             raise InvalidArgumentError("Operation name does not exist: [{}]"
@@ -68,7 +68,7 @@ class ExecutionInstance:
 
     def unregister_operation_peer(self, operation_name, peer):
         try:
-            self._scheduler.unregister_operation_peer(operation_name, peer)
+            self._scheduler.unregister_job_operation_peer(operation_name, peer)
 
         except NotFoundError:
             raise InvalidArgumentError("Operation name does not exist: [{}]"

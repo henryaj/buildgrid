@@ -54,7 +54,7 @@ class OperationsInstance:
         response = operations_pb2.ListOperationsResponse()
 
         operations = []
-        for job_name in self._scheduler.list_jobs():
+        for job_name in self._scheduler.list_current_jobs():
             operation = self._scheduler.get_job_operation(job_name)
             operations.append(operation)
 

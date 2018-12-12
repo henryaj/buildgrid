@@ -106,9 +106,9 @@ def test_no_action_digest_in_storage(instance, context):
 
 
 def test_wait_execution(instance, controller, context):
-    job_name = controller.execution_instance._scheduler.queue_job(action,
-                                                                  action_digest,
-                                                                  skip_cache_lookup=True)
+    job_name = controller.execution_instance._scheduler.queue_job_action(action,
+                                                                         action_digest,
+                                                                         skip_cache_lookup=True)
 
     controller.execution_instance._scheduler._update_job_operation_stage(job_name,
                                                                          OperationStage.COMPLETED)

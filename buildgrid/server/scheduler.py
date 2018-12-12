@@ -56,7 +56,13 @@ class Scheduler:
 
     # --- Public API ---
 
-    def register_operation_peer(self, operation_name, peer, message_queue):
+    def list_current_jobs(self):
+        """Returns a list of the :class:`Job` objects currently managed."""
+        return self.__jobs_by_name.keys()
+
+    # --- Public API: REAPI ---
+
+    def register_job_operation_peer(self, operation_name, peer, message_queue):
         """Subscribes to one of the job's :class:`Operation` stage changes.
 
         Args:
@@ -79,7 +85,7 @@ class Scheduler:
 
         return job.register_operation_peer(peer, message_queue)
 
-    def unregister_operation_peer(self, operation_name, peer):
+    def unregister_job_operation_peer(self, operation_name, peer):
         """Unsubscribes to one of the job's :class:`Operation` stage change.
 
         Args:
@@ -101,8 +107,12 @@ class Scheduler:
         if not job.n_peers and job.done and not job.lease:
             self._delete_job(job.name)
 
-    def queue_job(self, action, action_digest, priority=0, skip_cache_lookup=False):
+    def queue_job_action(self, action, action_digest, priority=0, skip_cache_lookup=False):
         """Inserts a newly created job into the execution queue.
+
+        Warning:
+            Priority is handle like a POSIX ``nice`` values: a higher value
+            means a low priority, 0 being default priority.
 
         Args:
             action (Action): the given action to queue for execution.
@@ -112,7 +122,7 @@ class Scheduler:
                 result for the given action.
 
         Returns:
-            str: the newly created operation's name.
+            str: the newly created job's name.
         """
         if action_digest.hash in self.__jobs_by_action:
             job = self.__jobs_by_action[action_digest.hash]
@@ -156,29 +166,62 @@ class Scheduler:
 
         return job.name
 
-    def retry_job(self, job_name):
+    def get_job_operation(self, operation_name):
+        """Retrieves a job's :class:`Operation` by name.
+
+        Args:
+            operation_name (str): name of the operation to query.
+
+        Raises:
+            NotFoundError: If no operation with `operation_name` exists.
+        """
         try:
-            job = self.__jobs_by_name[job_name]
+            job = self.__jobs_by_name[operation_name]
 
         except KeyError:
-            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
+            raise NotFoundError("Operation name does not exist: [{}]"
+                                .format(operation_name))
 
-        operation_stage = None
-        if job.n_tries >= self.MAX_N_TRIES:
-            # TODO: Decide what to do with these jobs
-            operation_stage = OperationStage.COMPLETED
-            # TODO: Mark these jobs as done
+        return job.get_operation()
 
-        else:
-            operation_stage = OperationStage.QUEUED
-            self._queue_job(job.name)
+    def cancel_job_operation(self, operation_name):
+        """"Cancels a job's :class:`Operation` by name.
 
-            job.update_lease_state(LeaseState.PENDING)
+        Args:
+            operation_name (str): name of the operation to cancel.
 
-        self._update_job_operation_stage(job.name, operation_stage)
+        Raises:
+            NotFoundError: If no operation with `operation_name` exists.
+        """
+        try:
+            job = self.__jobs_by_name[operation_name]
 
-    def list_jobs(self):
-        return self.__jobs_by_name.keys()
+        except KeyError:
+            raise NotFoundError("Operation name does not exist: [{}]"
+                                .format(operation_name))
+
+        job.cancel_operation()
+
+    def delete_job_operation(self, operation_name):
+        """"Removes a job.
+
+        Args:
+            operation_name (str): name of the operation to delete.
+
+        Raises:
+            NotFoundError: If no operation with `operation_name` exists.
+        """
+        try:
+            job = self.__jobs_by_name[operation_name]
+
+        except KeyError:
+            raise NotFoundError("Operation name does not exist: [{}]"
+                                .format(operation_name))
+
+        if not job.n_peers and job.done and not job.lease:
+            self._delete_job(job.name)
+
+    # --- Public API: RWAPI ---
 
     def request_job_leases(self, worker_capabilities):
         """Generates a list of the highest priority leases to be run.
@@ -187,10 +230,13 @@ class Scheduler:
             worker_capabilities (dict): a set of key-value pairs decribing the
                 worker properties, configuration and state at the time of the
                 request.
+
+        Warning: Worker capabilities handling is not implemented at the moment!
         """
         if not self.__queue:
             return []
 
+        # TODO: Try to match worker_capabilities with jobs properties.
         job = self.__queue.pop()
 
         lease = job.lease
@@ -204,11 +250,14 @@ class Scheduler:
 
         return None
 
-    def update_job_lease(self, job_name, lease):
+    def update_job_lease_state(self, job_name, lease):
         """Requests a state transition for a job's current :class:Lease.
 
+        Note:
+            This may trigger a job's :class:`Operation` stage transition.
+
         Args:
-            job_name (str): name of the job to query.
+            job_name (str): name of the job to update lease state from.
             lease (Lease): the lease holding the new state.
 
         Raises:
@@ -257,11 +306,43 @@ class Scheduler:
 
         self._update_job_operation_stage(job_name, operation_stage)
 
+    def retry_job_lease(self, job_name):
+        """Re-queues a job on lease execution failure.
+
+        Note:
+            This may trigger a job's :class:`Operation` stage transition.
+
+        Args:
+            job_name (str): name of the job to retry the lease from.
+
+        Raises:
+            NotFoundError: If no job with `job_name` exists.
+        """
+        try:
+            job = self.__jobs_by_name[job_name]
+
+        except KeyError:
+            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
+
+        operation_stage = None
+        if job.n_tries >= self.MAX_N_TRIES:
+            # TODO: Decide what to do with these jobs
+            operation_stage = OperationStage.COMPLETED
+            # TODO: Mark these jobs as done
+
+        else:
+            operation_stage = OperationStage.QUEUED
+            self._queue_job(job.name)
+
+            job.update_lease_state(LeaseState.PENDING)
+
+        self._update_job_operation_stage(job_name, operation_stage)
+
     def get_job_lease(self, job_name):
         """Returns the lease associated to job, if any have been emitted yet.
 
         Args:
-            job_name (str): name of the job to query.
+            job_name (str): name of the job to query the lease from.
 
         Raises:
             NotFoundError: If no job with `job_name` exists.
@@ -274,28 +355,11 @@ class Scheduler:
 
         return job.lease
 
-    def get_job_lease_cancelled(self, job_name):
-        """Returns true if the lease is cancelled.
-
-        Args:
-            job_name (str): name of the job to query.
-
-        Raises:
-            NotFoundError: If no job with `job_name` exists.
-        """
-        try:
-            job = self.__jobs_by_name[job_name]
-
-        except KeyError:
-            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
-
-        return job.lease_cancelled
-
     def delete_job_lease(self, job_name):
         """Discards the lease associated with a job.
 
         Args:
-            job_name (str): name of the job to query.
+            job_name (str): name of the job to delete the lease from.
 
         Raises:
             NotFoundError: If no job with `job_name` exists.
@@ -311,11 +375,11 @@ class Scheduler:
         if not job.n_peers and job.done:
             self._delete_job(job.name)
 
-    def get_job_operation(self, job_name):
-        """Returns the operation associated to job.
+    def get_job_lease_cancelled(self, job_name):
+        """Returns true if the lease is cancelled.
 
         Args:
-            job_name (str): name of the job to query.
+            job_name (str): name of the job to query the lease state from.
 
         Raises:
             NotFoundError: If no job with `job_name` exists.
@@ -326,38 +390,7 @@ class Scheduler:
         except KeyError:
             raise NotFoundError("Job name does not exist: [{}]".format(job_name))
 
-        return job.get_operation()
-
-    def cancel_job_operation(self, job_name):
-        """"Cancels the underlying operation of a given job.
-
-        This will also cancel any job's lease that may have been issued.
-
-        Args:
-            job_name (str): name of the job holding the operation to cancel.
-        """
-        try:
-            job = self.__jobs_by_name[job_name]
-
-        except KeyError:
-            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
-
-        job.cancel_operation()
-
-    def delete_job_operation(self, job_name):
-        """"Removes a job.
-
-        Args:
-            job_name (str): name of the job to delete.
-        """
-        try:
-            job = self.__jobs_by_name[job_name]
-
-        except KeyError:
-            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
-
-        if not job.n_peers and job.done and not job.lease:
-            self._delete_job(job.name)
+        return job.lease_cancelled
 
     # --- Public API: Monitoring ---
 
