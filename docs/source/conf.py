@@ -182,3 +182,11 @@ texinfo_documents = [
      author, 'BuildGrid', 'One line description of project.',
      'Miscellaneous'),
 ]
+
+# -- Options for the autodoc extension ----------------------------------------
+
+# This value selects if automatically documented members are sorted
+# alphabetical (value 'alphabetical'), by member type (value 'groupwise') or
+# by source order (value 'bysource'). The default is alphabetical.
+autodoc_member_order = 'bysource'
+
