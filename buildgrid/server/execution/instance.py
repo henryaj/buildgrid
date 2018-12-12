@@ -57,10 +57,19 @@ class ExecutionInstance:
         return self._scheduler.queue_job_action(action, action_digest,
                                                 skip_cache_lookup=skip_cache_lookup)
 
+    def register_job_peer(self, job_name, peer, message_queue):
+        try:
+            return self._scheduler.register_job_peer(job_name,
+                                                     peer, message_queue)
+
+        except NotFoundError:
+            raise InvalidArgumentError("Job name does not exist: [{}]"
+                                       .format(job_name))
+
     def register_operation_peer(self, operation_name, peer, message_queue):
         try:
-            return self._scheduler.register_job_operation_peer(operation_name,
-                                                               peer, message_queue)
+            self._scheduler.register_job_operation_peer(operation_name,
+                                                        peer, message_queue)
 
         except NotFoundError:
             raise InvalidArgumentError("Operation name does not exist: [{}]"

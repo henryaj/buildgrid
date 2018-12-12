@@ -17,6 +17,7 @@
 
 # pylint: disable=redefined-outer-name
 
+import queue
 import uuid
 from unittest import mock
 
@@ -110,10 +111,15 @@ def test_wait_execution(instance, controller, context):
                                                                          action_digest,
                                                                          skip_cache_lookup=True)
 
+    message_queue = queue.Queue()
+    operation_name = controller.execution_instance.register_job_peer(job_name,
+                                                                     context.peer(),
+                                                                     message_queue)
+
     controller.execution_instance._scheduler._update_job_operation_stage(job_name,
                                                                          OperationStage.COMPLETED)
 
-    request = remote_execution_pb2.WaitExecutionRequest(name=job_name)
+    request = remote_execution_pb2.WaitExecutionRequest(name=operation_name)
 
     response = instance.WaitExecution(request, context)
 

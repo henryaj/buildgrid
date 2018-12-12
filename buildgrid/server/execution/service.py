@@ -102,8 +102,8 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             job_name = instance.execute(request.action_digest,
                                         request.skip_cache_lookup)
 
-            operation_name = instance.register_operation_peer(job_name,
-                                                              peer, message_queue)
+            operation_name = instance.register_job_peer(job_name,
+                                                        peer, message_queue)
 
             context.add_callback(partial(self._rpc_termination_callback,
                                          peer, instance_name, operation_name))
@@ -160,8 +160,8 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
         try:
             instance = self._get_instance(instance_name)
 
-            operation_name = instance.register_operation_peer(operation_name,
-                                                              peer, message_queue)
+            instance.register_operation_peer(operation_name,
+                                             peer, message_queue)
 
             context.add_callback(partial(self._rpc_termination_callback,
                                          peer, instance_name, operation_name))

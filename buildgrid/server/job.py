@@ -20,7 +20,7 @@ import uuid
 from google.protobuf import duration_pb2, timestamp_pb2
 
 from buildgrid._enums import LeaseState, OperationStage
-from buildgrid._exceptions import CancelledError
+from buildgrid._exceptions import CancelledError, NotFoundError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
@@ -35,29 +35,31 @@ class Job:
         self._name = str(uuid.uuid4())
         self._priority = priority
         self._action = remote_execution_pb2.Action()
-        self._operation = operations_pb2.Operation()
         self._lease = None
 
         self.__execute_response = None
         self.__operation_metadata = remote_execution_pb2.ExecuteOperationMetadata()
+        self.__operations_by_name = {}  # Name to Operation 1:1 mapping
+        self.__operations_by_peer = {}  # Peer to Operation 1:1 mapping
 
         self.__queued_timestamp = timestamp_pb2.Timestamp()
         self.__queued_time_duration = duration_pb2.Duration()
         self.__worker_start_timestamp = timestamp_pb2.Timestamp()
         self.__worker_completed_timestamp = timestamp_pb2.Timestamp()
 
-        self.__operation_message_queues = {}
-        self.__operation_cancelled = False
+        self.__operations_message_queues = {}
+        self.__operations_cancelled = set()
         self.__lease_cancelled = False
+        self.__job_cancelled = False
 
         self.__operation_metadata.action_digest.CopyFrom(action_digest)
         self.__operation_metadata.stage = OperationStage.UNKNOWN.value
 
         self._action.CopyFrom(action)
         self._do_not_cache = self._action.do_not_cache
-        self._operation.name = self._name
-        self._operation.done = False
         self._n_tries = 0
+
+        self._done = False
 
     def __lt__(self, other):
         try:
@@ -103,7 +105,7 @@ class Job:
 
     @property
     def done(self):
-        return self._operation.done
+        return self._done
 
     # --- Public API: REAPI ---
 
@@ -148,10 +150,14 @@ class Job:
 
     @property
     def n_peers(self):
-        return len(self.__operation_message_queues)
+        return len(self.__operations_message_queues)
 
-    def register_operation_peer(self, peer, message_queue):
-        """Subscribes to the job's :class:`Operation` stage changes.
+    def n_peers_for_operation(self, operation_name):
+        return len([operation for operation in self.__operations_by_peer.values()
+                    if operation.name == operation_name])
+
+    def register_new_operation_peer(self, peer, message_queue):
+        """Subscribes to a new job's :class:`Operation` stage changes.
 
         Args:
             peer (str): a unique string identifying the client.
@@ -160,27 +166,102 @@ class Job:
         Returns:
             str: The name of the subscribed :class:`Operation`.
         """
-        if peer not in self.__operation_message_queues:
-            self.__operation_message_queues[peer] = message_queue
+        new_operation = operations_pb2.Operation()
+        # Copy state from first existing and non cancelled operation:
+        for operation in self.__operations_by_name.values():
+            if operation.name not in self.__operations_cancelled:
+                new_operation.CopyFrom(operation)
+                break
 
-        message = (None, self._copy_operation(self._operation),)
+        new_operation.name = str(uuid.uuid4())
 
-        message_queue.put(message)
+        self.__operations_by_name[new_operation.name] = new_operation
+        self.__operations_by_peer[peer] = new_operation
+        self.__operations_message_queues[peer] = message_queue
 
-        return self._operation.name
+        self._send_operations_updates(peers=[peer])
 
-    def unregister_operation_peer(self, peer):
+        return new_operation.name
+
+    def register_operation_peer(self, operation_name, peer, message_queue):
+        """Subscribes to one of the job's :class:`Operation` stage changes.
+
+        Args:
+            operation_name (str): an existing operation's name to subscribe to.
+            peer (str): a unique string identifying the client.
+            message_queue (queue.Queue): the event queue to register.
+
+        Returns:
+            str: The name of the subscribed :class:`Operation`.
+
+        Raises:
+            NotFoundError: If no operation with `operation_name` exists.
+        """
+        try:
+            operation = self.__operations_by_name[operation_name]
+
+        except KeyError:
+            raise NotFoundError("Operation name does not exist: [{}]"
+                                .format(operation_name))
+
+        self.__operations_by_peer[peer] = operation
+        self.__operations_message_queues[peer] = message_queue
+
+        self._send_operations_updates(peers=[peer])
+
+    def unregister_operation_peer(self, operation_name, peer):
         """Unsubscribes to the job's :class:`Operation` stage change.
 
         Args:
+            operation_name (str): an existing operation's name to unsubscribe from.
             peer (str): a unique string identifying the client.
-        """
-        if peer not in self.__operation_message_queues:
-            del self.__operation_message_queues[peer]
 
-    def get_operation(self):
-        """Returns a copy of the the job's :class:`Operation`."""
-        return self._copy_operation(self._operation)
+        Raises:
+            NotFoundError: If no operation with `operation_name` exists.
+        """
+        try:
+            operation = self.__operations_by_name[operation_name]
+
+        except KeyError:
+            raise NotFoundError("Operation name does not exist: [{}]"
+                                .format(operation_name))
+
+        if peer in self.__operations_message_queues:
+            del self.__operations_message_queues[peer]
+
+        del self.__operations_by_peer[peer]
+
+        # Drop the operation if nobody is watching it anymore:
+        if operation not in self.__operations_by_peer.values():
+            del self.__operations_by_name[operation.name]
+
+            self.__operations_cancelled.discard(operation.name)
+
+    def list_operations(self):
+        """Lists the :class:`Operation` related to a job.
+
+        Returns:
+            list: A list of :class:`Operation` names.
+        """
+        return list(self.__operations_by_name.keys())
+
+    def get_operation(self, operation_name):
+        """Returns a copy of the the job's :class:`Operation`.
+
+        Args:
+            operation_name (str): the operation's name.
+
+        Raises:
+            NotFoundError: If no operation with `operation_name` exists.
+        """
+        try:
+            operation = self.__operations_by_name[operation_name]
+
+        except KeyError:
+            raise NotFoundError("Operation name does not exist: [{}]"
+                                .format(operation_name))
+
+        return self._copy_operation(operation)
 
     def update_operation_stage(self, stage):
         """Operates a stage transition for the job's :class:`Operation`.
@@ -203,35 +284,53 @@ class Job:
             self.__queued_time_duration.FromTimedelta(queue_out - queue_in)
 
         elif self.__operation_metadata.stage == OperationStage.COMPLETED.value:
-            if self.__execute_response is not None:
-                self._operation.response.Pack(self.__execute_response)
-            self._operation.done = True
+            self._done = True
 
-        self._operation.metadata.Pack(self.__operation_metadata)
+        self._send_operations_updates()
 
-        if not self.__operation_cancelled:
-            message = (None, self._copy_operation(self._operation),)
-        else:
-            message = (CancelledError(self.__execute_response.status.message),
-                       self._copy_operation(self._operation),)
-
-        for message_queue in self.__operation_message_queues.values():
-            message_queue.put(message)
-
-    def cancel_operation(self):
+    def cancel_operation(self, operation_name):
         """Triggers a job's :class:`Operation` cancellation.
 
-        This will cancel any job's :class:`Lease` that may have been issued.
+        This may cancel any job's :class:`Lease` that may have been issued.
+
+        Args:
+            operation_name (str): the operation's name.
+
+        Raises:
+            NotFoundError: If no operation with `operation_name` exists.
         """
-        self.__operation_cancelled = True
-        if self._lease is not None:
+        try:
+            operation = self.__operations_by_name[operation_name]
+
+        except KeyError:
+            raise NotFoundError("Operation name does not exist: [{}]"
+                                .format(operation_name))
+
+        self.__operations_cancelled.add(operation.name)
+
+        ongoing_operations = set(self.__operations_by_name.keys())
+        # Job is cancelled if all the operation are:
+        self.__job_cancelled = ongoing_operations.issubset(self.__operations_cancelled)
+
+        if self.__job_cancelled and self._lease is not None:
             self.cancel_lease()
 
-        self.__execute_response = remote_execution_pb2.ExecuteResponse()
-        self.__execute_response.status.code = code_pb2.CANCELLED
-        self.__execute_response.status.message = "Operation cancelled by client."
+        peers_to_notify = set()
+        # If the job is not cancelled, notify all the peers watching the given
+        # operation; if the job is cancelled, only notify the peers for which
+        # the operation status changed.
+        for peer, operation in self.__operations_by_peer.items():
+            if self.__job_cancelled:
+                if operation.name not in self.__operations_cancelled:
+                    peers_to_notify.add(peer)
+                elif operation.name == operation_name:
+                    peers_to_notify.add(peer)
 
-        self.update_operation_stage(OperationStage.COMPLETED)
+            else:
+                if operation.name == operation_name:
+                    peers_to_notify.add(peer)
+
+        self._send_operations_updates(peers=peers_to_notify, notify_cancelled=True)
 
     # --- Public API: RWAPI ---
 
@@ -260,9 +359,9 @@ class Job:
         Only one :class:`Lease` can be emitted for a given job. This method
         should only be used once, any further calls are ignored.
         """
-        if self.__operation_cancelled:
-            return None
-        elif self._lease is not None:
+        if self._lease is not None:
+            return self._lease
+        elif self.__job_cancelled:
             return None
 
         self._lease = bots_pb2.Lease()
@@ -357,3 +456,60 @@ class Job:
         new_operation.CopyFrom(operation)
 
         return new_operation
+
+    def _update_operation(self, operation, operation_metadata, execute_response=None, done=False):
+        """Forges a :class:`Operation` message given input data."""
+        operation.metadata.Pack(operation_metadata)
+
+        if execute_response is not None:
+            operation.response.Pack(execute_response)
+
+        operation.done = done
+
+    def _update_cancelled_operation(self, operation, operation_metadata, execute_response=None):
+        """Forges a cancelled :class:`Operation` message given input data."""
+        cancelled_operation_metadata = remote_execution_pb2.ExecuteOperationMetadata()
+        cancelled_operation_metadata.CopyFrom(operation_metadata)
+        cancelled_operation_metadata.stage = OperationStage.COMPLETED.value
+
+        operation.metadata.Pack(cancelled_operation_metadata)
+
+        cancelled_execute_response = remote_execution_pb2.ExecuteResponse()
+        if execute_response is not None:
+            cancelled_execute_response.CopyFrom(self.__execute_response)
+        cancelled_execute_response.status.code = code_pb2.CANCELLED
+        cancelled_execute_response.status.message = "Operation cancelled by client."
+
+        operation.response.Pack(cancelled_execute_response)
+
+        operation.done = True
+
+    def _send_operations_updates(self, peers=None, notify_cancelled=False):
+        """Sends :class:`Operation` stage change messages to watchers."""
+        for operation in self.__operations_by_name.values():
+            if operation.name in self.__operations_cancelled:
+                self._update_cancelled_operation(operation, self.__operation_metadata,
+                                                 execute_response=self.__execute_response)
+
+            else:
+                self._update_operation(operation, self.__operation_metadata,
+                                       execute_response=self.__execute_response,
+                                       done=self._done)
+
+        for peer, message_queue in self.__operations_message_queues.items():
+            if peer not in self.__operations_by_peer:
+                continue
+            elif peers and peer not in peers:
+                continue
+
+            operation = self.__operations_by_peer[peer]
+            # Messages are pairs of (Exception, Operation,):
+            if not notify_cancelled and operation.name in self.__operations_cancelled:
+                continue
+            elif operation.name not in self.__operations_cancelled:
+                message = (None, self._copy_operation(operation),)
+            else:
+                message = (CancelledError("Operation has been cancelled"),
+                           self._copy_operation(operation),)
+
+            message_queue.put(message)
