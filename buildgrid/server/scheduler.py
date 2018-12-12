@@ -98,7 +98,7 @@ class Scheduler:
 
         job.unregister_operation_peer(peer)
 
-        if not job.n_clients and job.operation.done and not job.lease:
+        if not job.n_peers and job.done and not job.lease:
             self._delete_job(job.name)
 
     def queue_job(self, action, action_digest, priority=0, skip_cache_lookup=False):
@@ -308,7 +308,7 @@ class Scheduler:
 
         job.delete_lease()
 
-        if not job.n_clients and job.operation.done:
+        if not job.n_peers and job.done:
             self._delete_job(job.name)
 
     def get_job_operation(self, job_name):
@@ -326,7 +326,7 @@ class Scheduler:
         except KeyError:
             raise NotFoundError("Job name does not exist: [{}]".format(job_name))
 
-        return job.operation
+        return job.get_operation()
 
     def cancel_job_operation(self, job_name):
         """"Cancels the underlying operation of a given job.
@@ -356,7 +356,7 @@ class Scheduler:
         except KeyError:
             raise NotFoundError("Job name does not exist: [{}]".format(job_name))
 
-        if job.n_clients == 0 and (job.operation.done or job.lease is None):
+        if not job.n_peers and job.done and not job.lease:
             self._delete_job(job.name)
 
     # --- Public API: Monitoring ---
@@ -528,7 +528,7 @@ class Scheduler:
 
                 self.__queue_time_average = average_order, average_time
 
-                if not job.holds_cached_action_result:
+                if not job.holds_cached_result:
                     execution_metadata = job.action_result.execution_metadata
                     context_metadata = {'job-is': job.name}
 

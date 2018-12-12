@@ -102,16 +102,22 @@ class Job:
         return self._priority
 
     @property
+    def done(self):
+        return self._operation.done
+
+    # --- Public API: REAPI ---
+
+    @property
     def do_not_cache(self):
         return self._do_not_cache
 
     @property
-    def action(self):
-        return self._action
-
-    @property
     def action_digest(self):
         return self.__operation_metadata.action_digest
+
+    @property
+    def operation_stage(self):
+        return OperationStage(self.__operation_metadata.stage)
 
     @property
     def action_result(self):
@@ -121,47 +127,31 @@ class Job:
             return None
 
     @property
-    def holds_cached_action_result(self):
+    def holds_cached_result(self):
         if self.__execute_response is not None:
             return self.__execute_response.cached_result
         else:
             return False
 
-    @property
-    def operation(self):
-        return self._operation
+    def set_cached_result(self, action_result):
+        """Allows specifying an action result form the action cache for the job.
+
+        Note:
+            This won't trigger any :class:`Operation` stage transition.
+
+        Args:
+            action_result (ActionResult): The result from cache.
+        """
+        self.__execute_response = remote_execution_pb2.ExecuteResponse()
+        self.__execute_response.result.CopyFrom(action_result)
+        self.__execute_response.cached_result = True
 
     @property
-    def operation_stage(self):
-        return OperationStage(self.__operation_metadata.state)
-
-    @property
-    def lease(self):
-        return self._lease
-
-    @property
-    def lease_state(self):
-        if self._lease is not None:
-            return LeaseState(self._lease.state)
-        else:
-            return None
-
-    @property
-    def lease_cancelled(self):
-        return self.__lease_cancelled
-
-    @property
-    def n_tries(self):
-        return self._n_tries
-
-    @property
-    def n_clients(self):
+    def n_peers(self):
         return len(self.__operation_message_queues)
 
     def register_operation_peer(self, peer, message_queue):
         """Subscribes to the job's :class:`Operation` stage changes.
-
-        Queues this :object:`Job` instance.
 
         Args:
             peer (str): a unique string identifying the client.
@@ -188,18 +178,87 @@ class Job:
         if peer not in self.__operation_message_queues:
             del self.__operation_message_queues[peer]
 
-    def set_cached_result(self, action_result):
-        """Allows specifying an action result form the action cache for the job.
+    def get_operation(self):
+        """Returns a copy of the the job's :class:`Operation`."""
+        return self._copy_operation(self._operation)
+
+    def update_operation_stage(self, stage):
+        """Operates a stage transition for the job's :class:`Operation`.
+
+        Args:
+            stage (OperationStage): the operation stage to transition to.
         """
+        if stage.value == self.__operation_metadata.stage:
+            return
+
+        self.__operation_metadata.stage = stage.value
+
+        if self.__operation_metadata.stage == OperationStage.QUEUED.value:
+            if self.__queued_timestamp.ByteSize() == 0:
+                self.__queued_timestamp.GetCurrentTime()
+            self._n_tries += 1
+
+        elif self.__operation_metadata.stage == OperationStage.EXECUTING.value:
+            queue_in, queue_out = self.__queued_timestamp.ToDatetime(), datetime.now()
+            self.__queued_time_duration.FromTimedelta(queue_out - queue_in)
+
+        elif self.__operation_metadata.stage == OperationStage.COMPLETED.value:
+            if self.__execute_response is not None:
+                self._operation.response.Pack(self.__execute_response)
+            self._operation.done = True
+
+        self._operation.metadata.Pack(self.__operation_metadata)
+
+        if not self.__operation_cancelled:
+            message = (None, self._copy_operation(self._operation),)
+        else:
+            message = (CancelledError(self.__execute_response.status.message),
+                       self._copy_operation(self._operation),)
+
+        for message_queue in self.__operation_message_queues.values():
+            message_queue.put(message)
+
+    def cancel_operation(self):
+        """Triggers a job's :class:`Operation` cancellation.
+
+        This will cancel any job's :class:`Lease` that may have been issued.
+        """
+        self.__operation_cancelled = True
+        if self._lease is not None:
+            self.cancel_lease()
+
         self.__execute_response = remote_execution_pb2.ExecuteResponse()
-        self.__execute_response.result.CopyFrom(action_result)
-        self.__execute_response.cached_result = True
+        self.__execute_response.status.code = code_pb2.CANCELLED
+        self.__execute_response.status.message = "Operation cancelled by client."
+
+        self.update_operation_stage(OperationStage.COMPLETED)
+
+    # --- Public API: RWAPI ---
+
+    @property
+    def lease(self):
+        return self._lease
+
+    @property
+    def lease_state(self):
+        if self._lease is not None:
+            return LeaseState(self._lease.state)
+        else:
+            return None
+
+    @property
+    def lease_cancelled(self):
+        return self.__lease_cancelled
+
+    @property
+    def n_tries(self):
+        return self._n_tries
 
     def create_lease(self):
         """Emits a new :class:`Lease` for the job.
 
         Only one :class:`Lease` can be emitted for a given job. This method
-        should only be used once, any furhter calls are ignored.
+        should only be used once, any further calls are ignored.
         """
         if self.__operation_cancelled:
             return None
@@ -214,14 +273,14 @@ class Job:
         return self._lease
 
     def update_lease_state(self, state, status=None, result=None):
-        """Operates a state transition for the job's current :class:Lease.
+        """Operates a state transition for the job's current :class:`Lease`.
 
         Args:
             state (LeaseState): the lease state to transition to.
-            status (google.rpc.Status): the lease execution status, only
-                required if `state` is `COMPLETED`.
-            result (google.protobuf.Any): the lease execution result, only
-                required if `state` is `COMPLETED`.
+            status (google.rpc.Status, optional): the lease execution status,
+                only required if `state` is `COMPLETED`.
+            result (google.protobuf.Any, optional): the lease execution result,
+                only required if `state` is `COMPLETED`.
         """
         if state.value == self._lease.state:
             return
@@ -262,71 +321,25 @@ class Job:
             self.__execute_response.status.CopyFrom(status)
 
     def cancel_lease(self):
-        """Triggers a job's :class:Lease cancellation.
+        """Triggers a job's :class:`Lease` cancellation.
 
-        This will not cancel the job's :class:Operation.
+        Note:
+            This will not cancel the job's :class:`Operation`.
         """
         self.__lease_cancelled = True
         if self._lease is not None:
             self.update_lease_state(LeaseState.CANCELLED)
 
     def delete_lease(self):
-        """Discard the job's :class:Lease."""
+        """Discard the job's :class:`Lease`.
+
+        Note:
+            This will not cancel the job's :class:`Operation`.
+        """
         self.__worker_start_timestamp.Clear()
         self.__worker_completed_timestamp.Clear()
 
         self._lease = None
-
-    def update_operation_stage(self, stage):
-        """Operates a stage transition for the job's :class:Operation.
-
-        Args:
-            stage (OperationStage): the operation stage to transition to.
-        """
-        if stage.value == self.__operation_metadata.stage:
-            return
-
-        self.__operation_metadata.stage = stage.value
-
-        if self.__operation_metadata.stage == OperationStage.QUEUED.value:
-            if self.__queued_timestamp.ByteSize() == 0:
-                self.__queued_timestamp.GetCurrentTime()
-            self._n_tries += 1
-
-        elif self.__operation_metadata.stage == OperationStage.EXECUTING.value:
-            queue_in, queue_out = self.__queued_timestamp.ToDatetime(), datetime.now()
-            self.__queued_time_duration.FromTimedelta(queue_out - queue_in)
-
-        elif self.__operation_metadata.stage == OperationStage.COMPLETED.value:
-            if self.__execute_response is not None:
-                self._operation.response.Pack(self.__execute_response)
-            self._operation.done = True
-
-        self._operation.metadata.Pack(self.__operation_metadata)
-
-        if not self.__operation_cancelled:
-            message = (None, self._copy_operation(self._operation),)
-        else:
-            message = (CancelledError(self.__execute_response.status.message),
-                       self._copy_operation(self._operation),)
-
-        for message_queue in self.__operation_message_queues.values():
-            message_queue.put(message)
-
-    def cancel_operation(self):
-        """Triggers a job's :class:Operation cancellation.
-
-        This will also cancel any job's :class:Lease that may have been issued.
-        """
-        self.__operation_cancelled = True
-        if self._lease is not None:
-            self.cancel_lease()
-
-        self.__execute_response = remote_execution_pb2.ExecuteResponse()
-        self.__execute_response.status.code = code_pb2.CANCELLED
-        self.__execute_response.status.message = "Operation cancelled by client."
-
-        self.update_operation_stage(OperationStage.COMPLETED)
 
     # --- Public API: Monitoring ---
 
@@ -339,8 +352,8 @@ class Job:
     # --- Private API ---
 
     def _copy_operation(self, operation):
+        """Simply duplicates a given :class:`Lease` object."""
         new_operation = operations_pb2.Operation()
-
         new_operation.CopyFrom(operation)
 
         return new_operation
