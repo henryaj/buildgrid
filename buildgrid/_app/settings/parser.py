@@ -82,9 +82,9 @@ class Channel(YamlFactory):
             client_certs = credentials['tls-client-certs']
             self.credentials = context.load_server_credentials(server_key, server_cert, client_certs)
 
-            if not credentials:
-                click.echo("ERROR: no TLS keys were specified and no defaults could be found.\n" +
-                           "Set `insecure-mode: false` in order to deactivate TLS encryption.\n", err=True)
+            if not self.credentials:
+                click.echo("ERROR: load_server_credentials could not find certificates.\n" +
+                           "Please check whether the specified certificate paths exist.\n", err=True)
                 sys.exit(-1)
 
 
