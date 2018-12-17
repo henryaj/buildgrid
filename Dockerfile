@@ -16,8 +16,7 @@ COPY . .
 RUN pip install --user --editable .
 
 # Entry Point of the image (should get an additional argument from CMD, the path to the config file)
-ENTRYPOINT ["bgd", "-v", "server", "start"]
+ENTRYPOINT ["bgd", "server", "start", "-vv"]
 
 # Default config file (used if no CMD specified when running)
 CMD ["buildgrid/_app/settings/default.yml"]
-
