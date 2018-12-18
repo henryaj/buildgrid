@@ -191,7 +191,7 @@ class AuthMetadataClientInterceptor(
 
         class _ClientCallDetails(
                 namedtuple('_ClientCallDetails',
-                           ('method', 'timeout', 'credentials', 'metadata')),
+                           ('method', 'timeout', 'credentials', 'metadata',)),
                 grpc.ClientCallDetails):
             pass
 

@@ -13,8 +13,10 @@
 # limitations under the License.
 
 
+from collections import namedtuple
 from datetime import datetime
 from enum import Enum
+import functools
 import logging
 
 import grpc
@@ -55,6 +57,11 @@ class AuthMetadataAlgorithm(Enum):
     JWT_RS512 = 'rs512'  # RSASSA-PKCS1-v1_5 signature algorithm using SHA-512 hash algorithm
 
 
+class AuthContext:
+
+    interceptor = None
+
+
 class _InvalidTokenError(Exception):
     pass
 
@@ -67,14 +74,66 @@ class _UnboundedTokenError(Exception):
     pass
 
 
+def authorize(auth_context):
+    """RPC method decorator for authorization validations.
+
+    This decorator is design to be used together with an :class:`AuthContext`
+    authorization context holder::
+
+        @authorize(AuthContext)
+        def Execute(self, request, context):
+
+    By default, any request is accepted. Authorization validation can be
+    activated by setting up a :class:`grpc.ServerInterceptor`::
+
+        AuthContext.interceptor = AuthMetadataServerInterceptor()
+
+    Args:
+        auth_context(AuthContext): Authorization context holder.
+    """
+    def __authorize_decorator(behavior):
+        """RPC authorization method decorator."""
+        _HandlerCallDetails = namedtuple(
+            '_HandlerCallDetails', ('invocation_metadata', 'method',))
+
+        @functools.wraps(behavior)
+        def __authorize_wrapper(self, request, context):
+            """RPC authorization method wrapper."""
+            if auth_context.interceptor is None:
+                return behavior(self, request, context)
+
+            authorized = False
+
+            def __continuator(handler_call_details):
+                nonlocal authorized
+                authorized = True
+
+            details = _HandlerCallDetails(context.invocation_metadata(),
+                                          behavior.__name__)
+
+            auth_context.interceptor.intercept_service(__continuator, details)
+
+            if authorized:
+                return behavior(self, request, context)
+
+            context.abort(grpc.StatusCode.UNAUTHENTICATED,
+                          "No valid authorization or authentication provided")
+
+            return None
+
+        return __authorize_wrapper
+
+    return __authorize_decorator
+
+
 class AuthMetadataServerInterceptor(grpc.ServerInterceptor):
 
     __auth_errors = {
-        'missing-bearer': 'Missing authentication header field',
-        'invalid-bearer': 'Invalid authentication header field',
-        'invalid-token': 'Invalid authentication token',
-        'expired-token': 'Expired authentication token',
-        'unbounded-token': 'Unbounded authentication token',
+        'missing-bearer': "Missing authentication header field",
+        'invalid-bearer': "Invalid authentication header field",
+        'invalid-token': "Invalid authentication token",
+        'expired-token': "Expired authentication token",
+        'unbounded-token': "Unbounded authentication token",
     }
 
     def __init__(self, method, secret=None, algorithm=AuthMetadataAlgorithm.UNSPECIFIED):
