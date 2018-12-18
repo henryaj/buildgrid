@@ -29,6 +29,7 @@ import grpc
 from buildgrid._exceptions import FailedPreconditionError, InvalidArgumentError, CancelledError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc
 from buildgrid._protos.google.longrunning import operations_pb2
+from buildgrid.server._authentication import AuthContext, authorize
 
 
 class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
@@ -81,6 +82,7 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
     # --- Public API: Servicer ---
 
+    @authorize(AuthContext)
     def Execute(self, request, context):
         """Handles ExecuteRequest messages.
 
@@ -139,6 +141,7 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             context.set_code(grpc.StatusCode.CANCELLED)
             yield operations_pb2.Operation()
 
+    @authorize(AuthContext)
     def WaitExecution(self, request, context):
         """Handles WaitExecutionRequest messages.
 
