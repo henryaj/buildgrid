@@ -53,7 +53,8 @@ def cli(context, remote, instance_name, auth_token, client_key, client_cert, ser
     """Entry point for the bgd-execute CLI command group."""
     try:
         context.channel, _ = setup_channel(remote, auth_token=auth_token,
-                                           client_key=client_key, client_cert=client_cert)
+                                           client_key=client_key, client_cert=client_cert,
+                                           server_cert=server_cert)
 
     except InvalidArgumentError as e:
         click.echo("Error: {}.".format(e), err=True)
