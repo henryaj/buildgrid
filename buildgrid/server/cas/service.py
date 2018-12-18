@@ -29,6 +29,7 @@ from buildgrid._exceptions import InvalidArgumentError, NotFoundError, OutOfRang
 from buildgrid._protos.google.bytestream import bytestream_pb2, bytestream_pb2_grpc
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc
+from buildgrid.server._authentication import AuthContext, authorize
 
 
 class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressableStorageServicer):
@@ -40,9 +41,14 @@ class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressa
 
         remote_execution_pb2_grpc.add_ContentAddressableStorageServicer_to_server(self, server)
 
+    # --- Public API ---
+
     def add_instance(self, name, instance):
         self._instances[name] = instance
 
+    # --- Public API: Servicer ---
+
+    @authorize(AuthContext)
     def FindMissingBlobs(self, request, context):
         self.__logger.debug("FindMissingBlobs request from [%s]", context.peer())
 
@@ -59,6 +65,7 @@ class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressa
 
         return remote_execution_pb2.FindMissingBlobsResponse()
 
+    @authorize(AuthContext)
     def BatchUpdateBlobs(self, request, context):
         self.__logger.debug("BatchUpdateBlobs request from [%s]", context.peer())
 
@@ -75,6 +82,7 @@ class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressa
 
         return remote_execution_pb2.BatchReadBlobsResponse()
 
+    @authorize(AuthContext)
     def BatchReadBlobs(self, request, context):
         self.__logger.debug("BatchReadBlobs request from [%s]", context.peer())
 
@@ -83,6 +91,7 @@ class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressa
 
         return remote_execution_pb2.BatchReadBlobsResponse()
 
+    @authorize(AuthContext)
     def GetTree(self, request, context):
         self.__logger.debug("GetTree request from [%s]", context.peer())
 
@@ -96,6 +105,8 @@ class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressa
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
             yield remote_execution_pb2.GetTreeResponse()
+
+    # --- Private API ---
 
     def _get_instance(self, instance_name):
         try:
@@ -114,9 +125,14 @@ class ByteStreamService(bytestream_pb2_grpc.ByteStreamServicer):
 
         bytestream_pb2_grpc.add_ByteStreamServicer_to_server(self, server)
 
+    # --- Public API ---
+
     def add_instance(self, name, instance):
         self._instances[name] = instance
 
+    # --- Public API: Servicer ---
+
+    @authorize(AuthContext)
     def Read(self, request, context):
         self.__logger.debug("Read request from [%s]", context.peer())
 
@@ -163,6 +179,7 @@ class ByteStreamService(bytestream_pb2_grpc.ByteStreamServicer):
             context.set_code(grpc.StatusCode.OUT_OF_RANGE)
             yield bytestream_pb2.ReadResponse()
 
+    @authorize(AuthContext)
     def Write(self, requests, context):
         self.__logger.debug("Write request from [%s]", context.peer())
 
@@ -209,11 +226,14 @@ class ByteStreamService(bytestream_pb2_grpc.ByteStreamServicer):
 
         return bytestream_pb2.WriteResponse()
 
+    @authorize(AuthContext)
     def QueryWriteStatus(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
 
         return bytestream_pb2.QueryWriteStatusResponse()
+
+    # --- Private API ---
 
     def _get_instance(self, instance_name):
         try:
