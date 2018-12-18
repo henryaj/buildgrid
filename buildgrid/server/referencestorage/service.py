@@ -20,6 +20,7 @@ import grpc
 from buildgrid._exceptions import InvalidArgumentError, NotFoundError
 from buildgrid._protos.buildstream.v2 import buildstream_pb2
 from buildgrid._protos.buildstream.v2 import buildstream_pb2_grpc
+from buildgrid.server._authentication import AuthContext, authorize
 
 
 class ReferenceStorageService(buildstream_pb2_grpc.ReferenceStorageServicer):
@@ -31,9 +32,14 @@ class ReferenceStorageService(buildstream_pb2_grpc.ReferenceStorageServicer):
 
         buildstream_pb2_grpc.add_ReferenceStorageServicer_to_server(self, server)
 
+    # --- Public API ---
+
     def add_instance(self, name, instance):
         self._instances[name] = instance
 
+    # --- Public API: Servicer ---
+
+    @authorize(AuthContext)
     def GetReference(self, request, context):
         self.__logger.debug("GetReference request from [%s]", context.peer())
 
@@ -55,6 +61,7 @@ class ReferenceStorageService(buildstream_pb2_grpc.ReferenceStorageServicer):
 
         return buildstream_pb2.GetReferenceResponse()
 
+    @authorize(AuthContext)
     def UpdateReference(self, request, context):
         self.__logger.debug("UpdateReference request from [%s]", context.peer())
 
@@ -75,6 +82,7 @@ class ReferenceStorageService(buildstream_pb2_grpc.ReferenceStorageServicer):
 
         return buildstream_pb2.UpdateReferenceResponse()
 
+    @authorize(AuthContext)
     def Status(self, request, context):
         self.__logger.debug("Status request from [%s]", context.peer())
 
@@ -89,6 +97,8 @@ class ReferenceStorageService(buildstream_pb2_grpc.ReferenceStorageServicer):
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
         return buildstream_pb2.StatusResponse()
+
+    # --- Private API ---
 
     def _get_instance(self, instance_name):
         try:
