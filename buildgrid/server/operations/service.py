@@ -27,6 +27,7 @@ from google.protobuf.empty_pb2 import Empty
 
 from buildgrid._exceptions import InvalidArgumentError
 from buildgrid._protos.google.longrunning import operations_pb2_grpc, operations_pb2
+from buildgrid.server._authentication import AuthContext, authorize
 
 
 class OperationsService(operations_pb2_grpc.OperationsServicer):
@@ -51,6 +52,7 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
 
     # --- Public API: Servicer ---
 
+    @authorize(AuthContext)
     def GetOperation(self, request, context):
         self.__logger.debug("GetOperation request from [%s]", context.peer())
 
@@ -74,6 +76,7 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
 
         return operations_pb2.Operation()
 
+    @authorize(AuthContext)
     def ListOperations(self, request, context):
         self.__logger.debug("ListOperations request from [%s]", context.peer())
 
@@ -99,6 +102,7 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
 
         return operations_pb2.ListOperationsResponse()
 
+    @authorize(AuthContext)
     def DeleteOperation(self, request, context):
         self.__logger.debug("DeleteOperation request from [%s]", context.peer())
 
@@ -118,6 +122,7 @@ class OperationsService(operations_pb2_grpc.OperationsServicer):
 
         return Empty()
 
+    @authorize(AuthContext)
     def CancelOperation(self, request, context):
         self.__logger.debug("CancelOperation request from [%s]", context.peer())
 
