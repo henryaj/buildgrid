@@ -19,14 +19,19 @@ import grpc
 
 from buildgrid._exceptions import InvalidArgumentError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
+from buildgrid.server._authentication import AuthContext, authorize
 
 
 class CapabilitiesService(remote_execution_pb2_grpc.CapabilitiesServicer):
 
     def __init__(self, server):
         self.__logger = logging.getLogger(__name__)
+
         self.__instances = {}
+
         remote_execution_pb2_grpc.add_CapabilitiesServicer_to_server(self, server)
+
+    # --- Public API ---
 
     def add_instance(self, name, instance):
         self.__instances[name] = instance
@@ -40,6 +45,9 @@ class CapabilitiesService(remote_execution_pb2_grpc.CapabilitiesServicer):
     def add_execution_instance(self, name, instance):
         self.__instances[name].add_execution_instance(instance)
 
+    # --- Public API: Servicer ---
+
+    @authorize(AuthContext)
     def GetCapabilities(self, request, context):
         try:
             instance = self._get_instance(request.instance_name)
@@ -51,6 +59,8 @@ class CapabilitiesService(remote_execution_pb2_grpc.CapabilitiesServicer):
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
         return remote_execution_pb2.ServerCapabilities()
+
+    # --- Private API ---
 
     def _get_instance(self, name):
         try:
