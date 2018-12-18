@@ -29,7 +29,8 @@ import janus
 from buildgrid._enums import BotStatus, LogRecordLevel, MetricRecordDomain, MetricRecordType
 from buildgrid._protos.buildgrid.v2 import monitoring_pb2
 from buildgrid.server.actioncache.service import ActionCacheService
-from buildgrid.server._authentication import AuthMetadataMethod, AuthMetadataAlgorithm, AuthMetadataServerInterceptor
+from buildgrid.server._authentication import AuthMetadataMethod, AuthMetadataAlgorithm
+from buildgrid.server._authentication import AuthContext, AuthMetadataServerInterceptor
 from buildgrid.server.bots.service import BotsService
 from buildgrid.server.capabilities.instance import CapabilitiesInstance
 from buildgrid.server.capabilities.service import CapabilitiesService
@@ -78,16 +79,15 @@ class BuildGridServer:
             max_workers = (os.cpu_count() or 1) * 5
 
         self.__grpc_auth_interceptor = None
+
         if auth_method != AuthMetadataMethod.NONE:
             self.__grpc_auth_interceptor = AuthMetadataServerInterceptor(
                 method=auth_method, secret=auth_secret, algorithm=auth_algorithm)
-        self.__grpc_executor = futures.ThreadPoolExecutor(max_workers)
 
-        if self.__grpc_auth_interceptor is not None:
-            self.__grpc_server = grpc.server(
-                self.__grpc_executor, interceptors=(self.__grpc_auth_interceptor,))
-        else:
-            self.__grpc_server = grpc.server(self.__grpc_executor)
+            AuthContext.interceptor = self.__grpc_auth_interceptor
+
+        self.__grpc_executor = futures.ThreadPoolExecutor(max_workers)
+        self.__grpc_server = grpc.server(self.__grpc_executor)
 
         self.__main_loop = asyncio.get_event_loop()
 
