@@ -29,6 +29,7 @@ from buildgrid._enums import BotStatus
 from buildgrid._exceptions import InvalidArgumentError, OutOfSyncError
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2_grpc
+from buildgrid.server._authentication import AuthContext, authorize
 
 
 class BotsService(bots_pb2_grpc.BotsServicer):
@@ -86,6 +87,7 @@ class BotsService(bots_pb2_grpc.BotsServicer):
 
     # --- Public API: Servicer ---
 
+    @authorize(AuthContext)
     def CreateBotSession(self, request, context):
         """Handles CreateBotSessionRequest messages.
 
@@ -121,6 +123,7 @@ class BotsService(bots_pb2_grpc.BotsServicer):
 
         return bots_pb2.BotSession()
 
+    @authorize(AuthContext)
     def UpdateBotSession(self, request, context):
         """Handles UpdateBotSessionRequest messages.
 
@@ -175,6 +178,7 @@ class BotsService(bots_pb2_grpc.BotsServicer):
 
         return bots_pb2.BotSession()
 
+    @authorize(AuthContext)
     def PostBotEventTemp(self, request, context):
         """Handles PostBotEventTempRequest messages.
 
