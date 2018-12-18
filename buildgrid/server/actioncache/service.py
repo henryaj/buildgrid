@@ -27,6 +27,7 @@ import grpc
 from buildgrid._exceptions import InvalidArgumentError, NotFoundError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc
+from buildgrid.server._authentication import AuthContext, authorize
 
 
 class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
@@ -38,9 +39,14 @@ class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
 
         remote_execution_pb2_grpc.add_ActionCacheServicer_to_server(self, server)
 
+    # --- Public API ---
+
     def add_instance(self, name, instance):
         self._instances[name] = instance
 
+    # --- Public API: Servicer ---
+
+    @authorize(AuthContext)
     def GetActionResult(self, request, context):
         self.__logger.debug("GetActionResult request from [%s]", context.peer())
 
@@ -59,6 +65,7 @@ class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
 
         return remote_execution_pb2.ActionResult()
 
+    @authorize(AuthContext)
     def UpdateActionResult(self, request, context):
         self.__logger.debug("UpdateActionResult request from [%s]", context.peer())
 
@@ -77,6 +84,8 @@ class ActionCacheService(remote_execution_pb2_grpc.ActionCacheServicer):
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
 
         return remote_execution_pb2.ActionResult()
+
+    # --- Private API ---
 
     def _get_instance(self, instance_name):
         try:
