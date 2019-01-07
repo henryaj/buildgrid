@@ -83,7 +83,7 @@ class BotsInterface:
         self._check_bot_ids(bot_session.bot_id, name)
         self._check_assigned_leases(bot_session)
 
-        for lease in bot_session.leases:
+        for lease in list(bot_session.leases):
             checked_lease = self._check_lease_state(lease)
             if not checked_lease:
                 # TODO: Make sure we don't need this
@@ -91,7 +91,10 @@ class BotsInterface:
                     self._assigned_leases[name].remove(lease.id)
                 except KeyError:
                     pass
-                lease.Clear()
+
+                self._scheduler.delete_job_lease(lease.id)
+
+                bot_session.leases.remove(lease)
 
         self._request_leases(bot_session)
         return bot_session
