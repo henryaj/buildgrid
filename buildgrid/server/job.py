@@ -222,6 +222,13 @@ class Job:
         if self._lease is not None:
             self.update_lease_state(LeaseState.CANCELLED)
 
+    def delete_lease(self):
+        """Discard the job's :class:Lease."""
+        self.__worker_start_timestamp.Clear()
+        self.__worker_completed_timestamp.Clear()
+
+        self._lease = None
+
     def update_operation_stage(self, stage):
         """Operates a stage transition for the job's :class:Operation.
 
