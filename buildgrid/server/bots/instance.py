@@ -117,7 +117,7 @@ class BotsInterface:
 
         try:
             if self._scheduler.get_job_lease_cancelled(lease.id):
-                lease.state.CopyFrom(LeaseState.CANCELLED.value)
+                lease.state = LeaseState.CANCELLED.value
                 return lease
         except KeyError:
             # Job does not exist, remove from bot.
