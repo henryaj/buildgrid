@@ -62,7 +62,7 @@ class Scheduler:
 
         job.unregister_client(queue)
 
-        if not job.n_clients and job.operation.done:
+        if not job.n_clients and job.operation.done and not job.lease:
             del self.jobs[job_name]
 
             if self._is_instrumented:
