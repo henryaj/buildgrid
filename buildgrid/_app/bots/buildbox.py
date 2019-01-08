@@ -21,7 +21,7 @@ import tempfile
 from buildgrid.client.cas import download, upload
 from buildgrid._exceptions import BotError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
-from buildgrid.settings import HASH_LENGTH
+from buildgrid.settings import HASH_LENGTH, MAX_REQUEST_SIZE
 from buildgrid.utils import read_file, write_file
 
 
@@ -97,12 +97,8 @@ def work_buildbox(lease, context, event):
                                             stderr=subprocess.PIPE)
             stdout, stderr = command_line.communicate()
             returncode = command_line.returncode
+
             action_result = remote_execution_pb2.ActionResult()
-            # TODO: Upload to CAS or output RAW
-            # For now, just pass raw
-            # https://gitlab.com/BuildGrid/buildgrid/issues/90
-            action_result.stdout_raw = stdout
-            action_result.stderr_raw = stderr
             action_result.exit_code = returncode
 
             logger.debug("BuildBox stderr: [{}]".format(stderr))
@@ -126,11 +122,25 @@ def work_buildbox(lease, context, event):
             with upload(context.cas_channel) as uploader:
                 output_tree_digest = uploader.put_message(output_tree)
 
-            output_directory = remote_execution_pb2.OutputDirectory()
-            output_directory.tree_digest.CopyFrom(output_tree_digest)
-            output_directory.path = os.path.relpath(working_directory, start='/')
+                output_directory = remote_execution_pb2.OutputDirectory()
+                output_directory.tree_digest.CopyFrom(output_tree_digest)
+                output_directory.path = os.path.relpath(working_directory, start='/')
 
-            action_result.output_directories.extend([output_directory])
+                action_result.output_directories.extend([output_directory])
+
+                if action_result.ByteSize() + len(stdout) > MAX_REQUEST_SIZE:
+                    stdout_digest = uploader.put_blob(stdout)
+                    action_result.stdout_digest.CopyFrom(stdout_digest)
+
+                else:
+                    action_result.stdout_raw = stdout
+
+                if action_result.ByteSize() + len(stderr) > MAX_REQUEST_SIZE:
+                    stderr_digest = uploader.put_blob(stderr)
+                    action_result.stderr_digest.CopyFrom(stderr_digest)
+
+                else:
+                    action_result.stderr_raw = stderr
 
             lease.result.Pack(action_result)
 
