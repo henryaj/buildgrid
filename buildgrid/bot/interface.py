@@ -57,5 +57,5 @@ class BotInterface:
         try:
             return call(request)
         except grpc.RpcError as e:
-            self.__logger.error(e.code())
+            self.__logger.error(e)
             return e.code()
