@@ -20,6 +20,7 @@ import tempfile
 
 from buildgrid.client.cas import download, upload
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
+from buildgrid.settings import MAX_REQUEST_SIZE
 from buildgrid.utils import get_hostname, output_file_maker, output_directory_maker
 
 
@@ -92,15 +93,8 @@ def work_host_tools(lease, context, event):
 
         action_result.execution_metadata.execution_completed_timestamp.GetCurrentTime()
 
-        # TODO: Upload to CAS or output RAW
-        # For now, just pass raw
-        # https://gitlab.com/BuildGrid/buildgrid/issues/90
-        action_result.stdout_raw = stdout
-        action_result.stderr_raw = stderr
         action_result.exit_code = returncode
 
-        logger.debug("Command stderr: [{}]".format(stderr))
-        logger.debug("Command stdout: [{}]".format(stdout))
         logger.debug("Command exit code: [{}]".format(returncode))
 
         action_result.execution_metadata.output_upload_start_timestamp.GetCurrentTime()
@@ -133,6 +127,20 @@ def work_host_tools(lease, context, event):
                 output_directories.append(output_directory)
 
             action_result.output_directories.extend(output_directories)
+
+            if action_result.ByteSize() + len(stdout) > MAX_REQUEST_SIZE:
+                stdout_digest = uploader.put_blob(stdout)
+                action_result.stdout_digest.CopyFrom(stdout_digest)
+
+            else:
+                action_result.stdout_raw = stdout
+
+            if action_result.ByteSize() + len(stderr) > MAX_REQUEST_SIZE:
+                stderr_digest = uploader.put_blob(stderr)
+                action_result.stderr_digest.CopyFrom(stderr_digest)
+
+            else:
+                action_result.stderr_raw = stderr
 
         action_result.execution_metadata.output_upload_completed_timestamp.GetCurrentTime()
 
