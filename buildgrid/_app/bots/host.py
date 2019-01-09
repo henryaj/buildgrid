@@ -28,6 +28,7 @@ def work_host_tools(lease, context, event):
     """Executes a lease for a build action, using host tools.
     """
     instance_name = context.parent
+
     logger = logging.getLogger(__name__)
 
     action_digest = remote_execution_pb2.Digest()
@@ -51,6 +52,11 @@ def work_host_tools(lease, context, event):
             action_result.execution_metadata.input_fetch_start_timestamp.GetCurrentTime()
 
             downloader.download_directory(action.input_root_digest, temp_directory)
+
+        logger.debug("Command digest: [{}/{}]"
+                     .format(action.command_digest.hash, action.command_digest.size_bytes))
+        logger.debug("Input root digest: [{}/{}]"
+                     .format(action.input_root_digest.hash, action.input_root_digest.size_bytes))
 
         action_result.execution_metadata.input_fetch_completed_timestamp.GetCurrentTime()
 
@@ -77,7 +83,7 @@ def work_host_tools(lease, context, event):
                                           os.path.dirname(output_path))
             os.makedirs(directory_path, exist_ok=True)
 
-        logger.debug(' '.join(command_line))
+        logger.info("Starting execution: [{}...]".format(command.arguments[0]))
 
         action_result.execution_metadata.execution_start_timestamp.GetCurrentTime()
 
@@ -95,7 +101,7 @@ def work_host_tools(lease, context, event):
 
         action_result.exit_code = returncode
 
-        logger.debug("Command exit code: [{}]".format(returncode))
+        logger.info("Execution finished with code: [{}]".format(returncode))
 
         action_result.execution_metadata.output_upload_start_timestamp.GetCurrentTime()
 
@@ -113,6 +119,9 @@ def work_host_tools(lease, context, event):
                                                 file_digest)
                 output_files.append(output_file)
 
+                logger.debug("Output file digest: [{}/{}]"
+                             .format(file_digest.hash, file_digest.size_bytes))
+
             action_result.output_files.extend(output_files)
 
             for output_path in command.output_directories:
@@ -125,6 +134,9 @@ def work_host_tools(lease, context, event):
                 output_directory = output_directory_maker(directory_path, working_directory,
                                                           tree_digest)
                 output_directories.append(output_directory)
+
+                logger.debug("Output tree digest: [{}/{}]"
+                             .format(tree_digest.hash, tree_digest.size_bytes))
 
             action_result.output_directories.extend(output_directories)
 
