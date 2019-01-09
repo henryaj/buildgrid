@@ -52,9 +52,10 @@ def work_buildbox(lease, context, event):
     else:
         working_directory = '/'
 
-    logger.debug("command hash: {}".format(action.command_digest.hash))
-    logger.debug("vdir hash: {}".format(action.input_root_digest.hash))
-    logger.debug("\n{}".format(' '.join(command.arguments)))
+    logger.debug("Command digest: [{}/{}]"
+                 .format(action.command_digest.hash, action.command_digest.size_bytes))
+    logger.debug("Input root digest: [{}/{}]"
+                 .format(action.input_root_digest.hash, action.input_root_digest.size_bytes))
 
     os.makedirs(os.path.join(local_cas_directory, 'tmp'), exist_ok=True)
     os.makedirs(context.fuse_dir, exist_ok=True)
@@ -87,9 +88,7 @@ def work_buildbox(lease, context, event):
             command_line.append(context.fuse_dir)
             command_line.extend(command.arguments)
 
-            logger.debug(' '.join(command_line))
-            logger.debug("Input root digest:\n{}".format(action.input_root_digest))
-            logger.info("Launching process")
+            logger.info("Starting execution: [{}...]".format(command.arguments[0]))
 
             command_line = subprocess.Popen(command_line,
                                             stdin=subprocess.PIPE,
@@ -101,14 +100,13 @@ def work_buildbox(lease, context, event):
             action_result = remote_execution_pb2.ActionResult()
             action_result.exit_code = returncode
 
-            logger.debug("BuildBox stderr: [{}]".format(stderr))
-            logger.debug("BuildBox stdout: [{}]".format(stdout))
-            logger.debug("BuildBox exit code: [{}]".format(returncode))
+            logger.info("Execution finished with code: [{}]".format(returncode))
 
             output_digest = remote_execution_pb2.Digest()
             output_digest.ParseFromString(read_file(output_digest_file.name))
 
-            logger.debug("Output root digest: [{}]".format(output_digest))
+            logger.debug("Output root digest: [{}/{}]"
+                         .format(output_digest.hash, output_digest.size_bytes))
 
             if len(output_digest.hash) != HASH_LENGTH:
                 raise BotError(stdout,
