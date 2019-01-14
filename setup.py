@@ -102,10 +102,9 @@ tests_require = [
 ]
 
 docs_require = [
-    # rtd-theme broken in Sphinx >= 1.8, this breaks search functionality.
-    'sphinx == 1.7.8',
+    'sphinx',
     'sphinx-click',
-    'sphinx-rtd-theme',
+    'sphinx-rtd-theme >= 0.4.2',  # For HTML search fix (upstream #672)
     'sphinxcontrib-apidoc',
     'sphinxcontrib-napoleon',
 ]
