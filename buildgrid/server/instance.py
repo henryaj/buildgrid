@@ -87,7 +87,8 @@ class BuildGridServer:
             AuthContext.interceptor = self.__grpc_auth_interceptor
 
         self.__grpc_executor = futures.ThreadPoolExecutor(max_workers)
-        self.__grpc_server = grpc.server(self.__grpc_executor)
+        self.__grpc_server = grpc.server(self.__grpc_executor,
+                                         options=(('grpc.so_reuseport', 0),))
 
         self.__main_loop = asyncio.get_event_loop()
 
