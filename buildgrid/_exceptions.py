@@ -89,3 +89,9 @@ class FailedPreconditionError(BgdError):
     able to fix the errors and retry."""
     def __init__(self, message, detail=None, reason=None):
         super().__init__(message, detail=detail, domain=ErrorDomain.SERVER, reason=reason)
+
+
+class PermissionDeniedError(BgdError):
+    """The caller does not have permission to execute the specified operation."""
+    def __init__(self, message, detail=None, reason=None):
+        super().__init__(message, detail=detail, domain=ErrorDomain.SERVER, reason=reason)
