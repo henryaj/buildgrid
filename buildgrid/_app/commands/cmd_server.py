@@ -24,6 +24,7 @@ import sys
 
 import click
 
+from buildgrid._exceptions import PermissionDeniedError
 from buildgrid.server._authentication import AuthMetadataMethod, AuthMetadataAlgorithm
 from buildgrid.server.instance import BuildGridServer
 from buildgrid.server._monitoring import MonitoringOutputType, MonitoringOutputFormat
@@ -120,8 +121,13 @@ def _create_server_from_config(configuration):
 
     server = BuildGridServer(**kargs)
 
-    for channel in network:
-        server.add_port(channel.address, channel.credentials)
+    try:
+        for channel in network:
+            server.add_port(channel.address, channel.credentials)
+
+    except PermissionDeniedError as e:
+        click.echo("Error: {}.".format(e), err=True)
+        sys.exit(-1)
 
     for instance in instances:
         instance_name = instance['name']
