@@ -27,6 +27,7 @@ import grpc
 import janus
 
 from buildgrid._enums import BotStatus, LogRecordLevel, MetricRecordDomain, MetricRecordType
+from buildgrid._exceptions import PermissionDeniedError
 from buildgrid._protos.buildgrid.v2 import monitoring_pb2
 from buildgrid.server.actioncache.service import ActionCacheService
 from buildgrid.server._authentication import AuthMetadataMethod, AuthMetadataAlgorithm
@@ -206,6 +207,9 @@ class BuildGridServer:
 
         Returns:
             int: Number of the bound port.
+
+        Raises:
+            PermissionDeniedError: If socket binding fails.
         """
         if credentials is not None:
             self.__logger.info("Adding secure connection on: [%s]", address)
@@ -214,6 +218,9 @@ class BuildGridServer:
         else:
             self.__logger.info("Adding insecure connection on [%s]", address)
             port_number = self.__grpc_server.add_insecure_port(address)
+
+        if not port_number:
+            raise PermissionDeniedError("Unable to configure socket")
 
         return port_number
 
