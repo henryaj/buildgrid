@@ -86,8 +86,15 @@ class ContentAddressableStorageService(remote_execution_pb2_grpc.ContentAddressa
     def BatchReadBlobs(self, request, context):
         self.__logger.debug("BatchReadBlobs request from [%s]", context.peer())
 
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
+        try:
+            instance = self._get_instance(request.instance_name)
+            response = instance.batch_read_blobs(request.digests)
+            return response
+
+        except InvalidArgumentError as e:
+            self.__logger.error(e)
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
 
         return remote_execution_pb2.BatchReadBlobsResponse()
 

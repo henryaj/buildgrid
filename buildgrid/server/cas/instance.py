@@ -24,6 +24,7 @@ import logging
 from buildgrid._exceptions import InvalidArgumentError, NotFoundError, OutOfRangeError
 from buildgrid._protos.google.bytestream import bytestream_pb2
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2 as re_pb2
+from buildgrid._protos.google.rpc import code_pb2, status_pb2
 from buildgrid.settings import HASH, HASH_LENGTH, MAX_REQUEST_SIZE, MAX_REQUEST_COUNT
 from buildgrid.utils import get_hash_type
 
@@ -67,6 +68,33 @@ class ContentAddressableStorageInstance:
             response_proto = response.responses.add()
             response_proto.digest.CopyFrom(digest)
             response_proto.status.CopyFrom(status)
+
+        return response
+
+    def batch_read_blobs(self, digests):
+        response = re_pb2.BatchReadBlobsResponse()
+
+        requested_bytes = sum((digest.size_bytes for digest in digests))
+        max_batch_size = self.max_batch_total_size_bytes()
+
+        if requested_bytes > max_batch_size:
+            raise InvalidArgumentError('Combined total size of blobs exceeds '
+                                       'server limit. '
+                                       '({} > {} [byte])'.format(requested_bytes,
+                                                                 max_batch_size))
+
+        for digest in digests:
+            response_proto = response.responses.add()
+            response_proto.digest.CopyFrom(digest)
+
+            blob = self._storage.get_blob(digest)
+            if blob:
+                response_proto.data = blob.read()
+                status_code = code_pb2.OK
+            else:
+                status_code = code_pb2.NOT_FOUND
+
+            response_proto.status.CopyFrom(status_pb2.Status(code=status_code))
 
         return response
 
