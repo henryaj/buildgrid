@@ -72,6 +72,8 @@ class ContentAddressableStorageInstance:
         return response
 
     def batch_read_blobs(self, digests):
+        storage = self._storage
+
         response = re_pb2.BatchReadBlobsResponse()
 
         requested_bytes = sum((digest.size_bytes for digest in digests))
@@ -87,7 +89,7 @@ class ContentAddressableStorageInstance:
             response_proto = response.responses.add()
             response_proto.digest.CopyFrom(digest)
 
-            blob = self._storage.get_blob(digest)
+            blob = storage.get_blob(digest)
             if blob:
                 response_proto.data = blob.read()
                 status_code = code_pb2.OK

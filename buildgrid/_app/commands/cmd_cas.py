@@ -147,33 +147,41 @@ def _create_digest(digest_string):
     return digest
 
 
-@cli.command('download-file', short_help="Download a file from the CAS server.")
-@click.argument('digest-string', nargs=1, type=click.STRING, required=True)
-@click.argument('file-path', nargs=1, type=click.Path(exists=False), required=True)
+@cli.command('download-file', short_help="Download one or more files from the CAS server. "
+                                         "(Specified as a space-separated list of DIGEST FILE_PATH)")
+@click.argument('digest-path-list', nargs=-1, type=str, required=True)  # 'digest path' pairs
 @click.option('--verify', is_flag=True, show_default=True,
               help="Check downloaded file's integrity.")
 @pass_context
-def download_file(context, digest_string, file_path, verify):
-    if os.path.exists(file_path):
-        click.echo("Error: Invalid value for " +
-                   "path=[{}] already exists.".format(file_path), err=True)
-        return
-
-    digest = _create_digest(digest_string)
+def download_file(context, digest_path_list, verify):
+    # Downloading files:
+    downloaded_files = {}
     with download(context.channel, instance=context.instance_name) as downloader:
-        downloader.download_file(digest, file_path)
+        for (digest_string, file_path) in zip(digest_path_list[0::2],
+                                              digest_path_list[1::2]):
+            if os.path.exists(file_path):
+                click.echo("Error: Invalid value for " +
+                           "path=[{}] already exists.".format(file_path), err=True)
+                continue
 
-    if verify:
-        file_digest = create_digest(read_file(file_path))
-        if file_digest != digest:
-            click.echo("Error: Failed to verify path=[{}]".format(file_path), err=True)
-            return
+            digest = _create_digest(digest_string)
 
-    if os.path.isfile(file_path):
-        click.echo("Success: Pulled path=[{}] from digest=[{}/{}]"
-                   .format(file_path, digest.hash, digest.size_bytes))
-    else:
-        click.echo('Error: Failed pulling "{}"'.format(file_path), err=True)
+            downloader.download_file(digest, file_path)
+            downloaded_files[file_path] = digest
+
+    # Verifying:
+    for (file_path, digest) in downloaded_files.items():
+        if verify:
+            file_digest = create_digest(read_file(file_path))
+            if file_digest != digest:
+                click.echo("Error: Failed to verify path=[{}]".format(file_path), err=True)
+                continue
+
+        if os.path.isfile(file_path):
+            click.echo("Success: Pulled path=[{}] from digest=[{}/{}]"
+                       .format(file_path, digest.hash, digest.size_bytes))
+        else:
+            click.echo('Error: Failed pulling "{}"'.format(file_path), err=True)
 
 
 @cli.command('download-dir', short_help="Download a directory from the CAS server.")
