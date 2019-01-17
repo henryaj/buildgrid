@@ -391,7 +391,7 @@ class Downloader:
             except grpc.RpcError as e:
                 status_code = e.code()
                 if status_code == grpc.StatusCode.UNIMPLEMENTED:
-                    _CallCache.mark_unimplemented(self.channel, 'BatchUpdateBlobs')
+                    _CallCache.mark_unimplemented(self.channel, 'GetTree')
 
                 elif status_code == grpc.StatusCode.NOT_FOUND:
                     raise NotFoundError("Requested directory does not exist on the remote.")
