@@ -16,8 +16,10 @@
 
 
 from collections import namedtuple
+from datetime import datetime
 from unittest import mock
 import os
+import time
 
 import grpc
 from grpc._server import _Context
@@ -181,3 +183,46 @@ def test_jwt_authorization(token, secret, algorithm, validity):
     else:
         context.abort.assert_called_once_with(grpc.StatusCode.UNAUTHENTICATED, mock.ANY)
         context.set_code.assert_not_called()
+
+
+@pytest.mark.skipif(not HAVE_JWT, reason="No pyjwt")
+def test_jwt_authorization_expiry():
+    secret, algorithm = 'your-256-bit-secret', AuthMetadataAlgorithm.JWT_HS256
+    now = int(datetime.utcnow().timestamp())
+    payload = {'sub': 'BuildGrid Expiry Test', 'iat': now, 'exp': now + 2}
+    token = jwt.encode(payload, secret, algorithm=algorithm.value.upper()).decode()
+
+    interceptor = AuthMetadataServerInterceptor(
+        method=AuthMetadataMethod.JWT, secret=secret, algorithm=algorithm)
+
+    # First, test generated token validation:
+    continuator = _unary_unary_rpc_terminator
+    call_details = _mock_call_details(token)
+    context = mock.create_autospec(_Context, spec_set=True)
+
+    handler = interceptor.intercept_service(continuator, call_details)
+    handler.unary_unary(None, context)
+
+    context.set_code.assert_called_once_with(grpc.StatusCode.OK)
+    context.abort.assert_not_called()
+
+    # Second, ensure cached token validation:
+    context = mock.create_autospec(_Context, spec_set=True)
+
+    handler = interceptor.intercept_service(continuator, call_details)
+    handler.unary_unary(None, context)
+
+    context.set_code.assert_called_once_with(grpc.StatusCode.OK)
+    context.abort.assert_not_called()
+
+    # Then wait for the token to expire:
+    time.sleep(3)
+
+    # Finally, test for cached-token invalidation:
+    context = mock.create_autospec(_Context, spec_set=True)
+
+    handler = interceptor.intercept_service(continuator, call_details)
+    handler.unary_unary(None, context)
+
+    context.abort.assert_called_once_with(grpc.StatusCode.UNAUTHENTICATED, mock.ANY)
+    context.set_code.assert_not_called()
