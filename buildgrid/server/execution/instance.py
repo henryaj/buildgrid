@@ -93,6 +93,7 @@ class ExecutionInstance:
 
             error, operation = message_queue.get()
             if error is not None:
+                error.last_response = operation
                 raise error
 
         yield operation

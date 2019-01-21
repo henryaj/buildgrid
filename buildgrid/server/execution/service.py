@@ -139,7 +139,7 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             self.__logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.CANCELLED)
-            yield operations_pb2.Operation()
+            yield e.last_response
 
     @authorize(AuthContext)
     def WaitExecution(self, request, context):
@@ -189,7 +189,7 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             self.__logger.error(e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.CANCELLED)
-            yield operations_pb2.Operation()
+            yield e.last_response
 
     # --- Public API: Monitoring ---
 
