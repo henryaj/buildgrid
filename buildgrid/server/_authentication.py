@@ -200,8 +200,18 @@ class AuthMetadataServerInterceptor(grpc.ServerInterceptor):
             expiration_time = self.__bearer_cache[bearer]
 
             # Accept request if cached token hasn't expired yet:
-            if expiration_time < datetime.utcnow():
+            if expiration_time >= datetime.utcnow():
                 return continuation(handler_call_details)  # Accepted
+
+            else:
+                del self.__bearer_cache[bearer]
+
+            # Cached token has expired, reject the request:
+            self.__logger.error("Rejecting '{}' request: {}"
+                                .format(handler_call_details.method.split('/')[-1],
+                                        self.__auth_errors['expired-token']))
+            # TODO: Use grpc.Status.details to inform the client of the expiry?
+            return self.__terminators['expired-token']
 
         except KeyError:
             pass
