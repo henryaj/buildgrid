@@ -25,7 +25,7 @@ from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_p
 from buildgrid._protos.google.bytestream import bytestream_pb2, bytestream_pb2_grpc
 from buildgrid._protos.google.rpc import code_pb2
 from buildgrid.settings import HASH, MAX_REQUEST_SIZE, MAX_REQUEST_COUNT
-from buildgrid.utils import merkle_tree_maker
+from buildgrid.utils import create_digest, merkle_tree_maker
 
 # Maximum size for a queueable file:
 FILE_SIZE_THRESHOLD = 1 * 1024 * 1024
@@ -418,9 +418,8 @@ class Downloader:
                 else:
                     assert False
 
-        # TODO: Try with BatchReadBlobs().
-
-        # Fallback to Read() if no GetTree():
+        # If no GetTree(), _write_directory() will use BatchReadBlobs()
+        # if available or Read() if not.
         if not directory_fetched:
             directory = remote_execution_pb2.Directory()
             directory.ParseFromString(self._fetch_blob(digest))
@@ -428,26 +427,61 @@ class Downloader:
             self._write_directory(directory, directory_path,
                                   root_barrier=directory_path)
 
-    def _write_directory(self, root_directory, root_path, directories=None, root_barrier=None):
+    def _write_directory(self, root_directory, root_path, directories=None,
+                         root_barrier=None):
         """Generates a local directory structure"""
+
+        # i) Files:
         for file_node in root_directory.files:
             file_path = os.path.join(root_path, file_node.name)
 
-            self._queue_file(file_node.digest, file_path, is_executable=file_node.is_executable)
+            self._queue_file(file_node.digest, file_path,
+                             is_executable=file_node.is_executable)
 
+        # ii) Directories:
+        pending_directory_digests = []
+        pending_directory_paths = {}
         for directory_node in root_directory.directories:
-            directory_path = os.path.join(root_path, directory_node.name)
-            if directories and directory_node.digest.hash in directories:
-                directory = directories[directory_node.digest.hash]
-            else:
-                directory = remote_execution_pb2.Directory()
-                directory.ParseFromString(self._fetch_blob(directory_node.digest))
+            directory_hash = directory_node.digest.hash
 
+            directory_path = os.path.join(root_path, directory_node.name)
             os.makedirs(directory_path, exist_ok=True)
 
-            self._write_directory(directory, directory_path,
-                                  directories=directories, root_barrier=root_barrier)
+            if directories and directory_node.digest.hash in directories:
+                # We already have the directory; just write it:
+                directory = directories[directory_hash]
 
+                self._write_directory(directory, directory_path,
+                                      directories=directories,
+                                      root_barrier=root_barrier)
+            else:
+                # Gather all the directories that we need to get to
+                # try fetching them in a single batch request:
+                pending_directory_digests.append(directory_node.digest)
+                pending_directory_paths[directory_hash] = directory_path
+
+        if pending_directory_paths:
+            fetched_blobs = self._fetch_blob_batch(pending_directory_digests)
+
+            for directory_blob in fetched_blobs:
+                directory = remote_execution_pb2.Directory()
+                directory.ParseFromString(directory_blob)
+
+                # Assuming that the server might not return the blobs in
+                # the same order than they were asked for, we read
+                # the hashes of the returned blobs:
+                directory_hash = create_digest(directory_blob).hash
+                # Guarantees for the reply orderings might change in
+                # the specification at some point.
+                # See: github.com/bazelbuild/remote-apis/issues/52
+
+                directory_path = pending_directory_paths[directory_hash]
+
+                self._write_directory(directory, directory_path,
+                                      directories=directories,
+                                      root_barrier=root_barrier)
+
+        # iii) Symlinks:
         for symlink_node in root_directory.symlinks:
             symlink_path = os.path.join(root_path, symlink_node.name)
             if not os.path.isabs(symlink_node.target):
