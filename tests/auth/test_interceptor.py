@@ -167,3 +167,17 @@ def test_jwt_authorization(token, secret, algorithm, validity):
     else:
         context.abort.assert_called_once_with(grpc.StatusCode.UNAUTHENTICATED, mock.ANY)
         context.set_code.assert_not_called()
+
+    # Token should have been cached now, let's test authorization again:
+    context = mock.create_autospec(_Context, spec_set=True)
+
+    handler = interceptor.intercept_service(continuator, call_details)
+    handler.unary_unary(None, context)
+
+    if validity:
+        context.set_code.assert_called_once_with(grpc.StatusCode.OK)
+        context.abort.assert_not_called()
+
+    else:
+        context.abort.assert_called_once_with(grpc.StatusCode.UNAUTHENTICATED, mock.ANY)
+        context.set_code.assert_not_called()
