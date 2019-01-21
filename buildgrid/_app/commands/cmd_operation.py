@@ -27,6 +27,7 @@ from textwrap import indent
 
 import click
 from google.protobuf import json_format
+import grpc
 
 from buildgrid.client.authentication import setup_channel
 from buildgrid._enums import OperationStage
@@ -213,10 +214,17 @@ def wait(context, operation_name, json):
 
     operation_iterator = stub.WaitExecution(request)
 
-    for operation in operation_iterator:
-        if not json and operation.done:
-            _print_operation_status(operation, print_details=True)
-        elif not json:
-            _print_operation_status(operation)
-        else:
-            click.echo(json_format.MessageToJson(operation))
+    try:
+        for operation in operation_iterator:
+            if not json and operation.done:
+                _print_operation_status(operation, print_details=True)
+            elif not json:
+                _print_operation_status(operation)
+            else:
+                click.echo(json_format.MessageToJson(operation))
+
+    except grpc.RpcError as e:
+        if e.code() != grpc.StatusCode.CANCELLED:
+            click.echo('Error: {}'
+                       .format(e.details), err=True)
+            sys.exit(-1)
