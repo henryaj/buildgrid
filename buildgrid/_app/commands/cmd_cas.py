@@ -82,20 +82,19 @@ def upload_dummy(context):
               help="Check uploaded files integrity.")
 @pass_context
 def upload_file(context, file_path, verify):
-    sent_digests, files_map = [], {}
+    sent_digests = []
     with upload(context.channel, instance=context.instance_name) as uploader:
         for path in file_path:
             if not os.path.isabs(path):
-                path = os.path.abspath(path)
+                path = os.path.relpath(path)
+
             click.echo("Queueing path=[{}]".format(path))
 
             file_digest = uploader.upload_file(path, queue=True)
 
-            files_map[file_digest.hash] = path
-            sent_digests.append(file_digest)
+            sent_digests.append((file_digest, path))
 
-    for file_digest in sent_digests:
-        file_path = os.path.relpath(files_map[file_digest.hash])
+    for file_digest, file_path in sent_digests:
         if verify and file_digest.size_bytes != os.stat(file_path).st_size:
             click.echo("Error: Failed to verify '{}'".format(file_path), err=True)
         elif file_digest.ByteSize():
@@ -111,22 +110,17 @@ def upload_file(context, file_path, verify):
               help="Check uploaded directory's integrity.")
 @pass_context
 def upload_directory(context, directory_path, verify):
-    sent_digests, nodes_map = [], {}
+    sent_digests = []
     with upload(context.channel, instance=context.instance_name) as uploader:
         for node, blob, path in merkle_tree_maker(directory_path):
-            if not os.path.isabs(path):
-                path = os.path.abspath(path)
+            if not os.path.isabs(directory_path):
+                path = os.path.relpath(path)
             click.echo("Queueing path=[{}]".format(path))
 
             node_digest = uploader.put_blob(blob, digest=node.digest, queue=True)
+            sent_digests.append((node_digest, path))
 
-            nodes_map[node.digest.hash] = path
-            sent_digests.append(node_digest)
-
-    for node_digest in sent_digests:
-        node_path = nodes_map[node_digest.hash]
-        if not os.path.isabs(directory_path):
-            node_path = os.path.relpath(node_path)
+    for node_digest, node_path in sent_digests:
         if verify and (os.path.isfile(node_path) and
                        node_digest.size_bytes != os.stat(node_path).st_size):
             click.echo("Error: Failed to verify path=[{}]".format(node_path), err=True)
