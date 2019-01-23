@@ -44,12 +44,18 @@ FILES = [
     (os.path.join(DATA_DIR, 'void'),),
     (os.path.join(DATA_DIR, 'hello.cc'),),
     (os.path.join(DATA_DIR, 'hello', 'hello.c'),
-     os.path.join(DATA_DIR, 'hello', 'hello.h'))]
+     os.path.join(DATA_DIR, 'hello', 'hello.h'),
+     os.path.join(DATA_DIR, 'hello', 'hello.sh')),
+    (os.path.join(DATA_DIR, 'hello', 'docs', 'reference', 'api.xml'),)]
 FOLDERS = [
-    (os.path.join(DATA_DIR, 'hello'),)]
-DIRECTORIES = [
+    (DATA_DIR,),
     (os.path.join(DATA_DIR, 'hello'),),
-    (os.path.join(DATA_DIR, 'hello'), DATA_DIR)]
+    (os.path.join(DATA_DIR, 'hello', 'docs'),),
+    (os.path.join(DATA_DIR, 'hello', 'utils'),),
+    (os.path.join(DATA_DIR, 'hello', 'docs', 'reference'),)]
+DIRECTORIES = [
+    (DATA_DIR,),
+    (os.path.join(DATA_DIR, 'hello'),)]
 
 
 @pytest.mark.parametrize('blobs', BLOBS)
