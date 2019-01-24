@@ -172,9 +172,15 @@ class Scheduler:
                 if job.operation_stage == OperationStage.QUEUED:
                     self._queue_job(job.name)
 
+            self.__logger.debug("Job deduplicated for action [%s]: [%s]",
+                                action_digest.hash[:8], job.name)
+
             return job.name
 
         job = Job(action, action_digest, priority=priority)
+
+        self.__logger.debug("Job created for action [%s]: [%s]",
+                            action_digest.hash[:8], job.name)
 
         self.__jobs_by_action[job.action_digest.hash] = job
         self.__jobs_by_name[job.name] = job
@@ -185,16 +191,15 @@ class Scheduler:
             try:
                 action_result = self._action_cache.get_action_result(job.action_digest)
 
-            except NotFoundError:
-                operation_stage = OperationStage.QUEUED
-                self._queue_job(job.name)
+                self.__logger.debug("Job cache hit for action [%s]: [%s]",
+                                    action_digest.hash[:8], job.name)
 
-            else:
                 operation_stage = OperationStage.COMPLETED
                 job.set_cached_result(action_result)
 
-                if self._is_instrumented:
-                    self.__retries_count += 1
+            except NotFoundError:
+                operation_stage = OperationStage.QUEUED
+                self._queue_job(job.name)
 
         else:
             operation_stage = OperationStage.QUEUED
@@ -276,6 +281,8 @@ class Scheduler:
 
         # TODO: Try to match worker_capabilities with jobs properties.
         job = self.__queue.pop()
+
+        self.__logger.info("Job scheduled to run: [%s]", job.name)
 
         lease = job.lease
 
@@ -373,6 +380,9 @@ class Scheduler:
             self._queue_job(job.name)
 
             job.update_lease_state(LeaseState.PENDING)
+
+            if self._is_instrumented:
+                self.__retries_count += 1
 
         self._update_job_operation_stage(job_name, operation_stage)
 
@@ -523,6 +533,8 @@ class Scheduler:
         else:
             bisect.insort(self.__queue, job)
 
+        self.__logger.info("Job queued: [%s]", job.name)
+
     def _delete_job(self, job_name):
         """Drops an entry from the internal list of jobs."""
         job = self.__jobs_by_name[job_name]
@@ -532,6 +544,8 @@ class Scheduler:
 
         del self.__jobs_by_action[job.action_digest.hash]
         del self.__jobs_by_name[job.name]
+
+        self.__logger.info("Job deleted: [%s]", job.name)
 
         if self._is_instrumented:
             self.__operations_by_stage[OperationStage.CACHE_CHECK].discard(job.name)
