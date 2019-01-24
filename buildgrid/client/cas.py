@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+from collections import namedtuple
 from contextlib import contextmanager
-import uuid
 import os
+import uuid
 
 import grpc
 
@@ -26,9 +26,10 @@ from buildgrid._protos.google.rpc import code_pb2
 from buildgrid.settings import HASH, MAX_REQUEST_SIZE, MAX_REQUEST_COUNT
 from buildgrid.utils import merkle_tree_maker
 
-
 # Maximum size for a queueable file:
 FILE_SIZE_THRESHOLD = 1 * 1024 * 1024
+
+_FileRequest = namedtuple('FileRequest', ['digest', 'output_paths'])
 
 
 class _CallCache:
@@ -339,24 +340,41 @@ class Downloader:
         elif self.__file_request_count >= MAX_REQUEST_COUNT:
             self.flush()
 
-        self.__file_requests[digest.hash] = (digest, file_path, is_executable)
-        self.__file_request_count += 1
-        self.__file_request_size += digest.ByteSize()
-        self.__file_response_size += digest.size_bytes
+        output_path = (file_path, is_executable)
 
-    def _fetch_file_batch(self, batch):
-        """Sends queued data using ContentAddressableStorage.BatchReadBlobs()"""
-        batch_digests = [digest for digest, _, _ in batch.values()]
+        # When queueing a file we take into account the cases where
+        # we might want to download the same digest to different paths.
+        if digest.hash not in self.__file_requests:
+            request = _FileRequest(digest=digest, output_paths=[output_path])
+            self.__file_requests[digest.hash] = request
+
+            self.__file_request_count += 1
+            self.__file_request_size += digest.ByteSize()
+            self.__file_response_size += digest.size_bytes
+        else:
+            # We already have that hash queued; we'll fetch the blob
+            # once and write copies of it:
+            self.__file_requests[digest.hash].output_paths.append(output_path)
+
+    def _fetch_file_batch(self, requests):
+        """Sends queued data using ContentAddressableStorage.BatchReadBlobs().
+
+        Takes a dictionary (digest.hash, _FileRequest) as input.
+        """
+        batch_digests = [request.digest for request in requests.values()]
         batch_blobs = self._fetch_blob_batch(batch_digests)
 
-        for (_, file_path, is_executable), file_blob in zip(batch.values(), batch_blobs):
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        for file_digest, file_blob in zip(batch_digests, batch_blobs):
+            output_paths = requests[file_digest.hash].output_paths
 
-            with open(file_path, 'wb') as byte_file:
-                byte_file.write(file_blob)
+            for file_path, is_executable in output_paths:
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
-            if is_executable:
-                os.chmod(file_path, 0o755)  # rwxr-xr-x / 755
+                with open(file_path, 'wb') as byte_file:
+                    byte_file.write(file_blob)
+
+                if is_executable:
+                    os.chmod(file_path, 0o755)  # rwxr-xr-x / 755
 
     def _fetch_directory(self, digest, directory_path):
         """Fetches a file using ByteStream.GetTree()"""
