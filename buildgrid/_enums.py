@@ -25,7 +25,7 @@ from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 
 class BotStatus(Enum):
     # Initially unknown state.
-    BOT_STATUS_UNSPECIFIED = bots_pb2.BotStatus.Value('BOT_STATUS_UNSPECIFIED')
+    UNSPECIFIED = bots_pb2.BotStatus.Value('BOT_STATUS_UNSPECIFIED')
     # The bot is healthy, and will accept leases as normal.
     OK = bots_pb2.BotStatus.Value('OK')
     # The bot is unhealthy and will not accept new leases.
@@ -38,7 +38,7 @@ class BotStatus(Enum):
 
 class LeaseState(Enum):
     # Initially unknown state.
-    LEASE_STATE_UNSPECIFIED = bots_pb2.LeaseState.Value('LEASE_STATE_UNSPECIFIED')
+    UNSPECIFIED = bots_pb2.LeaseState.Value('LEASE_STATE_UNSPECIFIED')
     # The server expects the bot to accept this lease.
     PENDING = bots_pb2.LeaseState.Value('PENDING')
     # The bot has accepted this lease.
