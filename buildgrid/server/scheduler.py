@@ -164,18 +164,19 @@ class Scheduler:
         """
         if action_digest.hash in self.__jobs_by_action:
             job = self.__jobs_by_action[action_digest.hash]
+            # If existing job has been cancelled create a new one:
+            if not job.cancelled:
+                # Reschedule if priority is now greater:
+                if priority < job.priority:
+                    job.priority = priority
 
-            # Reschedule if priority is now greater:
-            if priority < job.priority:
-                job.priority = priority
+                    if job.operation_stage == OperationStage.QUEUED:
+                        self._queue_job(job.name)
 
-                if job.operation_stage == OperationStage.QUEUED:
-                    self._queue_job(job.name)
+                self.__logger.debug("Job deduplicated for action [%s]: [%s]",
+                                    action_digest.hash[:8], job.name)
 
-            self.__logger.debug("Job deduplicated for action [%s]: [%s]",
-                                action_digest.hash[:8], job.name)
-
-            return job.name
+                return job.name
 
         job = Job(action, action_digest, priority=priority)
 

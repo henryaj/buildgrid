@@ -100,6 +100,10 @@ class Job:
         return self._name
 
     @property
+    def cancelled(self):
+        return self.__job_cancelled
+
+    @property
     def priority(self):
         return self._priority
 
