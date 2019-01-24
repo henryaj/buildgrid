@@ -117,7 +117,8 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
             operation_full_name = "{}/{}".format(instance_name, operation_name)
 
-            self.__logger.info("Operation name: [%s]", operation_full_name)
+            self.__logger.info("Operation [%s] created for job [%s]",
+                               operation_full_name, job_name)
 
             for operation in instance.stream_operation_updates(message_queue):
                 operation.name = operation_full_name
@@ -136,7 +137,7 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             yield operations_pb2.Operation()
 
         except CancelledError as e:
-            self.__logger.error(e)
+            self.__logger.info("Operation cancelled [%s]", operation_full_name)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.CANCELLED)
             yield e.last_response
@@ -186,7 +187,7 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             yield operations_pb2.Operation()
 
         except CancelledError as e:
-            self.__logger.error(e)
+            self.__logger.info("Operation cancelled [%s]", operation_full_name)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.CANCELLED)
             yield e.last_response
