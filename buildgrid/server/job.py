@@ -175,6 +175,9 @@ class Job:
 
         new_operation.name = str(uuid.uuid4())
 
+        self.__logger.debug("Operation created for job [%s]: [%s]",
+                            self._name, new_operation.name)
+
         self.__operations_by_name[new_operation.name] = new_operation
         self.__operations_by_peer[peer] = new_operation
         self.__operations_message_queues[peer] = message_queue
@@ -237,6 +240,9 @@ class Job:
 
             self.__operations_cancelled.discard(operation.name)
 
+            self.__logger.debug("Operation deleted for job [%s]: [%s]",
+                                self._name, operation.name)
+
     def list_operations(self):
         """Lists the :class:`Operation` related to a job.
 
@@ -274,6 +280,9 @@ class Job:
 
         self.__operation_metadata.stage = stage.value
 
+        self.__logger.debug("Stage changed for job [%s]: [%s] (operation)",
+                            self._name, stage.name)
+
         if self.__operation_metadata.stage == OperationStage.QUEUED.value:
             if self.__queued_timestamp.ByteSize() == 0:
                 self.__queued_timestamp.GetCurrentTime()
@@ -307,6 +316,9 @@ class Job:
                                 .format(operation_name))
 
         self.__operations_cancelled.add(operation.name)
+
+        self.__logger.debug("Operation cancelled for job [%s]: [%s]",
+                            self._name, operation.name)
 
         ongoing_operations = set(self.__operations_by_name.keys())
         # Job is cancelled if all the operation are:
@@ -367,7 +379,12 @@ class Job:
         self._lease = bots_pb2.Lease()
         self._lease.id = self._name
         self._lease.payload.Pack(self.__operation_metadata.action_digest)
-        self._lease.state = LeaseState.PENDING.value
+        self._lease.state = LeaseState.UNSPECIFIED.value
+
+        self.__logger.debug("Lease created for job [%s]: [%s]",
+                            self._name, self._lease.id)
+
+        self.update_lease_state(LeaseState.PENDING)
 
         return self._lease
 
@@ -385,6 +402,9 @@ class Job:
             return
 
         self._lease.state = state.value
+
+        self.__logger.debug("State changed for job [%s]: [%s] (lease)",
+                            self._name, state.name)
 
         if self._lease.state == LeaseState.PENDING.value:
             self.__worker_start_timestamp.Clear()
@@ -426,6 +446,10 @@ class Job:
             This will not cancel the job's :class:`Operation`.
         """
         self.__lease_cancelled = True
+
+        self.__logger.debug("Lease cancelled for job [%s]: [%s]",
+                            self._name, self._lease.id)
+
         if self._lease is not None:
             self.update_lease_state(LeaseState.CANCELLED)
 
@@ -437,6 +461,9 @@ class Job:
         """
         self.__worker_start_timestamp.Clear()
         self.__worker_completed_timestamp.Clear()
+
+        self.__logger.debug("Lease deleted for job [%s]: [%s]",
+                            self._name, self._lease.id)
 
         self._lease = None
 
