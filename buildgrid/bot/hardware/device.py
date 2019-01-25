@@ -14,6 +14,7 @@
 
 
 import uuid
+
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import worker_pb2
 
 

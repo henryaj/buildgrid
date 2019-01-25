@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Authors:
-#        Carter Sande <csande@bloomberg.net>
-
 # pylint: disable=redefined-outer-name
+
 
 import io
 from unittest import mock
