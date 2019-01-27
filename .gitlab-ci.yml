@@ -46,6 +46,12 @@ tests-debian-stretch:
 run-dummy-job-debian:
   <<: *dummy-job
 
+buildbox-e2e:
+  image: registry.gitlab.com/buildgrid/buildbox/buildbox-e2e:cartr-initial-implementation
+  stage: test
+  before_script: []
+  script:
+    - BUILDGRID_SOURCE_ROOT=`pwd` end-to-end-test.sh
 
 # Post-build stage, documentation, coverage report...
 #
@@ -96,3 +102,14 @@ pages:
     - public/
   only:
   - master
+
+trigger-buildbox-e2e-rebuild:
+  image: ubuntu:bionic
+  stage: deploy
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - apt-get update && apt-get install -y curl
+    - curl --request POST --form "token=$CI_JOB_TOKEN" --form ref=master https://gitlab.com/api/v4/projects/buildgrid%2Fbuildbox%2Fbuildbox-e2e/trigger/pipeline
+  only:
+    - master
