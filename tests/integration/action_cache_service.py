@@ -85,3 +85,37 @@ def test_disabled_update_action_result(context):
     ac_service.UpdateActionResult(request, context)
 
     context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
+
+
+def test_disabled_cache_failed_actions(cas, context):
+    disabled_failed_actions = ActionCache(cas, 50, True, False)
+    with mock.patch.object(service, 'remote_execution_pb2_grpc'):
+        ac_service = ActionCacheService(server)
+        ac_service.add_instance("", disabled_failed_actions)
+
+    failure_action_digest = remote_execution_pb2.Digest(hash='failure', size_bytes=4)
+
+    # Add a non-zero exit code ActionResult to the cache
+    action_result = remote_execution_pb2.ActionResult(stdout_raw=b'Failed', exit_code=1)
+    request = remote_execution_pb2.UpdateActionResultRequest(action_digest=failure_action_digest,
+                                                             action_result=action_result)
+    ac_service.UpdateActionResult(request, context)
+
+    # Check that before adding the ActionResult, attempting to fetch it fails
+    request = remote_execution_pb2.GetActionResultRequest(instance_name="",
+                                                          action_digest=failure_action_digest)
+    ac_service.GetActionResult(request, context)
+    context.set_code.assert_called_once_with(grpc.StatusCode.NOT_FOUND)
+
+    success_action_digest = remote_execution_pb2.Digest(hash='success', size_bytes=4)
+
+    # Now add a zero exit code Action result to the cache, and check that fetching
+    # it is successful
+    success_action_result = remote_execution_pb2.ActionResult(stdout_raw=b'Successful')
+    request = remote_execution_pb2.UpdateActionResultRequest(action_digest=success_action_digest,
+                                                             action_result=success_action_result)
+    ac_service.UpdateActionResult(request, context)
+    request = remote_execution_pb2.GetActionResultRequest(instance_name="",
+                                                          action_digest=success_action_digest)
+    fetched_result = ac_service.GetActionResult(request, context)
+    assert fetched_result.stdout_raw == success_action_result.stdout_raw
