@@ -26,6 +26,18 @@ from ..referencestorage.storage import ReferenceCache
 
 class ActionCache(ReferenceCache):
 
+    def __init__(self, storage, max_cached_refs, allow_updates=True, cache_failed_actions=True):
+        """ Initialises a new ActionCache instance.
+
+        Args:
+            storage (StorageABC): storage backend instance to be used. Passed to ReferenceCache
+            max_cached_refs (int): maximum number of entries to be stored. Passed to ReferenceCache
+            allow_updates (bool): allow the client to write to storage. Passed to ReferenceCache
+            cache_failed_actions (bool): cache actions with non-zero exit codes.
+        """
+        super().__init__(storage, max_cached_refs, allow_updates)
+        self._cache_failed_actions = cache_failed_actions
+
     def register_instance_with_server(self, instance_name, server):
         server.add_action_cache_instance(self, instance_name)
 
@@ -34,8 +46,9 @@ class ActionCache(ReferenceCache):
         return self.get_action_reference(key)
 
     def update_action_result(self, action_digest, action_result):
-        key = self._get_key(action_digest)
-        self.update_reference(key, action_result)
+        if self._cache_failed_actions or action_result.exit_code == 0:
+            key = self._get_key(action_digest)
+            self.update_reference(key, action_result)
 
     def _get_key(self, action_digest):
         return (action_digest.hash, action_digest.size_bytes)

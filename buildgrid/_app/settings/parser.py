@@ -247,12 +247,13 @@ class Action(YamlFactory):
       storage(:class:`buildgrid.server.cas.storage.storage_abc.StorageABC`): Instance of storage to use.
       max_cached_refs(int): Max number of cached actions.
       allow_updates(bool): Allow updates pushed to CAS. Defaults to ``True``.
+      cache_failed_actions(bool): Whether to store failed (non-zero exit code) actions. Default to ``True``.
     """
 
     yaml_tag = u'!action-cache'
 
-    def __new__(cls, storage, max_cached_refs, allow_updates=True):
-        return ActionCache(storage, max_cached_refs, allow_updates)
+    def __new__(cls, storage, max_cached_refs, allow_updates=True, cache_failed_actions=True):
+        return ActionCache(storage, max_cached_refs, allow_updates, cache_failed_actions)
 
 
 class Reference(YamlFactory):

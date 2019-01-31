@@ -74,6 +74,9 @@ instances:
         ##
         # Whether or not writing to the cache is allowed.
         allow-updates: true
+        ##
+        # Whether failed actions (non-zero exit code) are stored
+        cache-failed-actions: true
 
       - !execution
         ##
