@@ -21,6 +21,7 @@ Any files in the commands/ folder with the name cmd_*.py
 will be attempted to be imported.
 """
 
+import importlib
 import logging
 import os
 import sys
@@ -123,21 +124,30 @@ cmd_folder = os.path.abspath(os.path.join(os.path.dirname(__file__),
                                           'commands'))
 
 
-class BuildGridCLI(click.MultiCommand):
+class App(click.MultiCommand):
 
     def list_commands(self, context):
+        """Lists available command names."""
         commands = []
         for filename in os.listdir(cmd_folder):
-            if filename.endswith('.py') and \
-               filename.startswith('cmd_'):
+            if filename.endswith('.py') and filename.startswith('cmd_'):
                 commands.append(filename[4:-3])
         commands.sort()
+
         return commands
 
-    def get_command(self, context, name):
-        mod = __import__(name='buildgrid._app.commands.cmd_{}'.format(name),
-                         fromlist=['cli'])
-        return mod.cli
+    def get_command(self, context, command_name):
+        """Looks-up and loads a particular command by name."""
+        command_name = command_name.replace('-', '')
+        try:
+            module = importlib.import_module(
+                'buildgrid._app.commands.cmd_{}'.format(command_name))
+
+        except ImportError:
+            click.echo("Error: No such command: [{}].".format(command_name), err=True)
+            sys.exit(-1)
+
+        return module.cli
 
 
 class DebugFilter(logging.Filter):
@@ -192,10 +202,10 @@ def setup_logging(verbosity=0, debug_mode=False):
         root_logger.setLevel(logging.DEBUG)
 
 
-@click.command(cls=BuildGridCLI, context_settings=CONTEXT_SETTINGS)
+@click.command(cls=App, context_settings=CONTEXT_SETTINGS)
 @pass_context
 def cli(context):
-    """BuildGrid App"""
+    """BuildGrid's client and server CLI front-end."""
     root_logger = logging.getLogger()
 
     # Clean-up root logger for any pre-configuration:
