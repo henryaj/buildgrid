@@ -17,7 +17,7 @@ from operator import attrgetter
 import os
 import socket
 
-from buildgrid.settings import HASH
+from buildgrid.settings import HASH, HASH_LENGTH
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 
 
@@ -51,6 +51,27 @@ def create_digest(bytes_to_digest):
     """
     return remote_execution_pb2.Digest(hash=HASH(bytes_to_digest).hexdigest(),
                                        size_bytes=len(bytes_to_digest))
+
+
+def parse_digest(digest_string):
+    """Creates a :obj:`Digest` from a digest string.
+
+    A digest string should alway be: ``{hash}/{size_bytes}``.
+
+    Args:
+        digest_string (str): the digest string.
+
+    Returns:
+        :obj:`Digest`: The :obj:`Digest` read from the string or None if
+            `digest_string` is not a valid digest string.
+    """
+    digest_hash, digest_size = digest_string.split('/')
+
+    if len(digest_hash) == HASH_LENGTH and digest_size.isdigit():
+        return remote_execution_pb2.Digest(hash=digest_hash,
+                                           size_bytes=int(digest_size))
+
+    return None
 
 
 def read_file(file_path):

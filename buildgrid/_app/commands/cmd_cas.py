@@ -29,7 +29,7 @@ from buildgrid.client.authentication import setup_channel
 from buildgrid.client.cas import download, upload
 from buildgrid._exceptions import InvalidArgumentError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
-from buildgrid.utils import create_digest, merkle_tree_maker, read_file
+from buildgrid.utils import create_digest, parse_digest, merkle_tree_maker, read_file
 
 from ..cli import pass_context
 
@@ -131,16 +131,6 @@ def upload_directory(context, directory_path, verify):
             click.echo("Error: Failed pushing path=[{}]".format(node_path), err=True)
 
 
-def _create_digest(digest_string):
-    digest_hash, digest_size = digest_string.split('/')
-
-    digest = remote_execution_pb2.Digest()
-    digest.hash = digest_hash
-    digest.size_bytes = int(digest_size)
-
-    return digest
-
-
 @cli.command('download-file', short_help="Download one or more files from the CAS server. "
                                          "(Specified as a space-separated list of DIGEST FILE_PATH)")
 @click.argument('digest-path-list', nargs=-1, type=str, required=True)  # 'digest path' pairs
@@ -158,7 +148,7 @@ def download_file(context, digest_path_list, verify):
                            "path=[{}] already exists.".format(file_path), err=True)
                 continue
 
-            digest = _create_digest(digest_string)
+            digest = parse_digest(digest_string)
 
             downloader.download_file(digest, file_path)
             downloaded_files[file_path] = digest
@@ -191,7 +181,7 @@ def download_directory(context, digest_string, directory_path, verify):
                        "path=[{}] already exists.".format(directory_path), err=True)
             return
 
-    digest = _create_digest(digest_string)
+    digest = parse_digest(digest_string)
     with download(context.channel, instance=context.instance_name) as downloader:
         downloader.download_directory(digest, directory_path)
 
