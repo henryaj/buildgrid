@@ -15,6 +15,27 @@ BuildGrid's Command Line Interface (CLI) reference documentation.
 
 ----
 
+.. _invoking-bgd-action-cache:
+
+.. click:: buildgrid._app.commands.cmd_actioncache:cli
+   :prog: bgd action-cache
+
+----
+
+.. _invoking-bgd-action-cache-get:
+
+.. click:: buildgrid._app.commands.cmd_actioncache:get
+   :prog: bgd action-cache get
+
+----
+
+.. _invoking-bgd-action-cache-update:
+
+.. click:: buildgrid._app.commands.cmd_actioncache:update
+   :prog: bgd action-cache update
+
+----
+
 .. _invoking-bgd-bot:
 
 .. click:: buildgrid._app.commands.cmd_bot:cli
