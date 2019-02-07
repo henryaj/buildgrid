@@ -72,7 +72,11 @@ def cli(context, remote, instance_name, auth_token, client_key, client_cert, ser
 def request_dummy(context, number, wait_for_completion):
 
     click.echo("Sending execution request...")
-    action = remote_execution_pb2.Action(do_not_cache=True)
+    command = remote_execution_pb2.Command()
+    command_digest = create_digest(command.SerializeToString())
+
+    action = remote_execution_pb2.Action(command_digest=command_digest,
+                                         do_not_cache=True)
     action_digest = create_digest(action.SerializeToString())
 
     stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
@@ -107,23 +111,31 @@ def request_dummy(context, number, wait_for_completion):
               help="Tuple of expected output file and is-executeable flag.")
 @click.option('--output-directory', default='testing', show_default=True,
               help="Output directory for the output files.")
+@click.option('-p', '--platform-property', nargs=2, type=(click.STRING, click.STRING), multiple=True,
+              help="List of key-value pairs of required platform properties.")
 @click.argument('input-root', nargs=1, type=click.Path(), required=True)
 @click.argument('commands', nargs=-1, type=click.STRING, required=True)
 @pass_context
-def run_command(context, input_root, commands, output_file, output_directory):
+def run_command(context, input_root, commands, output_file, output_directory,
+                platform_property):
     stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
 
-    output_executeables = []
+    output_executables = []
     with upload(context.channel, instance=context.instance_name) as uploader:
         command = remote_execution_pb2.Command()
 
         for arg in commands:
             command.arguments.extend([arg])
 
-        for file, is_executeable in output_file:
+        for file, is_executable in output_file:
             command.output_files.extend([file])
-            if is_executeable:
-                output_executeables.append(file)
+            if is_executable:
+                output_executables.append(file)
+
+        for attribute_name, attribute_value in platform_property:
+            new_property = command.platform.properties.add()
+            new_property.name = attribute_name
+            new_property.value = attribute_value
 
         command_digest = uploader.put_message(command, queue=True)
 
@@ -165,6 +177,6 @@ def run_command(context, input_root, commands, output_file, output_directory):
             downloader.download_file(output_file_response.digest, path)
 
     for output_file_response in execute_response.result.output_files:
-        if output_file_response.path in output_executeables:
+        if output_file_response.path in output_executables:
             st = os.stat(path)
             os.chmod(path, st.st_mode | stat.S_IXUSR)

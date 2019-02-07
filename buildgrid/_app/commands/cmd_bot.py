@@ -59,11 +59,14 @@ from ..cli import pass_context, setup_logging
               help="Time period for bot updates to the server in seconds.")
 @click.option('--parent', type=click.STRING, default=None, show_default=True,
               help="Targeted farm resource.")
+@click.option('-w', '--worker-property', nargs=2, type=(click.STRING, click.STRING), multiple=True,
+              help="List of key-value pairs of worker properties.")
 @click.option('-v', '--verbose', count=True,
               help='Increase log verbosity level.')
 @pass_context
-def cli(context, parent, update_period, remote, auth_token, client_key, client_cert, server_cert,
-        remote_cas, cas_client_key, cas_client_cert, cas_server_cert, verbose):
+def cli(context, parent, update_period, remote, auth_token, client_key,
+        client_cert, server_cert, remote_cas, cas_client_key, cas_client_cert,
+        cas_server_cert, worker_property, verbose):
     setup_logging(verbosity=verbose)
     # Setup the remote execution server channel:
     try:
@@ -90,8 +93,14 @@ def cli(context, parent, update_period, remote, auth_token, client_key, client_c
 
     bot_interface = interface.BotInterface(context.channel)
 
+    worker_properties_dict = {}
+    for property_name, property_value in worker_property:
+        if property_name not in worker_properties_dict:
+            worker_properties_dict[property_name] = set()
+        worker_properties_dict[property_name].add(property_value)
+
     worker = Worker()
-    worker.add_device(Device())
+    worker.add_device(Device(properties=worker_properties_dict))
     hardware_interface = HardwareInterface(worker)
 
     context.bot_interface = bot_interface

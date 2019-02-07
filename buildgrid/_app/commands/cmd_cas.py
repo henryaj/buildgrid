@@ -65,15 +65,27 @@ def cli(context, remote, instance_name, auth_token, client_key, client_cert, ser
 @cli.command('upload-dummy', short_help="Upload a dummy action. Should be used with `execute dummy-request`")
 @pass_context
 def upload_dummy(context):
-    action = remote_execution_pb2.Action(do_not_cache=True)
+    command = remote_execution_pb2.Command()
+    with upload(context.channel, instance=context.instance_name) as uploader:
+        command_digest = uploader.put_message(command)
+
+    if command_digest.ByteSize():
+        click.echo('Success: Pushed Command, digest=["{}/{}]"'
+                   .format(command_digest.hash, command_digest.size_bytes))
+    else:
+        click.echo("Error: Failed pushing empty Command.", err=True)
+
+    action = remote_execution_pb2.Action(command_digest=command_digest,
+                                         do_not_cache=True)
+
     with upload(context.channel, instance=context.instance_name) as uploader:
         action_digest = uploader.put_message(action)
 
     if action_digest.ByteSize():
-        click.echo('Success: Pushed digest=["{}/{}]"'
+        click.echo('Success: Pushed Action, digest=["{}/{}]"'
                    .format(action_digest.hash, action_digest.size_bytes))
     else:
-        click.echo("Error: Failed pushing empty message.", err=True)
+        click.echo("Error: Failed pushing empty Action.", err=True)
 
 
 @cli.command('upload-file', short_help="Upload files to the CAS server.")
