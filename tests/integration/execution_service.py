@@ -37,7 +37,12 @@ from buildgrid.server.execution.service import ExecutionService
 
 
 server = mock.create_autospec(grpc.server)
-action = remote_execution_pb2.Action(do_not_cache=True)
+
+command = remote_execution_pb2.Command()
+command_digest = create_digest(command.SerializeToString())
+
+action = remote_execution_pb2.Action(command_digest=command_digest,
+                                     do_not_cache=True)
 action_digest = create_digest(action.SerializeToString())
 
 
@@ -50,7 +55,13 @@ def context():
 @pytest.fixture(params=["action-cache", "no-action-cache"])
 def controller(request):
     storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
+
+    write_session = storage.begin_write(command_digest)
+    write_session.write(command.SerializeToString())
+    storage.commit_write(command_digest, write_session)
+
     write_session = storage.begin_write(action_digest)
+    write_session.write(action.SerializeToString())
     storage.commit_write(action_digest, write_session)
 
     if request.param == "action-cache":

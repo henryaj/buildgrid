@@ -153,11 +153,27 @@ def test_post_bot_event_temp(context, instance):
     context.set_code.assert_called_once_with(grpc.StatusCode.UNIMPLEMENTED)
 
 
-def _inject_work(scheduler, action=None, action_digest=None):
+def test_unmet_platform_requirements(bot_session, context, instance):
+    request = bots_pb2.CreateBotSessionRequest(parent='',
+                                               bot_session=bot_session)
+
+    action_digest = remote_execution_pb2.Digest(hash='gaff')
+    _inject_work(instance._instances[""]._scheduler,
+                 action_digest=action_digest,
+                 platform_requirements={'os': set('wonderful-os')})
+
+    response = instance.CreateBotSession(request, context)
+
+    assert len(response.leases) == 0
+
+
+def _inject_work(scheduler, action=None, action_digest=None,
+                 platform_requirements=None):
     if not action:
         action = remote_execution_pb2.Action()
 
     if not action_digest:
         action_digest = remote_execution_pb2.Digest()
 
-    scheduler.queue_job_action(action, action_digest, skip_cache_lookup=True)
+    scheduler.queue_job_action(action, action_digest, platform_requirements,
+                               skip_cache_lookup=True)

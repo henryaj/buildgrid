@@ -50,7 +50,6 @@ class BotsInterface:
         register with the service, the old one should be closed along
         with all its jobs.
         """
-
         bot_id = bot_session.bot_id
 
         if bot_id == "":
@@ -100,10 +99,25 @@ class BotsInterface:
         return bot_session
 
     def _request_leases(self, bot_session):
-        # TODO: Send worker capabilities to the scheduler!
         # Only send one lease at a time currently.
         if not bot_session.leases:
-            leases = self._scheduler.request_job_leases({})
+            worker_capabilities = {}
+
+            # TODO? Fail if there are no devices in the worker?
+            if bot_session.worker.devices:
+                # According to the spec:
+                #   "The first device in the worker is the "primary device" -
+                #   that is, the device running a bot and which is
+                #   responsible for actually executing commands."
+                primary_device = bot_session.worker.devices[0]
+
+                for device_property in primary_device.properties:
+                    if device_property.key not in worker_capabilities:
+                        worker_capabilities[device_property.key] = set()
+                    worker_capabilities[device_property.key].add(device_property.value)
+
+            leases = self._scheduler.request_job_leases(worker_capabilities)
+
             if leases:
                 for lease in leases:
                     self._assigned_leases[bot_session.name].add(lease.id)

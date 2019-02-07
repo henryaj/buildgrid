@@ -22,7 +22,7 @@ An instance of the Remote Execution Service.
 import logging
 
 from buildgrid._exceptions import FailedPreconditionError, InvalidArgumentError, NotFoundError
-from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Action
+from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Action, Command
 from buildgrid.utils import get_hash_type
 
 
@@ -50,11 +50,22 @@ class ExecutionInstance:
         this action.
         """
         action = self._storage.get_message(action_digest, Action)
-
         if not action:
             raise FailedPreconditionError("Could not get action from storage.")
 
+        command = self._storage.get_message(action.command_digest, Command)
+
+        if not command:
+            raise FailedPreconditionError("Could not get command from storage.")
+
+        platform_requirements = {}
+        for platform_property in command.platform.properties:
+            if platform_property.name not in platform_requirements:
+                platform_requirements[platform_property.name] = set()
+            platform_requirements[platform_property.name].add(platform_property.value)
+
         return self._scheduler.queue_job_action(action, action_digest,
+                                                platform_requirements=platform_requirements,
                                                 skip_cache_lookup=skip_cache_lookup)
 
     def register_job_peer(self, job_name, peer, message_queue):

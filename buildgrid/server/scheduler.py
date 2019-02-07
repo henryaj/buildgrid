@@ -145,7 +145,8 @@ class Scheduler:
         if not job.n_peers and job.done and not job.lease:
             self._delete_job(job.name)
 
-    def queue_job_action(self, action, action_digest, priority=0, skip_cache_lookup=False):
+    def queue_job_action(self, action, action_digest, platform_requirements=None,
+                         priority=0, skip_cache_lookup=False):
         """Inserts a newly created job into the execution queue.
 
         Warning:
@@ -155,6 +156,9 @@ class Scheduler:
         Args:
             action (Action): the given action to queue for execution.
             action_digest (Digest): the digest of the given action.
+            platform_requirements (dict(set)): platform attributes that a worker
+                must satisfy in order to be assigned the job. (Each key can
+                have multiple values.)
             priority (int): the execution job's priority.
             skip_cache_lookup (bool): whether or not to look for pre-computed
                 result for the given action.
@@ -178,7 +182,9 @@ class Scheduler:
 
                 return job.name
 
-        job = Job(action, action_digest, priority=priority)
+        job = Job(action, action_digest,
+                  platform_requirements=platform_requirements,
+                  priority=priority)
 
         self.__logger.debug("Job created for action [%s]: [%s]",
                             action_digest.hash[:8], job.name)
@@ -271,28 +277,29 @@ class Scheduler:
         """Generates a list of the highest priority leases to be run.
 
         Args:
-            worker_capabilities (dict): a set of key-value pairs decribing the
+            worker_capabilities (dict): a set of key-value pairs describing the
                 worker properties, configuration and state at the time of the
                 request.
-
-        Warning: Worker capabilities handling is not implemented at the moment!
         """
         if not self.__queue:
             return []
 
-        # TODO: Try to match worker_capabilities with jobs properties.
-        job = self.__queue.pop()
+        # Looking for the first job that could be assigned to the worker...
+        for job_index, job in enumerate(self.__queue):
+            if self._worker_is_capable(worker_capabilities, job):
+                self.__logger.info("Job scheduled to run: [%s]", job.name)
 
-        self.__logger.info("Job scheduled to run: [%s]", job.name)
+                lease = job.lease
 
-        lease = job.lease
+                if not lease:
+                    # For now, one lease at a time:
+                    lease = job.create_lease()
 
-        if not lease:
-            # For now, one lease at a time:
-            lease = job.create_lease()
+                if lease:
+                    del self.__queue[job_index]
+                    return [lease]
 
-        if lease:
-            return [lease]
+                return None
 
         return None
 
@@ -622,3 +629,28 @@ class Scheduler:
 
                     for message_queue in self.__build_metadata_queues:
                         message_queue.put(message)
+
+    def _worker_is_capable(self, worker_capabilities, job):
+        """Returns whether the worker is suitable to run the job."""
+        # TODO: Replace this with the logic defined in the Platform msg. standard.
+
+        job_requirements = job.platform_requirements
+        # For now we'll only check OS and ISA properties.
+
+        if not job_requirements:
+            return True
+
+        # OS:
+        worker_oses = worker_capabilities.get('os', set())
+        job_oses = job_requirements.get('os', set())
+        if job_oses and not (job_oses & worker_oses):
+            return False
+
+        # ISAs:
+        worker_isas = worker_capabilities.get('isa', [])
+        job_isas = job_requirements.get('isa', None)
+
+        if job_isas and not (job_isas & worker_isas):
+            return False
+
+        return True
