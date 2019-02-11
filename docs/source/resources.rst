@@ -17,7 +17,8 @@ Remote execution and worker API useful links:
 - `FUSE on wikipedia`_ and `kernel documentation`_
 - `bubblewrap repository`_
 - `Buildfarm reference REAPI implementation`_
-- `Buildbarn Golang REAPI implementation`_
+- `BuildBarn Storage Daemon`_ CAS service implementation
+- `BuildBarn Browser`_ web front-end for CAS data
 - `Demonstration of RECC with BuildGrid`_
 - `Demonstration of Bazel with BuildGrid`_
 - `Demonstration of BuildStream with BuildGrid`_
@@ -37,7 +38,8 @@ Remote execution and worker API useful links:
 .. _BuildBox repository: https://gitlab.com/BuildStream/buildbox
 .. _bubblewrap repository: https://github.com/projectatomic/bubblewrap
 .. _Buildfarm reference REAPI implementation: https://github.com/bazelbuild/bazel-buildfarm
-.. _Buildbarn Golang REAPI implementation: https://github.com/EdSchouten/bazel-buildbarn
+.. _BuildBarn Storage Daemon: https://github.com/buildbarn/bb-storage
+.. _BuildBarn Browser: https://github.com/buildbarn/bb-browser
 .. _Demonstration of RECC with BuildGrid: https://asciinema.org/a/0FjExIqrTGSlpSUIS8Ehf5gUg
 .. _Demonstration of Bazel with BuildGrid: https://asciinema.org/a/uVHFWOxpivwJ4ari23CEerR8N
 .. _Demonstration of BuildStream with BuildGrid: https://asciinema.org/a/QfkYGqhfhEQz4o8prlBdEBFP7
