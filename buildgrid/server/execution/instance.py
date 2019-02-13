@@ -52,6 +52,8 @@ class ExecutionInstance:
             server.add_execution_instance(self, instance_name)
 
             self._instance_name = instance_name
+            if self._scheduler is not None:
+                self._scheduler.set_instance_name(instance_name)
 
         else:
             raise AssertionError("Instance already registered")

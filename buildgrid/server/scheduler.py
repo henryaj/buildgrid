@@ -35,6 +35,8 @@ class Scheduler:
     def __init__(self, action_cache=None, monitor=False):
         self.__logger = logging.getLogger(__name__)
 
+        self._instance_name = None
+
         self.__build_metadata_queues = None
 
         self.__operations_by_stage = None
@@ -56,6 +58,14 @@ class Scheduler:
             self.activate_monitoring()
 
     # --- Public API ---
+
+    @property
+    def instance_name(self):
+        return self._instance_name
+
+    def set_instance_name(self, instance_name):
+        if not self._instance_name:
+            self._instance_name = instance_name
 
     def list_current_jobs(self):
         """Returns a list of the :class:`Job` names currently managed."""
