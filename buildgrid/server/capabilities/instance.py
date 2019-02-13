@@ -22,12 +22,28 @@ class CapabilitiesInstance:
 
     def __init__(self, cas_instance=None, action_cache_instance=None, execution_instance=None):
         self.__logger = logging.getLogger(__name__)
+
+        self._instance_name = None
+
         self.__cas_instance = cas_instance
         self.__action_cache_instance = action_cache_instance
         self.__execution_instance = execution_instance
 
+    # --- Public API ---
+
+    @property
+    def instance_name(self):
+        return self._instance_name
+
     def register_instance_with_server(self, instance_name, server):
-        server.add_capabilities_instance(self, instance_name)
+        """Names and registers the capabilities instance with a given server."""
+        if self._instance_name is None:
+            server.add_capabilities_instance(self, instance_name)
+
+            self._instance_name = instance_name
+
+        else:
+            raise AssertionError("Instance already registered")
 
     def add_cas_instance(self, cas_instance):
         self.__cas_instance = cas_instance
@@ -49,6 +65,8 @@ class CapabilitiesInstance:
         # server_capabilities.low_api_version =
         # server_capabilities.hig_api_version =
         return server_capabilities
+
+    # --- Private API ---
 
     def _get_cache_capabilities(self):
         capabilities = remote_execution_pb2.CacheCapabilities()

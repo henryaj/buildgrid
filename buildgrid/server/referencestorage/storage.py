@@ -41,13 +41,29 @@ class ReferenceCache:
         """
         self.__logger = logging.getLogger(__name__)
 
+        self._instance_name = None
+
+        self.__storage = storage
+
         self._allow_updates = allow_updates
-        self._storage = storage
         self._max_cached_refs = max_cached_refs
         self._digest_map = collections.OrderedDict()
 
+    # --- Public API ---
+
+    @property
+    def instance_name(self):
+        return self._instance_name
+
     def register_instance_with_server(self, instance_name, server):
-        server.add_reference_storage_instance(self, instance_name)
+        """Names and registers the refs instance with a given server."""
+        if self._instance_name is None:
+            server.add_reference_storage_instance(self, instance_name)
+
+            self._instance_name = instance_name
+
+        else:
+            raise AssertionError("Instance already registered")
 
     @property
     def allow_updates(self):
@@ -64,7 +80,8 @@ class ReferenceCache:
             NotFoundError.
         """
         if key in self._digest_map:
-            reference_result = self._storage.get_message(self._digest_map[key], remote_execution_pb2.Digest)
+            reference_result = self.__storage.get_message(self._digest_map[key],
+                                                          remote_execution_pb2.Digest)
 
             if reference_result is not None:
                 return reference_result
@@ -84,7 +101,8 @@ class ReferenceCache:
             NotFoundError.
         """
         if key in self._digest_map:
-            reference_result = self._storage.get_message(self._digest_map[key], remote_execution_pb2.ActionResult)
+            reference_result = self.__storage.get_message(self._digest_map[key],
+                                                          remote_execution_pb2.ActionResult)
 
             if reference_result is not None:
                 if self._action_result_blobs_still_exist(reference_result):
@@ -115,8 +133,10 @@ class ReferenceCache:
         while len(self._digest_map) >= self._max_cached_refs:
             self._digest_map.popitem(last=False)
 
-        result_digest = self._storage.put_message(result)
+        result_digest = self.__storage.put_message(result)
         self._digest_map[key] = result_digest
+
+    # --- Private API ---
 
     def _action_result_blobs_still_exist(self, action_result):
         """Checks CAS for ActionResult output blobs existance.
@@ -135,8 +155,8 @@ class ReferenceCache:
 
         for output_directory in action_result.output_directories:
             blobs_needed.append(output_directory.tree_digest)
-            tree = self._storage.get_message(output_directory.tree_digest,
-                                             remote_execution_pb2.Tree)
+            tree = self.__storage.get_message(output_directory.tree_digest,
+                                              remote_execution_pb2.Tree)
             if tree is None:
                 return False
 
@@ -153,5 +173,5 @@ class ReferenceCache:
         if action_result.stderr_digest.hash and not action_result.stderr_raw:
             blobs_needed.append(action_result.stderr_digest)
 
-        missing = self._storage.missing_blobs(blobs_needed)
+        missing = self.__storage.missing_blobs(blobs_needed)
         return len(missing) == 0

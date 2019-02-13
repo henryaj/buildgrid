@@ -40,12 +40,25 @@ class ActionCache(ReferenceCache):
 
         self.__logger = logging.getLogger(__name__)
 
+        self._instance_name = None
+
         self._cache_failed_actions = cache_failed_actions
 
     # --- Public API ---
 
+    @property
+    def instance_name(self):
+        return self._instance_name
+
     def register_instance_with_server(self, instance_name, server):
-        server.add_action_cache_instance(self, instance_name)
+        """Names and registers the action-cache instance with a given server."""
+        if self._instance_name is None:
+            server.add_action_cache_instance(self, instance_name)
+
+            self._instance_name = instance_name
+
+        else:
+            raise AssertionError("Instance already registered")
 
     def get_action_result(self, action_digest):
         """Retrieves the cached result for an action."""

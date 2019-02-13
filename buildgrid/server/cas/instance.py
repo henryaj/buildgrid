@@ -34,10 +34,25 @@ class ContentAddressableStorageInstance:
     def __init__(self, storage):
         self.__logger = logging.getLogger(__name__)
 
-        self._storage = storage
+        self._instance_name = None
+
+        self.__storage = storage
+
+    # --- Public API ---
+
+    @property
+    def instance_name(self):
+        return self._instance_name
 
     def register_instance_with_server(self, instance_name, server):
-        server.add_cas_instance(self, instance_name)
+        """Names and registers the CAS instance with a given server."""
+        if self._instance_name is None:
+            server.add_cas_instance(self, instance_name)
+
+            self._instance_name = instance_name
+
+        else:
+            raise AssertionError("Instance already registered")
 
     def hash_type(self):
         return get_hash_type()
@@ -51,12 +66,12 @@ class ContentAddressableStorageInstance:
         return re_pb2.CacheCapabilities().DISALLOWED
 
     def find_missing_blobs(self, blob_digests):
-        storage = self._storage
+        storage = self.__storage
         return re_pb2.FindMissingBlobsResponse(
             missing_blob_digests=storage.missing_blobs(blob_digests))
 
     def batch_update_blobs(self, requests):
-        storage = self._storage
+        storage = self.__storage
         store = []
         for request_proto in requests:
             store.append((request_proto.digest, request_proto.data))
@@ -72,7 +87,7 @@ class ContentAddressableStorageInstance:
         return response
 
     def batch_read_blobs(self, digests):
-        storage = self._storage
+        storage = self.__storage
 
         response = re_pb2.BatchReadBlobsResponse()
 
@@ -101,7 +116,7 @@ class ContentAddressableStorageInstance:
         return response
 
     def get_tree(self, request):
-        storage = self._storage
+        storage = self.__storage
 
         response = re_pb2.GetTreeResponse()
         page_size = request.page_size
@@ -143,10 +158,25 @@ class ByteStreamInstance:
     def __init__(self, storage):
         self.__logger = logging.getLogger(__name__)
 
-        self._storage = storage
+        self._instance_name = None
+
+        self.__storage = storage
+
+    # --- Public API ---
+
+    @property
+    def instance_name(self):
+        return self._instance_name
 
     def register_instance_with_server(self, instance_name, server):
-        server.add_bytestream_instance(self, instance_name)
+        """Names and registers the byte-stream instance with a given server."""
+        if self._instance_name is None:
+            server.add_bytestream_instance(self, instance_name)
+
+            self._instance_name = instance_name
+
+        else:
+            raise AssertionError("Instance already registered")
 
     def read(self, digest_hash, digest_size, read_offset, read_limit):
         if len(digest_hash) != HASH_LENGTH or not digest_size.isdigit():
@@ -169,7 +199,7 @@ class ByteStreamInstance:
             raise InvalidArgumentError("Negative read_limit is invalid")
 
         # Read the blob from storage and send its contents to the client.
-        result = self._storage.get_blob(digest)
+        result = self.__storage.get_blob(digest)
         if result is None:
             raise NotFoundError("Blob not found")
 
@@ -191,7 +221,7 @@ class ByteStreamInstance:
 
         digest = re_pb2.Digest(hash=digest_hash, size_bytes=int(digest_size))
 
-        write_session = self._storage.begin_write(digest)
+        write_session = self.__storage.begin_write(digest)
 
         # Start the write session and write the first request's data.
         write_session.write(first_block)
@@ -213,6 +243,6 @@ class ByteStreamInstance:
         elif computed_hash.hexdigest() != digest.hash:
             raise InvalidArgumentError("Data does not match hash")
 
-        self._storage.commit_write(digest, write_session)
+        self.__storage.commit_write(digest, write_session)
 
         return bytestream_pb2.WriteResponse(committed_size=bytes_written)

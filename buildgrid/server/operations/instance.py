@@ -31,13 +31,27 @@ class OperationsInstance:
         self.__logger = logging.getLogger(__name__)
 
         self._scheduler = scheduler
+        self._instance_name = None
+
+    # --- Public API ---
+
+    @property
+    def instance_name(self):
+        return self._instance_name
 
     @property
     def scheduler(self):
         return self._scheduler
 
     def register_instance_with_server(self, instance_name, server):
-        server.add_operations_instance(self, instance_name)
+        """Names and registers the operations instance with a given server."""
+        if self._instance_name is None:
+            server.add_operations_instance(self, instance_name)
+
+            self._instance_name = instance_name
+
+        else:
+            raise AssertionError("Instance already registered")
 
     def get_operation(self, job_name):
         try:

@@ -33,16 +33,31 @@ class BotsInterface:
     def __init__(self, scheduler):
         self.__logger = logging.getLogger(__name__)
 
+        self._scheduler = scheduler
+        self._instance_name = None
+
         self._bot_ids = {}
         self._assigned_leases = {}
-        self._scheduler = scheduler
+
+    # --- Public API ---
+
+    @property
+    def instance_name(self):
+        return self._instance_name
 
     @property
     def scheduler(self):
         return self._scheduler
 
     def register_instance_with_server(self, instance_name, server):
-        server.add_bots_interface(self, instance_name)
+        """Names and registers the bots interface with a given server."""
+        if self._instance_name is None:
+            server.add_bots_interface(self, instance_name)
+
+            self._instance_name = instance_name
+
+        else:
+            raise AssertionError("Instance already registered")
 
     def create_bot_session(self, parent, bot_session):
         """ Creates a new bot session. Server should assign a unique
@@ -97,6 +112,8 @@ class BotsInterface:
 
         self._request_leases(bot_session)
         return bot_session
+
+    # --- Private API ---
 
     def _request_leases(self, bot_session):
         # Only send one lease at a time currently.

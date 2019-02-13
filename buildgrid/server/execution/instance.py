@@ -31,15 +31,30 @@ class ExecutionInstance:
     def __init__(self, scheduler, storage):
         self.__logger = logging.getLogger(__name__)
 
-        self._storage = storage
         self._scheduler = scheduler
+        self._instance_name = None
+
+        self.__storage = storage
+
+    # --- Public API ---
+
+    @property
+    def instance_name(self):
+        return self._instance_name
 
     @property
     def scheduler(self):
         return self._scheduler
 
     def register_instance_with_server(self, instance_name, server):
-        server.add_execution_instance(self, instance_name)
+        """Names and registers the execution instance with a given server."""
+        if self._instance_name is None:
+            server.add_execution_instance(self, instance_name)
+
+            self._instance_name = instance_name
+
+        else:
+            raise AssertionError("Instance already registered")
 
     def hash_type(self):
         return get_hash_type()
@@ -49,11 +64,12 @@ class ExecutionInstance:
         Queues an action and creates an Operation instance to be associated with
         this action.
         """
-        action = self._storage.get_message(action_digest, Action)
+        action = self.__storage.get_message(action_digest, Action)
+
         if not action:
             raise FailedPreconditionError("Could not get action from storage.")
 
-        command = self._storage.get_message(action.command_digest, Command)
+        command = self.__storage.get_message(action.command_digest, Command)
 
         if not command:
             raise FailedPreconditionError("Could not get command from storage.")
