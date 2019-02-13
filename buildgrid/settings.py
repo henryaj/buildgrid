@@ -35,3 +35,11 @@ MAX_REQUEST_COUNT = 500
 LOG_RECORD_FORMAT = '%(asctime)s:[%(name)36.36s][%(levelname)5.5s]: %(message)s'
 # The different log record attributes are documented here:
 # https://docs.python.org/3/library/logging.html#logrecord-attributes
+
+# URL scheme for the CAS content browser:
+BROWSER_URL_FORMAT = '%(type)s/%(instance)s/%(hash)s/%(sizebytes)s/'
+# The string markers that are substituted are:
+#  instance   - CAS instance's name.
+#  type       - Type of CAS object, eg. 'action_result', 'command'...
+#  hash       - Object's digest hash.
+#  sizebytes  - Object's digest size in bytes.

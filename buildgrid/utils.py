@@ -13,12 +13,59 @@
 # limitations under the License.
 
 
+from urllib.parse import urljoin
 from operator import attrgetter
 import os
 import socket
 
-from buildgrid.settings import HASH, HASH_LENGTH
+from buildgrid.settings import HASH, HASH_LENGTH, BROWSER_URL_FORMAT
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
+
+
+class BrowserURL:
+
+    __url_markers = (
+        '%(instance)s',
+        '%(type)s',
+        '%(hash)s',
+        '%(sizebytes)s',
+    )
+
+    def __init__(self, base_url, instance_name=None):
+        """Begins browser URL helper initialization."""
+        self.__base_url = base_url
+        self.__initialized = False
+        self.__url_spec = {
+            '%(instance)s': instance_name or '',
+        }
+
+    def for_message(self, message_type, message_digest):
+        """Completes browser URL initialization for a protobuf message."""
+        if self.__initialized:
+            return False
+
+        self.__url_spec['%(type)s'] = message_type
+        self.__url_spec['%(hash)s'] = message_digest.hash
+        self.__url_spec['%(sizebytes)s'] = str(message_digest.size_bytes)
+
+        self.__initialized = True
+        return True
+
+    def generate(self):
+        """Generates a browser URL string."""
+        if not self.__base_url or not self.__initialized:
+            return None
+
+        url_tail = BROWSER_URL_FORMAT
+
+        for url_marker in self.__url_markers:
+            if url_marker not in self.__url_spec:
+                return None
+            if url_marker not in url_tail:
+                continue
+            url_tail = url_tail.replace(url_marker, self.__url_spec[url_marker])
+
+        return urljoin(self.__base_url, url_tail)
 
 
 def get_hostname():
