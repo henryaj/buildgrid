@@ -25,7 +25,7 @@ LOW_REAPI_VERSION = '2.0.0'
 # Hash function used for computing digests:
 HASH = hashlib.sha256
 
-# Lenght in bytes of a hash string returned by HASH:
+# Length in bytes of a hash string returned by HASH:
 HASH_LENGTH = HASH().digest_size * 2
 
 # Period, in seconds, for the monitoring cycle:
@@ -36,6 +36,11 @@ MAX_REQUEST_SIZE = 2 * 1024 * 1024
 
 # Maximum number of elements per gRPC request:
 MAX_REQUEST_COUNT = 500
+
+# Value that establishes an upper bound on the size of a file that can
+# be queued into a batch request. Expressed as a percentage of the
+# batch size limit:
+BATCH_REQUEST_SIZE_THRESHOLD = 0.25
 
 # String format for log records:
 LOG_RECORD_FORMAT = '%(asctime)s:[%(name)36.36s][%(levelname)5.5s]: %(message)s'

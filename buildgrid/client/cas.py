@@ -24,11 +24,10 @@ from buildgrid._exceptions import NotFoundError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
 from buildgrid._protos.google.bytestream import bytestream_pb2, bytestream_pb2_grpc
 from buildgrid._protos.google.rpc import code_pb2
-from buildgrid.settings import HASH, MAX_REQUEST_SIZE, MAX_REQUEST_COUNT
+from buildgrid.client.capabilities import CapabilitiesInterface
+from buildgrid.settings import HASH, MAX_REQUEST_SIZE, MAX_REQUEST_COUNT, BATCH_REQUEST_SIZE_THRESHOLD
 from buildgrid.utils import create_digest, merkle_tree_maker
 
-# Maximum size for a queueable file:
-FILE_SIZE_THRESHOLD = 1 * 1024 * 1024
 
 _FileRequest = namedtuple('FileRequest', ['digest', 'output_paths'])
 
@@ -48,6 +47,67 @@ class _CallCache:
         if channel not in cls.__calls:
             return False
         return name in cls.__calls[channel]
+
+
+class _CasBatchRequestSizesCache:
+    """Cache that stores, for each remote, the limit of bytes that can
+    be transferred using batches as well as a threshold that determines
+    when a file can be fetched as part of a batch request.
+    """
+    __cas_max_batch_transfer_size = {}
+    __cas_batch_request_size_threshold = {}
+
+    @classmethod
+    def max_effective_batch_size_bytes(cls, channel, instance_name):
+        """Returns the maximum number of bytes that can be transferred
+        using batch methods for the given remote.
+        """
+        if channel not in cls.__cas_max_batch_transfer_size:
+            cls.__cas_max_batch_transfer_size[channel] = dict()
+
+        if instance_name not in cls.__cas_max_batch_transfer_size[channel]:
+            max_batch_size = cls._get_server_max_batch_total_size_bytes(channel,
+                                                                        instance_name)
+
+            cls.__cas_max_batch_transfer_size[channel][instance_name] = max_batch_size
+
+        return cls.__cas_max_batch_transfer_size[channel][instance_name]
+
+    @classmethod
+    def batch_request_size_threshold(cls, channel, instance_name):
+        if channel not in cls.__cas_batch_request_size_threshold:
+            cls.__cas_batch_request_size_threshold[channel] = dict()
+
+        if instance_name not in cls.__cas_batch_request_size_threshold[channel]:
+            # Computing the threshold:
+            max_batch_size = cls.max_effective_batch_size_bytes(channel,
+                                                                instance_name)
+            threshold = BATCH_REQUEST_SIZE_THRESHOLD * max_batch_size
+
+            cls.__cas_batch_request_size_threshold[channel][instance_name] = threshold
+
+        return cls.__cas_batch_request_size_threshold[channel][instance_name]
+
+    @classmethod
+    def _get_server_max_batch_total_size_bytes(cls, channel, instance_name):
+        """Returns the maximum number of bytes that can be effectively
+        transferred using batches, considering the limits imposed by
+        the server's configuration and by gRPC.
+        """
+        try:
+            capabilities_interface = CapabilitiesInterface(channel)
+            server_capabilities = capabilities_interface.get_capabilities(instance_name)
+
+            cache_capabilities = server_capabilities.cache_capabilities
+
+            max_batch_total_size = cache_capabilities.max_batch_total_size_bytes
+            # The server could set this value to 0 (no limit set).
+            if max_batch_total_size:
+                return min(max_batch_total_size, MAX_REQUEST_SIZE)
+        except Exception:
+            pass
+
+        return MAX_REQUEST_SIZE
 
 
 @contextmanager
@@ -189,7 +249,7 @@ class Downloader:
         if not os.path.isabs(file_path):
             file_path = os.path.abspath(file_path)
 
-        if not queue or digest.size_bytes > FILE_SIZE_THRESHOLD:
+        if not queue or digest.size_bytes > self._queueable_file_size_threshold():
             self._fetch_file(digest, file_path, is_executable=is_executable)
         else:
             self._queue_file(digest, file_path, is_executable=is_executable)
@@ -334,9 +394,11 @@ class Downloader:
 
     def _queue_file(self, digest, file_path, is_executable=False):
         """Queues a file for later batch download"""
-        if self.__file_request_size + digest.ByteSize() > MAX_REQUEST_SIZE:
+        batch_size_limit = self._max_effective_batch_size_bytes()
+
+        if self.__file_request_size + digest.ByteSize() > batch_size_limit:
             self.flush()
-        elif self.__file_response_size + digest.size_bytes > MAX_REQUEST_SIZE:
+        elif self.__file_response_size + digest.size_bytes > batch_size_limit:
             self.flush()
         elif self.__file_request_count >= MAX_REQUEST_COUNT:
             self.flush()
@@ -498,6 +560,20 @@ class Downloader:
 
             os.symlink(symlink_path, target_path)
 
+    def _max_effective_batch_size_bytes(self):
+        """Returns the effective maximum number of bytes that can be
+        transferred using batches, considering gRPC maximum message size.
+        """
+        return _CasBatchRequestSizesCache.max_effective_batch_size_bytes(self.channel,
+                                                                         self.instance_name)
+
+    def _queueable_file_size_threshold(self):
+        """Returns the size limit up until which files can be queued to
+        be requested in a batch.
+        """
+        return _CasBatchRequestSizesCache.batch_request_size_threshold(self.channel,
+                                                                       self.instance_name)
+
 
 @contextmanager
 def upload(channel, instance=None, u_uid=None):
@@ -563,7 +639,8 @@ class Uploader:
         Returns:
             :obj:`Digest`: the sent blob's digest.
         """
-        if not queue or len(blob) > FILE_SIZE_THRESHOLD:
+
+        if not queue or len(blob) > self._queueable_file_size_threshold():
             blob_digest = self._send_blob(blob, digest=digest)
         else:
             blob_digest = self._queue_blob(blob, digest=digest)
@@ -589,7 +666,7 @@ class Uploader:
         """
         message_blob = message.SerializeToString()
 
-        if not queue or len(message_blob) > FILE_SIZE_THRESHOLD:
+        if not queue or len(message_blob) > self._queueable_file_size_threshold():
             message_digest = self._send_blob(message_blob, digest=digest)
         else:
             message_digest = self._queue_blob(message_blob, digest=digest)
@@ -622,7 +699,7 @@ class Uploader:
         with open(file_path, 'rb') as bytes_steam:
             file_bytes = bytes_steam.read()
 
-        if not queue or len(file_bytes) > FILE_SIZE_THRESHOLD:
+        if not queue or len(file_bytes) > self._queueable_file_size_threshold():
             file_digest = self._send_blob(file_bytes)
         else:
             file_digest = self._queue_blob(file_bytes)
@@ -795,7 +872,12 @@ class Uploader:
             blob_digest.hash = HASH(blob).hexdigest()
             blob_digest.size_bytes = len(blob)
 
-        if self.__request_size + blob_digest.size_bytes > MAX_REQUEST_SIZE:
+        # If we are here queueing a file we know that its size is
+        # smaller than gRPC's message size limit.
+        # We'll make a single batch request as big as the server allows.
+        batch_size_limit = self._max_effective_batch_size_bytes()
+
+        if self.__request_size + blob_digest.size_bytes > batch_size_limit:
             self.flush()
         elif self.__request_count >= MAX_REQUEST_COUNT:
             self.flush()
@@ -851,3 +933,17 @@ class Uploader:
                 written_digests.append(self._send_blob(blob, digest=digest))
 
         return written_digests
+
+    def _max_effective_batch_size_bytes(self):
+        """Returns the effective maximum number of bytes that can be
+        transferred using batches, considering gRPC maximum message size.
+        """
+        return _CasBatchRequestSizesCache.max_effective_batch_size_bytes(self.channel,
+                                                                         self.instance_name)
+
+    def _queueable_file_size_threshold(self):
+        """Returns the size limit up until which files can be queued to
+        be requested in a batch.
+        """
+        return _CasBatchRequestSizesCache.batch_request_size_threshold(self.channel,
+                                                                       self.instance_name)
