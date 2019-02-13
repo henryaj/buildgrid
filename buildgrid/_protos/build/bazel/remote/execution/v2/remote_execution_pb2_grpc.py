@@ -87,6 +87,7 @@ class ExecutionServicer(object):
     action will be reported in the `status` field of the `ExecuteResponse`. The
     server MUST NOT set the `error` field of the `Operation` proto.
     The possible errors include:
+
     * `INVALID_ARGUMENT`: One or more arguments are invalid.
     * `FAILED_PRECONDITION`: One or more errors occurred in setting up the
     action requested, such as a missing input or command or no worker being
@@ -210,6 +211,7 @@ class ActionCacheServicer(object):
     """Retrieve a cached execution result.
 
     Errors:
+
     * `NOT_FOUND`: The requested `ActionResult` is not in the cache.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -219,11 +221,6 @@ class ActionCacheServicer(object):
   def UpdateActionResult(self, request, context):
     """Upload a new execution result.
 
-    This method is intended for servers which implement the distributed cache
-    independently of the
-    [Execution][build.bazel.remote.execution.v2.Execution] API. As a
-    result, it is OPTIONAL for servers to implement.
-
     In order to allow the server to perform access control based on the type of
     action, and to assist with client debugging, the client MUST first upload
     the [Action][build.bazel.remote.execution.v2.Execution] that produced the
@@ -232,7 +229,10 @@ class ActionCacheServicer(object):
     `ContentAddressableStorage`.
 
     Errors:
-    * `UNIMPLEMENTED`: This method is not supported by the server.
+
+    * `INVALID_ARGUMENT`: One or more arguments are invalid.
+    * `FAILED_PRECONDITION`: One or more errors occurred in updating the
+    action result, such as a missing command or action.
     * `RESOURCE_EXHAUSTED`: There is insufficient storage space to add the
     entry to the cache.
     """
@@ -299,6 +299,9 @@ class ContentAddressableStorageStub(object):
   by the server. For servers which do not support multiple instances, then the
   `instance_name` is the empty path and the leading slash is omitted, so that
   the `resource_name` becomes `uploads/{uuid}/blobs/{hash}/{size}`.
+  To simplify parsing, a path segment cannot equal any of the following
+  keywords: `blobs`, `uploads`, `actions`, `actionResults`, `operations` and
+  `capabilities`.
 
   When attempting an upload, if another client has already completed the upload
   (which may occur in the middle of a single upload if another client uploads
@@ -395,6 +398,9 @@ class ContentAddressableStorageServicer(object):
   by the server. For servers which do not support multiple instances, then the
   `instance_name` is the empty path and the leading slash is omitted, so that
   the `resource_name` becomes `uploads/{uuid}/blobs/{hash}/{size}`.
+  To simplify parsing, a path segment cannot equal any of the following
+  keywords: `blobs`, `uploads`, `actions`, `actionResults`, `operations` and
+  `capabilities`.
 
   When attempting an upload, if another client has already completed the upload
   (which may occur in the middle of a single upload if another client uploads
@@ -450,10 +456,12 @@ class ContentAddressableStorageServicer(object):
     independently.
 
     Errors:
+
     * `INVALID_ARGUMENT`: The client attempted to upload more than the
     server supported limit.
 
     Individual requests may return the following errors, additionally:
+
     * `RESOURCE_EXHAUSTED`: There is insufficient disk quota to store the blob.
     * `INVALID_ARGUMENT`: The
     [Digest][build.bazel.remote.execution.v2.Digest] does not match the
@@ -478,6 +486,7 @@ class ContentAddressableStorageServicer(object):
     independently.
 
     Errors:
+
     * `INVALID_ARGUMENT`: The client attempted to read more than the
     server supported limit.
 
