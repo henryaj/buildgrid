@@ -26,13 +26,14 @@ import logging
 from buildgrid._enums import LeaseState, OperationStage
 from buildgrid._exceptions import NotFoundError
 from buildgrid.server.job import Job
+from buildgrid.utils import BrowserURL
 
 
 class Scheduler:
 
     MAX_N_TRIES = 5
 
-    def __init__(self, action_cache=None, monitor=False):
+    def __init__(self, action_cache=None, action_browser_url=False, monitor=False):
         self.__logger = logging.getLogger(__name__)
 
         self._instance_name = None
@@ -45,6 +46,7 @@ class Scheduler:
         self.__retries_count = 0
 
         self._action_cache = action_cache
+        self._action_browser_url = action_browser_url
 
         self.__jobs_by_action = {}  # Action to Job 1:1 mapping
         self.__jobs_by_operation = {}  # Operation to Job 1:1 mapping
@@ -195,6 +197,10 @@ class Scheduler:
         job = Job(action, action_digest,
                   platform_requirements=platform_requirements,
                   priority=priority)
+
+        if self._action_browser_url:
+            job.set_action_url(
+                BrowserURL(self._action_browser_url, self._instance_name))
 
         self.__logger.debug("Job created for action [%s]: [%s]",
                             action_digest.hash[:8], job.name)

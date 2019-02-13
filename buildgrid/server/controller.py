@@ -39,7 +39,7 @@ class ExecutionController:
     def __init__(self, storage=None, action_cache=None, action_browser_url=None):
         self.__logger = logging.getLogger(__name__)
 
-        scheduler = Scheduler(action_cache)
+        scheduler = Scheduler(action_cache, action_browser_url=action_browser_url)
 
         self._execution_instance = ExecutionInstance(scheduler, storage)
         self._bots_interface = BotsInterface(scheduler)

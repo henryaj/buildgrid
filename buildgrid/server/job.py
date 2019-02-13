@@ -37,10 +37,8 @@ class Job:
         self._action = remote_execution_pb2.Action()
         self._lease = None
 
-        self.__execute_response = None
+        self.__execute_response = remote_execution_pb2.ExecuteResponse()
         self.__operation_metadata = remote_execution_pb2.ExecuteOperationMetadata()
-        self.__operations_by_name = {}  # Name to Operation 1:1 mapping
-        self.__operations_by_peer = {}  # Peer to Operation 1:1 mapping
 
         self.__queued_timestamp = timestamp_pb2.Timestamp()
         self.__queued_time_duration = duration_pb2.Duration()
@@ -48,6 +46,8 @@ class Job:
         self.__worker_completed_timestamp = timestamp_pb2.Timestamp()
 
         self.__operations_message_queues = {}
+        self.__operations_by_name = {}  # Name to Operation 1:1 mapping
+        self.__operations_by_peer = {}  # Peer to Operation 1:1 mapping
         self.__operations_cancelled = set()
         self.__lease_cancelled = False
         self.__job_cancelled = False
@@ -146,6 +146,11 @@ class Job:
         else:
             return False
 
+    def set_action_url(self, url):
+        """Generates a CAS browser URL for the job's action."""
+        if url.for_message('action', self.__operation_metadata.action_digest):
+            self.__execute_response.message = url.generate()
+
     def set_cached_result(self, action_result):
         """Allows specifying an action result form the action cache for the job.
 
@@ -155,7 +160,6 @@ class Job:
         Args:
             action_result (ActionResult): The result from cache.
         """
-        self.__execute_response = remote_execution_pb2.ExecuteResponse()
         self.__execute_response.result.CopyFrom(action_result)
         self.__execute_response.cached_result = True
 
@@ -445,7 +449,6 @@ class Job:
             action_metadata.worker_start_timestamp.CopyFrom(self.__worker_start_timestamp)
             action_metadata.worker_completed_timestamp.CopyFrom(self.__worker_completed_timestamp)
 
-            self.__execute_response = remote_execution_pb2.ExecuteResponse()
             self.__execute_response.result.CopyFrom(action_result)
             self.__execute_response.cached_result = False
             self.__execute_response.status.CopyFrom(status)
