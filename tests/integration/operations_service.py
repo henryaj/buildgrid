@@ -71,7 +71,7 @@ def controller():
     write_session.write(action.SerializeToString())
     storage.commit_write(action_digest, write_session)
 
-    yield ExecutionController(None, storage)
+    yield ExecutionController(storage=storage)
 
 
 # Instance to test

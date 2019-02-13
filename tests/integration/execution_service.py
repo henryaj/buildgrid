@@ -66,10 +66,10 @@ def controller(request):
 
     if request.param == "action-cache":
         cache = ActionCache(storage, 50)
-        yield ExecutionController(cache, storage)
+        yield ExecutionController(storage=storage, action_cache=cache)
 
     else:
-        yield ExecutionController(None, storage)
+        yield ExecutionController(storage=storage)
 
 
 # Instance to test

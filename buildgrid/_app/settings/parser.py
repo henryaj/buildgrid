@@ -235,8 +235,8 @@ class Execution(YamlFactory):
 
     yaml_tag = u'!execution'
 
-    def __new__(cls, storage, action_cache=None):
-        return ExecutionController(action_cache, storage)
+    def __new__(cls, storage, action_cache=None, action_browser_url=None):
+        return ExecutionController(storage, action_cache, action_browser_url)
 
 
 class Action(YamlFactory):

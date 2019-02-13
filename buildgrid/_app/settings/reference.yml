@@ -75,7 +75,7 @@ instances:
         # Whether or not writing to the cache is allowed.
         allow-updates: true
         ##
-        # Whether failed actions (non-zero exit code) are stored
+        # Whether failed actions (non-zero exit code) are stored.
         cache-failed-actions: true
 
       - !execution
@@ -85,6 +85,9 @@ instances:
         ##
         # Alias to an action-cache service.
         action-cache: *main-action
+        ##
+        # Base URL for external build action (web) browser service.
+        action-browser-url: http://localhost:8080
 
       - !cas
         ##
