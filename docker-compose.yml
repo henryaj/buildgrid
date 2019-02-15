@@ -1,0 +1,75 @@
+##
+# BuildGrid's Docker Compose manifest.
+#
+#   ¡FOR LOCAL DEVELOPMENT ONLY!
+#
+# Spins-up a 'local' grid instance:
+#   - Controller at http://localhost:50051
+#   - CAS + AC at: http://localhost:50052
+#
+# Basic usage:
+#  - docker-compose build
+#  - docker-compose up --scale bots=10
+#  - docker-compose down
+#  - docker volume inspect buildgrid_data
+#  - docker volume rm buildgrid_data
+#  - docker image rm buildgrid:local
+#
+version: "3.2"
+
+services:
+  storage:
+    build:
+      context: .
+    image: buildgrid:local
+    command: [
+      "server", "start", "-vvv",
+      "/app/config/storage.conf"]
+    volumes:
+      - type: volume
+        source: data
+        target: /var/lib/buildgrid/store
+        volume:
+          nocopy: true
+      - type: bind
+        source: ./data/config/storage.conf
+        target: /app/config/storage.conf
+    ports:
+      - "50052:50052"
+    networks:
+      - backend
+      - host
+
+  controller:
+    image: buildgrid:local
+    command: [
+      "server", "start", "-vvv",
+      "/app/config/controller.conf"]
+    volumes:
+      - type: bind
+        source: ./data/config/controller.conf
+        target: /app/config/controller.conf
+    ports:
+      - "50051:50051"
+    networks:
+      - backend
+      - host
+
+  bots:  # To be scaled horizontaly
+    image: buildgrid:local
+    command: [
+      "bot", "--parent=local",
+      "--remote=http://controller:50051",
+      "--remote-cas=http://storage:50052",
+      "host-tools"]
+    depends_on:
+      - controller
+    networks:
+      - backend
+
+networks:
+  backend:
+  host:
+
+volumes:
+  data:
