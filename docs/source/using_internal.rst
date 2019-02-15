@@ -17,7 +17,7 @@ In one terminal, start a server:
 
 .. code-block:: sh
 
-   bgd server start buildgrid/_app/settings/default.yml
+   bgd server start data/config/default.conf
 
 In another terminal, upload an action to CAS:
 
@@ -78,7 +78,7 @@ Now start a BuildGrid server, passing it a directory it can write a CAS to:
 
 .. code-block:: sh
 
-   bgd server start buildgrid/_app/settings/default.yml
+   bgd server start data/config/default.conf
 
 Start the following bot session:
 

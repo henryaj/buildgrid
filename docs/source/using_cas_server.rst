@@ -27,7 +27,7 @@ This defines a single ``main`` instance of the ``CAS``, ``Bytestream`` and ``Ref
 
 .. code-block:: sh
 
-   bgd server start example.conf
+   bgd server start data/config/artifacts.conf
 
 The server should now be available to use.
 

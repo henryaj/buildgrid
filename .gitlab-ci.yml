@@ -31,7 +31,7 @@ before_script:
 .run-dummy-job-template: &dummy-job
   stage: test
   script:
-    - ${BGD} server start buildgrid/_app/settings/default.yml &
+    - ${BGD} server start data/config/default.conf &
     - sleep 1 # Allow server to boot
     - ${BGD} bot dummy &
     - ${BGD} cas upload-dummy

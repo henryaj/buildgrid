@@ -110,7 +110,7 @@ To clone the source code and build a Docker image, simply run:
     the image.
 
 After building the Docker image, to run BuildGrid using the default configuration file 
-(found in `buildgrid/_app/settings/default.yml`), simply run:
+(found in `data/config/default.conf`), simply run:
 
 .. code-block:: sh
 
