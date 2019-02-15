@@ -136,3 +136,7 @@ monitoring:
   #  binary  - Protobuf binary format.
   #  json    - JSON format.
   serialization-format: binary
+
+##
+# Maximum number of gRPC threads.
+thread-pool-size: 20

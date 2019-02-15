@@ -119,6 +119,14 @@ def _create_server_from_config(configuration):
             click.echo("Error: Configuration, {}.".format(e), err=True)
             sys.exit(-1)
 
+    if 'thread-pool-size' in configuration:
+        try:
+            kargs['max_workers'] = int(configuration['thread-pool-size'])
+
+        except ValueError as e:
+            click.echo("Error: Configuration, {}.".format(e), err=True)
+            sys.exit(-1)
+
     server = BuildGridServer(**kargs)
 
     try:

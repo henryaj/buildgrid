@@ -91,6 +91,8 @@ class BuildGridServer:
         self.__grpc_server = grpc.server(self.__grpc_executor,
                                          options=(('grpc.so_reuseport', 0),))
 
+        self.__logger.debug("Setting up gRPC server with thread-limit=[%s]", max_workers)
+
         self.__main_loop = asyncio.get_event_loop()
 
         self.__monitoring_bus = None
