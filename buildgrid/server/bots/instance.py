@@ -32,6 +32,8 @@ class BotsInterface:
 
     def __init__(self, scheduler):
         self.__logger = logging.getLogger(__name__)
+        # Turn on debug mode based on log verbosity level:
+        self.__debug = self.__logger.getEffectiveLevel() <= logging.DEBUG
 
         self._scheduler = scheduler
         self._instance_name = None
@@ -65,13 +67,11 @@ class BotsInterface:
         register with the service, the old one should be closed along
         with all its jobs.
         """
-        bot_id = bot_session.bot_id
-
-        if bot_id == "":
-            raise InvalidArgumentError("bot_id needs to be set by client")
+        if not bot_session.bot_id:
+            raise InvalidArgumentError("Bot's id must be set by client.")
 
         try:
-            self._check_bot_ids(bot_id)
+            self._check_bot_ids(bot_session.bot_id)
         except InvalidArgumentError:
             pass
 
@@ -79,21 +79,27 @@ class BotsInterface:
         name = "{}/{}".format(parent, str(uuid.uuid4()))
         bot_session.name = name
 
-        self._bot_ids[name] = bot_id
-
-        self.__logger.info("Created bot session name=[%s] with bot_id=[%s]", name, bot_id)
+        self._bot_ids[name] = bot_session.bot_id
 
         # We want to keep a copy of lease ids we have assigned
         self._assigned_leases[name] = set()
 
         self._request_leases(bot_session)
+
+        if self.__debug:
+            self.__logger.info("Opened session name=[%s] for bot=[%s], leases=[%s]",
+                               bot_session.name, bot_session.bot_id,
+                               ",".join([lease.id[:8] for lease in bot_session.leases]))
+        else:
+            self.__logger.info("Opened session, name=[%s] for bot=[%s]",
+                               bot_session.name, bot_session.bot_id)
+
         return bot_session
 
     def update_bot_session(self, name, bot_session):
         """ Client updates the server. Any changes in state to the Lease should be
         registered server side. Assigns available leases with work.
         """
-        self.__logger.debug("Updating bot session name=[%s]", name)
         self._check_bot_ids(bot_session.bot_id, name)
         self._check_assigned_leases(bot_session)
 
@@ -111,6 +117,15 @@ class BotsInterface:
                 bot_session.leases.remove(lease)
 
         self._request_leases(bot_session)
+
+        if self.__debug:
+            self.__logger.info("Sending session update, name=[%s], for bot=[%s], leases=[%s]",
+                               bot_session.name, bot_session.bot_id,
+                               ",".join([lease.id[:8] for lease in bot_session.leases]))
+        else:
+            self.__logger.info("Sending session update, name=[%s], for bot=[%s]",
+                               bot_session.name, bot_session.bot_id)
+
         return bot_session
 
     # --- Private API ---
