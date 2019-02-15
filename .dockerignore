@@ -1,0 +1,16 @@
+# Ignore everything:
+*
+
+# Whitelist:
+!buildgrid
+!data/config
+!tests
+!LICENSE
+!README.rst
+!requirements.txt
+!requirements.auth.txt
+!setup.cfg
+!setup.py
+!_version.py
+!.coveragerc
+!.pylintrc

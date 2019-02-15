@@ -1,22 +1,62 @@
+##
+# BuildGrid's Docker build manifest.
+#
+#  ¡FOR LOCAL DEVELOPMENT ONLY!
+#
+# Builds an image from local sources.
+#
+
 FROM python:3.5-stretch
 
-# Point the path to where buildgrid gets installed
-ENV PATH=$PATH:/root/.local/bin/
-
-# Upgrade python modules
-RUN python3 -m pip install --upgrade setuptools pip
-
-# Use /app as the current working directory
+# Use /app as working directory:
 WORKDIR /app
 
-# Copy the repo contents (source, config files, etc) in the WORKDIR
-COPY . .
+# Create a virtual environment:
+RUN [ \
+"python3", "-m", "venv", "/app/env" \
+]
 
-# Install BuildGrid
-RUN pip install --user --editable .
+# Upgrade Python core modules:
+RUN [ \
+"/app/env/bin/python", "-m", "pip", \
+"install", "--upgrade", \
+"setuptools", "pip", "wheel" \
+]
 
-# Entry Point of the image (should get an additional argument from CMD, the path to the config file)
-ENTRYPOINT ["bgd", "server", "start", "-vv"]
+# Install the main requirements:
+ADD requirements.txt /app
+RUN [ \
+"/app/env/bin/python", "-m", "pip", \
+"install", "--requirement", \
+"requirements.txt" \
+]
 
-# Default config file (used if no CMD specified when running)
-CMD ["buildgrid/_app/settings/default.yml"]
+# Install the auth. requirements:
+ADD requirements.auth.txt /app
+RUN [ \
+"/app/env/bin/python", "-m", "pip", \
+"install", "--requirement", \
+"requirements.auth.txt" \
+]
+
+# Copy the repo. contents:
+COPY . /app
+
+# Install BuildGrid:
+RUN [ \
+"/app/env/bin/python", "-m", "pip", \
+"install", "--editable", \
+".[auth,tests]" \
+]
+
+# Entry-point for the image:
+ENTRYPOINT [ \
+"/app/env/bin/bgd" \
+]
+
+# Default command (default config.):
+CMD [ \
+"server", "start", \
+"data/config/default.conf", \
+"-vvv" \
+]
