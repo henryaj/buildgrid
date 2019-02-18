@@ -77,63 +77,47 @@ class BuildGRPC(Command):
                         f.write(code)
 
 
-def get_cmdclass():
-    cmdclass = {
-        'build_grpc': BuildGRPC,
-    }
-    return cmdclass
+# Load main requirements from file:
+with open('requirements.txt') as requirements_file:
+    install_requirements = requirements_file.read().splitlines()
 
-auth_require = [
-    'cryptography >= 1.8.0',  # Required by pyjwt for RSA
-    'pyjwt >= 1.5.0',
-]
+auth_requirements = []
+# Load 'auth' requirements from dedicated file:
+if os.path.isfile('requirements.auth.txt'):
+    with open('requirements.auth.txt') as requirements_file:
+        auth_requirements = requirements_file.read().splitlines()
 
-tests_require = [
-    'coverage >= 4.5.0',
-    'moto < 1.3.7',
-    'pep8',
-    'psutil',
-    'pytest >= 3.8.0',
-    'pytest-cov >= 2.6.0',
-    'pytest-pep8',
-    'pytest-pylint',
-]
+docs_requirements = []
+# Load 'docs' requirements from dedicated file:
+if os.path.isfile('requirements.docs.txt'):
+    with open('requirements.docs.txt') as requirements_file:
+        docs_requirements = requirements_file.read().splitlines()
 
-docs_require = [
-    'sphinx',
-    'sphinx-click',
-    'sphinx-rtd-theme >= 0.4.2',  # For HTML search fix (upstream #672)
-    'sphinxcontrib-apidoc',
-    'sphinxcontrib-napoleon',
-]
+tests_requirements = []
+# Load 'tests' requirements from dedicated file:
+if os.path.isfile('requirements.tests.txt'):
+    with open('requirements.tests.txt') as requirements_file:
+        tests_requirements = requirements_file.read().splitlines()
 
 setup(
     name="BuildGrid",
     version=__version__,
-    cmdclass=get_cmdclass(),
     license="Apache License, Version 2.0",
     description="A remote execution service",
+    cmdclass={
+        'build_grpc': BuildGRPC, },
     packages=find_packages(),
     python_requires='>= 3.5.3',  # janus requirement
-    install_requires=[
-        'boto3 < 1.8.0',
-        'botocore < 1.11.0',
-        'click',
-        'grpcio',
-        'janus',
-        'protobuf >= 3.6.1',
-        'pyyaml',
-    ],
+    install_requires=install_requirements,
+    setup_requires=['pytest-runner'],
+    tests_require=tests_requirements,
+    extras_require={
+        'auth': auth_requirements,
+        'docs': docs_requirements,
+        'tests': tests_requirements, },
     entry_points={
         'console_scripts': [
             'bgd = buildgrid._app:cli',
         ]
-    },
-    setup_requires=['pytest-runner'],
-    tests_require=tests_require,
-    extras_require={
-        'auth': auth_require,
-        'docs': docs_require,
-        'tests': tests_require,
-    },
+    }
 )

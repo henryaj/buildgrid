@@ -1,0 +1,5 @@
+sphinx
+sphinx-click
+sphinx-rtd-theme >= 0.4.2  # For HTML search fix (upstream #672)
+sphinxcontrib-apidoc
+sphinxcontrib-napoleon
