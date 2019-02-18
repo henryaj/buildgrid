@@ -22,6 +22,7 @@ Schedules jobs.
 import bisect
 from datetime import timedelta
 import logging
+from threading import Lock
 
 from buildgrid._enums import LeaseState, OperationStage
 from buildgrid._exceptions import NotFoundError
@@ -53,6 +54,7 @@ class Scheduler:
         self.__jobs_by_name = {}  # Name to Job 1:1 mapping
 
         self.__queue = []
+        self.__queue_lock = Lock()
 
         self._is_instrumented = monitor
 
@@ -297,27 +299,26 @@ class Scheduler:
                 worker properties, configuration and state at the time of the
                 request.
         """
-        if not self.__queue:
+        # TODO: Replace with a more efficient way of doing this.
+        with self.__queue_lock:
+            # Looking for the first job that could be assigned to the worker...
+            for job_index, job in enumerate(self.__queue):
+                if self._worker_is_capable(worker_capabilities, job):
+                    self.__logger.info("Job scheduled to run: [%s]", job.name)
+
+                    lease = job.lease
+
+                    if not lease:
+                        # For now, one lease at a time:
+                        lease = job.create_lease()
+
+                    if lease:
+                        del self.__queue[job_index]
+                        return [lease]
+
+                    return []
+
             return []
-
-        # Looking for the first job that could be assigned to the worker...
-        for job_index, job in enumerate(self.__queue):
-            if self._worker_is_capable(worker_capabilities, job):
-                self.__logger.info("Job scheduled to run: [%s]", job.name)
-
-                lease = job.lease
-
-                if not lease:
-                    # For now, one lease at a time:
-                    lease = job.create_lease()
-
-                if lease:
-                    del self.__queue[job_index]
-                    return [lease]
-
-                return None
-
-        return None
 
     def update_job_lease_state(self, job_name, lease):
         """Requests a state transition for a job's current :class:Lease.
@@ -551,11 +552,12 @@ class Scheduler:
         """Schedules or reschedules a job."""
         job = self.__jobs_by_name[job_name]
 
-        if job.operation_stage == OperationStage.QUEUED:
-            self.__queue.sort()
+        with self.__queue_lock:
+            if job.operation_stage == OperationStage.QUEUED:
+                self.__queue.sort()
 
-        else:
-            bisect.insort(self.__queue, job)
+            else:
+                bisect.insort(self.__queue, job)
 
         self.__logger.info("Job queued: [%s]", job.name)
 
@@ -564,7 +566,8 @@ class Scheduler:
         job = self.__jobs_by_name[job_name]
 
         if job.operation_stage == OperationStage.QUEUED:
-            self.__queue.remove(job)
+            with self.__queue_lock:
+                self.__queue.remove(job)
 
         del self.__jobs_by_action[job.action_digest.hash]
         del self.__jobs_by_name[job.name]
