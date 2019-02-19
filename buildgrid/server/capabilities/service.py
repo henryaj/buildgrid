@@ -49,8 +49,17 @@ class CapabilitiesService(remote_execution_pb2_grpc.CapabilitiesServicer):
 
     @authorize(AuthContext)
     def GetCapabilities(self, request, context):
+        """Handles GetCapabilitiesRequest messages.
+
+        Args:
+            request (GetCapabilitiesRequest): The incoming RPC request.
+            context (grpc.ServicerContext): Context for the RPC call.
+        """
+        self.__logger.debug("GetCapabilities request from [%s]", context.peer())
+
         try:
             instance = self._get_instance(request.instance_name)
+
             return instance.get_capabilities()
 
         except InvalidArgumentError as e:
