@@ -16,6 +16,8 @@
 import logging
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
+from buildgrid._protos.build.bazel.semver import semver_pb2
+from buildgrid.settings import HIGH_REAPI_VERSION, LOW_REAPI_VERSION
 
 
 class CapabilitiesInstance:
@@ -28,6 +30,9 @@ class CapabilitiesInstance:
         self.__cas_instance = cas_instance
         self.__action_cache_instance = action_cache_instance
         self.__execution_instance = execution_instance
+
+        self.__high_api_version = None
+        self.__low_api_version = None
 
     # --- Public API ---
 
@@ -55,15 +60,20 @@ class CapabilitiesInstance:
         self.__execution_instance = execution_instance
 
     def get_capabilities(self):
+        cache_capabilities = self._get_cache_capabilities()
+        execution_capabilities = self._get_capabilities_execution()
+
+        if self.__high_api_version is None:
+            self.__high_api_version = self._split_semantic_version(HIGH_REAPI_VERSION)
+        if self.__low_api_version is None:
+            self.__low_api_version = self._split_semantic_version(LOW_REAPI_VERSION)
+
         server_capabilities = remote_execution_pb2.ServerCapabilities()
-        server_capabilities.cache_capabilities.CopyFrom(self._get_cache_capabilities())
-        server_capabilities.execution_capabilities.CopyFrom(self._get_capabilities_execution())
-        # TODO
-        # When API is stable, fill out SemVer values
-        # server_capabilities.deprecated_api_version =
-        # server_capabilities.low_api_version =
-        # server_capabilities.low_api_version =
-        # server_capabilities.hig_api_version =
+        server_capabilities.cache_capabilities.CopyFrom(cache_capabilities)
+        server_capabilities.execution_capabilities.CopyFrom(execution_capabilities)
+        server_capabilities.low_api_version.CopyFrom(self.__low_api_version)
+        server_capabilities.high_api_version.CopyFrom(self.__high_api_version)
+
         return server_capabilities
 
     # --- Private API ---
@@ -97,3 +107,13 @@ class CapabilitiesInstance:
             capabilities.exec_enabled = False
 
         return capabilities
+
+    def _split_semantic_version(self, version_string):
+        major_version, minor_version, patch_version = version_string.split('.')
+
+        semantic_version = semver_pb2.SemVer()
+        semantic_version.major = int(major_version)
+        semantic_version.minor = int(minor_version)
+        semantic_version.patch = int(patch_version)
+
+        return semantic_version
