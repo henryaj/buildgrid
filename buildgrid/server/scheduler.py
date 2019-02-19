@@ -150,13 +150,13 @@ class Scheduler:
             raise NotFoundError("Operation name does not exist: [{}]"
                                 .format(operation_name))
 
-        job.unregister_operation_peer(operation_name, peer)
-
         if not job.n_peers_for_operation(operation_name):
             del self.__jobs_by_operation[operation_name]
 
         if not job.n_peers and job.done and not job.lease:
             self._delete_job(job.name)
+
+        job.unregister_operation_peer(operation_name, peer)
 
     def queue_job_action(self, action, action_digest, platform_requirements=None,
                          priority=0, skip_cache_lookup=False):
