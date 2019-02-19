@@ -47,7 +47,7 @@ run-dummy-job-debian:
   <<: *dummy-job
 
 buildbox-e2e:
-  image: registry.gitlab.com/buildgrid/buildbox/buildbox-e2e:cartr-initial-implementation
+  image: registry.gitlab.com/buildgrid/buildbox/buildbox-e2e:latest
   stage: test
   before_script: []
   script:
