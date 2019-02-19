@@ -16,6 +16,12 @@
 import hashlib
 
 
+# Latest REAPI version supported:
+HIGH_REAPI_VERSION = '2.0.0'
+
+# Earliest non-deprecated REAPI version supported:
+LOW_REAPI_VERSION = '2.0.0'
+
 # Hash function used for computing digests:
 HASH = hashlib.sha256
 
