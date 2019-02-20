@@ -56,9 +56,8 @@ class Scheduler:
         self.__queue = []
         self.__queue_lock = Lock()
 
-        self._is_instrumented = monitor
-
-        if self._is_instrumented:
+        self._is_instrumented = False
+        if monitor:
             self.activate_monitoring()
 
     # --- Public API ---
