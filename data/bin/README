@@ -1,0 +1,8 @@
+    ¡FOR LOCAL DEVELOPMENT ONLY!
+
+This directory is used by BuildGrid's main Docker Compose manifest: it gets
+bind mounted in worker bot containers and is included in PATH. Place here
+static binaries of the external tools needed by the bots. Typical use case is
+to copy here the `buildbox` binary used as a backend by the `buildbox` bot.
+
+    ¡FOR LOCAL DEVELOPMENT ONLY!

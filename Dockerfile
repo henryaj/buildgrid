@@ -50,6 +50,9 @@ RUN [ \
 # Copy the repo. contents:
 COPY . /app
 
+# Add tools directory to the PATH:
+ENV PATH=$PATH:/app/tools
+
 # Install BuildGrid:
 RUN [ \
 "/app/env/bin/python", "-m", "pip", \

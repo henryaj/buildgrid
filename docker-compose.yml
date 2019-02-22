@@ -62,6 +62,14 @@ services:
       "--remote=http://controller:50051",
       "--remote-cas=http://storage:50052",
       "host-tools"]
+    privileged: true
+    volumes:
+      - type: volume
+        source: cache
+        target: /var/lib/buildgrid/cache
+      - type: bind
+        source: ./data/bin
+        target: /app/tools
     depends_on:
       - controller
     networks:
@@ -72,4 +80,5 @@ networks:
   host:
 
 volumes:
+  cache:
   data:
