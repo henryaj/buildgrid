@@ -6,7 +6,15 @@
 # Builds an image from local sources.
 #
 
-FROM python:3.5-stretch
+FROM debian:buster
+
+RUN  [ \
+"apt-get", "update" ]
+RUN  [ \
+"apt-get", "install", "-y", \
+"python3", "python3-venv", "python3-pip", \
+"bubblewrap", "fuse3" \
+]
 
 # Use /app as working directory:
 WORKDIR /app
