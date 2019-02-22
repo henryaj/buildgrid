@@ -104,7 +104,6 @@ pages:
   - master
 
 trigger-buildbox-e2e-rebuild:
-  image: ubuntu:bionic
   stage: deploy
   variables:
     GIT_STRATEGY: none
