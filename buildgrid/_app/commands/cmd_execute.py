@@ -48,13 +48,36 @@ from ..cli import pass_context
               help="Public server certificate for TLS (PEM-encoded).")
 @click.option('--instance-name', type=click.STRING, default=None, show_default=True,
               help="Targeted farm instance name.")
+@click.option('--remote-cas', type=click.STRING, default=None, show_default=False,
+              help="Remote CAS server's URL (defaults to --remote if not specified).")
+@click.option('--cas-client-key', type=click.Path(exists=True, dir_okay=False), default=None,
+              help="Private CAS client key for TLS (PEM-encoded).")
+@click.option('--cas-client-cert', type=click.Path(exists=True, dir_okay=False), default=None,
+              help="Public CAS client certificate for TLS (PEM-encoded).")
+@click.option('--cas-server-cert', type=click.Path(exists=True, dir_okay=False), default=None,
+              help="Public CAS server certificate for TLS (PEM-encoded).")
 @pass_context
-def cli(context, remote, instance_name, auth_token, client_key, client_cert, server_cert):
+def cli(context, remote, instance_name, auth_token, client_key, client_cert, server_cert,
+        remote_cas, cas_client_key, cas_client_cert, cas_server_cert):
     """Entry point for the bgd-execute CLI command group."""
     try:
-        context.channel, _ = setup_channel(remote, auth_token=auth_token,
-                                           client_key=client_key, client_cert=client_cert,
-                                           server_cert=server_cert)
+        context.channel, details = setup_channel(remote, auth_token=auth_token,
+                                                 client_key=client_key,
+                                                 client_cert=client_cert,
+                                                 server_cert=server_cert)
+
+        if remote_cas and remote_cas != remote:
+            context.cas_channel, details = setup_channel(remote_cas,
+                                                         server_cert=cas_server_cert,
+                                                         client_key=cas_client_key,
+                                                         client_cert=cas_client_cert)
+            context.remote_cas_url = remote_cas
+
+        else:
+            context.cas_channel = context.channel
+            context.remote_cas_url = remote
+
+        context.cas_client_key, context.cas_client_cert, context.cas_server_cert = details
 
     except InvalidArgumentError as e:
         click.echo("Error: {}.".format(e), err=True)
@@ -121,7 +144,8 @@ def run_command(context, input_root, commands, output_file, output_directory,
     stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
 
     output_executables = []
-    with upload(context.channel, instance=context.instance_name) as uploader:
+
+    with upload(context.cas_channel, instance=context.instance_name) as uploader:
         command = remote_execution_pb2.Command()
 
         for arg in commands:
@@ -166,7 +190,7 @@ def run_command(context, input_root, commands, output_file, output_directory,
     execute_response = remote_execution_pb2.ExecuteResponse()
     stream.response.Unpack(execute_response)
 
-    with download(context.channel, instance=context.instance_name) as downloader:
+    with download(context.cas_channel, instance=context.instance_name) as downloader:
 
         for output_file_response in execute_response.result.output_files:
             path = os.path.join(output_directory, output_file_response.path)
