@@ -58,10 +58,16 @@ services:
   bots:  # To be scaled horizontaly
     image: buildgrid:local
     command: [
-      "bot", "--parent=local",
+      "bot", "--parent=",
       "--remote=http://controller:50051",
       "--remote-cas=http://storage:50052",
       "host-tools"]
+    #   "bot", "--parent=",
+    #   "--remote=http://controller:50051",
+    #   "--remote-cas=http://storage:50052",
+    #   "buildbox",
+    #   "--local-cas", "/var/lib/buildgrid/cache",
+    #   "--fuse-dir", "/mnt"]
     privileged: true
     volumes:
       - type: volume

@@ -168,7 +168,7 @@ Once completed, you can start a minimal grid by running:
    - An execution and action-cache service available at
      ``http://localhost:50051``.
    - An CAS service available at ``http://localhost:50052``.
-   - A single ``local`` instance with one host-tools based worker bot attached.
+   - A single unnamed instance with one host-tools based worker bot attached.
 
 .. hint::
 
