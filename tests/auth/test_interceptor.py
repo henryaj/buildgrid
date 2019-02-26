@@ -188,7 +188,7 @@ def test_jwt_authorization(token, secret, algorithm, validity):
 @pytest.mark.skipif(not HAVE_JWT, reason="No pyjwt")
 def test_jwt_authorization_expiry():
     secret, algorithm = 'your-256-bit-secret', AuthMetadataAlgorithm.JWT_HS256
-    now = int(datetime.utcnow().timestamp())
+    now = int(datetime.now().timestamp())
     payload = {'sub': 'BuildGrid Expiry Test', 'iat': now, 'exp': now + 2}
     token = jwt.encode(payload, secret, algorithm=algorithm.value.upper()).decode()
 

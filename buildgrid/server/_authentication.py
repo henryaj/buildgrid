@@ -282,7 +282,7 @@ class AuthMetadataServerInterceptor(grpc.ServerInterceptor):
         if 'exp' not in payload or not isinstance(payload['exp'], int):
             raise _UnboundedTokenError("Missing 'exp' in payload")
 
-        return datetime.fromtimestamp(payload['exp'])
+        return datetime.utcfromtimestamp(payload['exp'])
 
 
 def _unary_unary_rpc_terminator(details):
