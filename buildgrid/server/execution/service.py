@@ -30,6 +30,7 @@ from buildgrid._exceptions import FailedPreconditionError, InvalidArgumentError,
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc
 from buildgrid._protos.google.longrunning import operations_pb2
 from buildgrid.server._authentication import AuthContext, authorize
+from buildgrid.server.peer import Peer
 
 
 class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
@@ -94,7 +95,9 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
         instance_name = request.instance_name
         message_queue = queue.Queue()
-        peer = context.peer()
+        peer_uid = context.peer()
+
+        Peer.register_peer(uid=peer_uid, context=context)
 
         try:
             instance = self._get_instance(instance_name)
@@ -103,17 +106,17 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
                                         request.skip_cache_lookup)
 
             operation_name = instance.register_job_peer(job_name,
-                                                        peer, message_queue)
+                                                        peer_uid, message_queue)
 
             context.add_callback(partial(self._rpc_termination_callback,
-                                         peer, instance_name, operation_name))
+                                         peer_uid, instance_name, operation_name))
 
             if self._is_instrumented:
-                if peer not in self.__peers:
-                    self.__peers_by_instance[instance_name].add(peer)
-                    self.__peers[peer] = 1
+                if peer_uid not in self.__peers:
+                    self.__peers_by_instance[instance_name].add(peer_uid)
+                    self.__peers[peer_uid] = 1
                 else:
-                    self.__peers[peer] += 1
+                    self.__peers[peer_uid] += 1
 
             operation_full_name = "{}/{}".format(instance_name, operation_name)
 
@@ -213,17 +216,19 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
     # --- Private API ---
 
-    def _rpc_termination_callback(self, peer, instance_name, operation_name):
+    def _rpc_termination_callback(self, peer_uid, instance_name, operation_name):
         instance = self._get_instance(instance_name)
 
-        instance.unregister_operation_peer(operation_name, peer)
+        instance.unregister_operation_peer(operation_name, peer_uid)
 
         if self._is_instrumented:
-            if self.__peers[peer] > 1:
-                self.__peers[peer] -= 1
+            if self.__peers[peer_uid] > 1:
+                self.__peers[peer_uid] -= 1
             else:
-                self.__peers_by_instance[instance_name].remove(peer)
-                del self.__peers[peer]
+                self.__peers_by_instance[instance_name].remove(peer_uid)
+                del self.__peers[peer_uid]
+
+        Peer.deregister_peer(peer_uid)
 
     def _get_instance(self, name):
         try:
