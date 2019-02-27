@@ -20,7 +20,7 @@ import os
 import grpc
 import pytest
 
-from buildgrid.client.authentication import setup_channel
+from buildgrid.client.channel import setup_channel
 from buildgrid._protos.google.bytestream import bytestream_pb2, bytestream_pb2_grpc
 from buildgrid.server._authentication import AuthMetadataMethod, AuthMetadataAlgorithm
 

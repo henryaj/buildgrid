@@ -26,7 +26,7 @@ import sys
 
 import click
 
-from buildgrid.client.authentication import setup_channel
+from buildgrid.client.channel import setup_channel
 from buildgrid.client.cas import download, upload
 from buildgrid._exceptions import InvalidArgumentError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2, remote_execution_pb2_grpc
@@ -56,21 +56,31 @@ from ..cli import pass_context
               help="Public CAS client certificate for TLS (PEM-encoded).")
 @click.option('--cas-server-cert', type=click.Path(exists=True, dir_okay=False), default=None,
               help="Public CAS server certificate for TLS (PEM-encoded).")
+@click.option('--action-id', type=str, help='Action ID.')
+@click.option('--invocation-id', type=str, help='Tool invocation ID.')
+@click.option('--correlation-id', type=str, help='Correlated invocation ID.')
 @pass_context
-def cli(context, remote, instance_name, auth_token, client_key, client_cert, server_cert,
-        remote_cas, cas_client_key, cas_client_cert, cas_server_cert):
+def cli(context, remote, instance_name, auth_token, client_key, client_cert,
+        server_cert, remote_cas, cas_client_key, cas_client_cert,
+        cas_server_cert, action_id, invocation_id, correlation_id):
     """Entry point for the bgd-execute CLI command group."""
     try:
         context.channel, details = setup_channel(remote, auth_token=auth_token,
                                                  client_key=client_key,
                                                  client_cert=client_cert,
-                                                 server_cert=server_cert)
+                                                 server_cert=server_cert,
+                                                 action_id=action_id,
+                                                 tool_invocation_id=invocation_id,
+                                                 correlated_invocations_id=correlation_id)
 
         if remote_cas and remote_cas != remote:
             context.cas_channel, details = setup_channel(remote_cas,
                                                          server_cert=cas_server_cert,
                                                          client_key=cas_client_key,
-                                                         client_cert=cas_client_cert)
+                                                         client_cert=cas_client_cert,
+                                                         action_id=action_id,
+                                                         tool_invocation_id=invocation_id,
+                                                         correlated_invocations_id=correlation_id)
             context.remote_cas_url = remote_cas
 
         else:
@@ -113,7 +123,6 @@ def request_dummy(context, number, wait_for_completion):
         responses.append(stub.Execute(request))
 
     for response in responses:
-
         if wait_for_completion:
             result = None
             for stream in response:
@@ -145,7 +154,7 @@ def run_command(context, input_root, commands, output_file, output_directory,
 
     output_executables = []
 
-    with upload(context.cas_channel, instance=context.instance_name) as uploader:
+    with upload(context.channel, instance=context.instance_name) as uploader:
         command = remote_execution_pb2.Command()
 
         for arg in commands:
@@ -181,6 +190,7 @@ def run_command(context, input_root, commands, output_file, output_directory,
     request = remote_execution_pb2.ExecuteRequest(instance_name=context.instance_name,
                                                   action_digest=action_digest,
                                                   skip_cache_lookup=True)
+
     response = stub.Execute(request)
 
     stream = None

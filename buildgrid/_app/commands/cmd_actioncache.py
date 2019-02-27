@@ -21,8 +21,9 @@ import click
 from google.protobuf import json_format
 
 from buildgrid.client.actioncache import query
-from buildgrid.client.authentication import setup_channel
+from buildgrid.client.channel import setup_channel
 from buildgrid.client.cas import download
+from buildgrid._exceptions import InvalidArgumentError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid.utils import create_digest, parse_digest
 
@@ -42,13 +43,21 @@ from ..cli import pass_context
               help="Public server certificate for TLS (PEM-encoded)")
 @click.option('--instance-name', type=click.STRING, default=None, show_default=True,
               help="Targeted farm instance name.")
+@click.option('--action-id', type=str, help='Action ID.')
+@click.option('--invocation-id', type=str, help='Tool invocation ID.')
+@click.option('--correlation-id', type=str, help='Correlated invocation ID.')
 @pass_context
-def cli(context, remote, instance_name, auth_token, client_key, client_cert, server_cert):
+def cli(context, remote, instance_name, auth_token, client_key, client_cert,
+        server_cert, action_id, invocation_id, correlation_id):
     """Entry-point for the ``bgd action-cache`` CLI command group."""
     try:
         context.channel, _ = setup_channel(remote, auth_token=auth_token,
-                                           client_key=client_key, client_cert=client_cert,
-                                           server_cert=server_cert)
+                                           client_key=client_key,
+                                           client_cert=client_cert,
+                                           server_cert=server_cert,
+                                           action_id=action_id,
+                                           tool_invocation_id=invocation_id,
+                                           correlated_invocations_id=correlation_id)
 
     except InvalidArgumentError as e:
         click.echo("Error: {}.".format(e), err=True)

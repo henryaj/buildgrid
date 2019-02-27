@@ -29,7 +29,7 @@ from buildgrid.bot import bot, interface, session
 from buildgrid.bot.hardware.interface import HardwareInterface
 from buildgrid.bot.hardware.device import Device
 from buildgrid.bot.hardware.worker import Worker
-from buildgrid.client.authentication import setup_channel
+from buildgrid.client.channel import setup_channel
 from buildgrid._exceptions import InvalidArgumentError
 
 from ..bots import buildbox, dummy, host
@@ -70,12 +70,16 @@ def cli(context, parent, update_period, remote, auth_token, client_key,
     setup_logging(verbosity=verbose)
     # Setup the remote execution server channel:
     try:
-        context.channel, details = setup_channel(remote, auth_token=auth_token, server_cert=server_cert,
-                                                 client_key=client_key, client_cert=client_cert)
+        context.channel, details = setup_channel(remote, auth_token=auth_token,
+                                                 server_cert=server_cert,
+                                                 client_key=client_key,
+                                                 client_cert=client_cert)
 
         if remote_cas is not None and remote_cas != remote:
-            context.cas_channel, details = setup_channel(remote_cas, server_cert=cas_server_cert,
-                                                         client_key=cas_client_key, client_cert=cas_client_cert)
+            context.cas_channel, details = setup_channel(remote_cas,
+                                                         server_cert=cas_server_cert,
+                                                         client_key=cas_client_key,
+                                                         client_cert=cas_client_cert)
             context.remote_cas_url = remote_cas
 
         else:

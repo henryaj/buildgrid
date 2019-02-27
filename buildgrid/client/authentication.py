@@ -15,7 +15,6 @@
 
 import base64
 from collections import namedtuple
-from urllib.parse import urlparse
 import os
 
 import grpc
@@ -76,54 +75,6 @@ def load_channel_authorization_token(auth_token=None):
     # TODO: Try loading the token from a default location?
 
     return None
-
-
-def setup_channel(remote_url, auth_token=None,
-                  client_key=None, client_cert=None, server_cert=None):
-    """Creates a new gRPC client communication chanel.
-
-    If `remote_url` does not specifies a port number, defaults 50051.
-
-    Args:
-        remote_url (str): URL for the remote, including port and protocol.
-        auth_token (str): Authorization token file path.
-        server_cert(str): TLS certificate chain file path.
-        client_key(str): TLS root certificate file path.
-        client_cert(str): TLS private key file path.
-
-    Returns:
-        Channel: Client Channel to be used in order to access the server
-            at `remote_url`.
-
-    Raises:
-        InvalidArgumentError: On any input parsing error.
-    """
-    url = urlparse(remote_url)
-    remote = '{}:{}'.format(url.hostname, url.port or 50051)
-    details = None, None, None
-
-    if url.scheme == 'http':
-        channel = grpc.insecure_channel(remote)
-
-    elif url.scheme == 'https':
-        credentials, details = load_tls_channel_credentials(client_key, client_cert, server_cert)
-        if not credentials:
-            raise InvalidArgumentError("Given TLS details (or defaults) could be loaded")
-
-        channel = grpc.secure_channel(remote, credentials)
-
-    else:
-        raise InvalidArgumentError("Given remote does not specify a protocol")
-
-    if auth_token is not None:
-        token = load_channel_authorization_token(auth_token)
-        if not token:
-            raise InvalidArgumentError("Given authorization token could be loaded")
-
-        interpector = AuthMetadataClientInterceptor(auth_token=token)
-        channel = grpc.intercept_channel(channel, interpector)
-
-    return channel, details
 
 
 class AuthMetadataClientInterceptor(
