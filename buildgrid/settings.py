@@ -14,6 +14,7 @@
 
 
 import hashlib
+from buildgrid._version import __version__
 
 
 # Latest REAPI version supported:
@@ -57,3 +58,13 @@ BROWSER_URL_FORMAT = '%(type)s/%(instance)s/%(hash)s/%(sizebytes)s/'
 #  type       - Type of CAS object, eg. 'action_result', 'command'...
 #  hash       - Object's digest hash.
 #  sizebytes  - Object's digest size in bytes.
+
+
+# Name of the header key to attach optional `RequestMetadata`values.
+# (This is defined in the REAPI specification.)
+REQUEST_METADATA_HEADER_NAME = 'requestmetadata-bin'
+
+# 'RequestMetadata' header values. These values will be used when
+# attaching optional metadata to a gRPC request's header:
+REQUEST_METADATA_TOOL_NAME = 'buildgrid'
+REQUEST_METADATA_TOOL_VERSION = __version__
