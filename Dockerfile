@@ -47,6 +47,14 @@ RUN [ \
 "requirements.auth.txt" \
 ]
 
+# Install the test requirements:
+ADD requirements.tests.txt /app
+RUN [ \
+"/app/env/bin/python", "-m", "pip", \
+"install", "--requirement", \
+"requirements.tests.txt" \
+]
+
 # Copy the repo. contents:
 COPY . /app
 
