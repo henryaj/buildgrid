@@ -53,6 +53,8 @@ class Scheduler:
         self.__jobs_by_operation = {}  # Operation to Job 1:1 mapping
         self.__jobs_by_name = {}  # Name to Job 1:1 mapping
 
+        self.__delete_lock = Lock()  # Lock protecting deletion of jobs
+
         self.__queue = []
         self.__queue_lock = Lock()
 
@@ -143,20 +145,21 @@ class Scheduler:
         Raises:
             NotFoundError: If no operation with `operation_name` exists.
         """
-        try:
-            job = self.__jobs_by_operation[operation_name]
+        with self.__delete_lock:
+            try:
+                job = self.__jobs_by_operation[operation_name]
 
-        except KeyError:
-            raise NotFoundError("Operation name does not exist: [{}]"
-                                .format(operation_name))
+            except KeyError:
+                raise NotFoundError("Operation name does not exist: [{}]"
+                                    .format(operation_name))
 
-        if not job.n_peers_for_operation(operation_name):
-            del self.__jobs_by_operation[operation_name]
+            job.unregister_operation_peer(operation_name, peer)
 
-        if not job.n_peers and job.done and not job.lease:
-            self._delete_job(job.name)
+            if not job.n_peers_for_operation(operation_name):
+                del self.__jobs_by_operation[operation_name]
 
-        job.unregister_operation_peer(operation_name, peer)
+            if not job.n_peers and job.done and not job.lease:
+                self._delete_job(job.name)
 
     def queue_job_action(self, action, action_digest, platform_requirements=None,
                          priority=0, skip_cache_lookup=False):
@@ -278,15 +281,15 @@ class Scheduler:
         Raises:
             NotFoundError: If no operation with `operation_name` exists.
         """
-        try:
-            job = self.__jobs_by_operation[operation_name]
+        with self.__delete_lock:
+            try:
+                job = self.__jobs_by_operation[operation_name]
 
-        except KeyError:
-            raise NotFoundError("Operation name does not exist: [{}]"
-                                .format(operation_name))
-
-        if not job.n_peers and job.done and not job.lease:
-            self._delete_job(job.name)
+            except KeyError:
+                raise NotFoundError("Operation name does not exist: [{}]"
+                                    .format(operation_name))
+            if not job.n_peers and job.done and not job.lease:
+                self._delete_job(job.name)
 
     # --- Public API: RWAPI ---
 
@@ -302,6 +305,12 @@ class Scheduler:
         with self.__queue_lock:
             # Looking for the first job that could be assigned to the worker...
             for job_index, job in enumerate(self.__queue):
+                # Don't queue a cancelled job, it would be unable to get a lease anyway
+                if job.cancelled:
+                    self.__logger.debug("Dropping cancelled job: [%s] from queue", job.name)
+                    del self.__queue[job_index]
+                    continue
+
                 if self._worker_is_capable(worker_capabilities, job):
                     self.__logger.info("Job scheduled to run: [%s]", job.name)
 
@@ -436,16 +445,17 @@ class Scheduler:
         Raises:
             NotFoundError: If no job with `job_name` exists.
         """
-        try:
-            job = self.__jobs_by_name[job_name]
+        with self.__delete_lock:
+            try:
+                job = self.__jobs_by_name[job_name]
 
-        except KeyError:
-            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
+            except KeyError:
+                raise NotFoundError("Job name does not exist: [{}]".format(job_name))
 
-        job.delete_lease()
+            job.delete_lease()
 
-        if not job.n_peers and job.done:
-            self._delete_job(job.name)
+            if not job.n_peers and job.done:
+                self._delete_job(job.name)
 
     def get_job_lease_cancelled(self, job_name):
         """Returns true if the lease is cancelled.
