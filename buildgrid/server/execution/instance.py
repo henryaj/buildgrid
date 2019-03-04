@@ -109,8 +109,8 @@ class ExecutionInstance:
             self._scheduler.unregister_job_operation_peer(operation_name, peer)
 
         except NotFoundError:
-            raise InvalidArgumentError("Operation name does not exist: [{}]"
-                                       .format(operation_name))
+            # Operation already unregistered due to being finished/cancelled
+            pass
 
     def stream_operation_updates(self, message_queue):
         error, operation = message_queue.get()

@@ -23,7 +23,7 @@ Instance of the Remote Workers interface.
 import logging
 import uuid
 
-from buildgrid._exceptions import InvalidArgumentError
+from buildgrid._exceptions import InvalidArgumentError, NotFoundError
 
 from ..job import LeaseState
 
@@ -111,8 +111,11 @@ class BotsInterface:
                     self._assigned_leases[name].remove(lease.id)
                 except KeyError:
                     pass
-
-                self._scheduler.delete_job_lease(lease.id)
+                try:
+                    self._scheduler.delete_job_lease(lease.id)
+                except NotFoundError:
+                    # Job already dropped from scheduler
+                    pass
 
                 bot_session.leases.remove(lease)
 
