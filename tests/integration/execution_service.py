@@ -146,3 +146,58 @@ def test_wrong_instance_wait_execution(instance, context):
     next(instance.WaitExecution(request, context))
 
     context.set_code.assert_called_once_with(grpc.StatusCode.INVALID_ARGUMENT)
+
+
+def test_job_deduplication_in_scheduling(instance, controller, context):
+    action = remote_execution_pb2.Action(command_digest=command_digest,
+                                         do_not_cache=False)
+    action_digest = create_digest(action.SerializeToString())
+
+    job_name1 = controller.execution_instance._scheduler.queue_job_action(action,
+                                                                          action_digest,
+                                                                          skip_cache_lookup=True)
+
+    message_queue = queue.Queue()
+    operation_name1 = controller.execution_instance.register_job_peer(job_name1,
+                                                                      context.peer(),
+                                                                      message_queue)
+
+    job_name2 = controller.execution_instance._scheduler.queue_job_action(action,
+                                                                          action_digest,
+                                                                          skip_cache_lookup=True)
+
+    operation_name2 = controller.execution_instance.register_job_peer(job_name2,
+                                                                      context.peer(),
+                                                                      message_queue)
+    # The jobs are be deduplicated, but and operations are created
+    assert job_name1 == job_name2
+    assert operation_name1 != operation_name2
+
+
+@pytest.mark.parametrize("do_not_cache", [True, False])
+def test_do_not_cache_no_deduplication(do_not_cache, instance, controller, context):
+    # The default action already has do_not_cache set, so use that
+    job_name1 = controller.execution_instance._scheduler.queue_job_action(action,
+                                                                          action_digest,
+                                                                          skip_cache_lookup=True)
+
+    message_queue = queue.Queue()
+    operation_name1 = controller.execution_instance.register_job_peer(job_name1,
+                                                                      context.peer(),
+                                                                      message_queue)
+
+    action2 = remote_execution_pb2.Action(command_digest=command_digest,
+                                          do_not_cache=do_not_cache)
+
+    action_digest2 = create_digest(action2.SerializeToString())
+    job_name2 = controller.execution_instance._scheduler.queue_job_action(action2,
+                                                                          action_digest2,
+                                                                          skip_cache_lookup=True)
+
+    operation_name2 = controller.execution_instance.register_job_peer(job_name2,
+                                                                      context.peer(),
+                                                                      message_queue)
+    # The jobs are not be deduplicated because of do_not_cache,
+    # and two operations are created
+    assert job_name1 != job_name2
+    assert operation_name1 != operation_name2

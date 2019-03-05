@@ -182,10 +182,11 @@ class Scheduler:
         Returns:
             str: the newly created job's name.
         """
-        if action_digest.hash in self.__jobs_by_action:
+        if action_digest.hash in self.__jobs_by_action and not action.do_not_cache:
             job = self.__jobs_by_action[action_digest.hash]
-            # If existing job has been cancelled create a new one:
-            if not job.cancelled:
+            # If existing job has been cancelled or isn't
+            # cacheable, create a new one.
+            if not job.cancelled and not job.do_not_cache:
                 # Reschedule if priority is now greater:
                 if priority < job.priority:
                     job.priority = priority
