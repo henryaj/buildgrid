@@ -19,7 +19,7 @@ import os
 import re
 import sys
 
-from _version import __version__
+from buildgrid._version import __version__
 
 if sys.version_info[0] != 3 or sys.version_info[1] < 5:
     print("BuildGrid requires Python >= 3.5")
