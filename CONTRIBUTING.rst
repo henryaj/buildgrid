@@ -91,7 +91,7 @@ While every contribution is
 valued regardless of its source, not every person who contributes code to the 
 project will earn commit access. The `COMMITTERS`_ file lists all committers.
 
-.. _COMMITTERS: https://gitlab.com/BuildGrid/buildgrid/blob/master/COMMITTERS.md
+.. _COMMITTERS: https://gitlab.com/BuildGrid/buildgrid/blob/master/COMMITTERS.rst
 .. _Subversion: http://subversion.apache.org/docs/community-guide/roles.html#committers
 
 
