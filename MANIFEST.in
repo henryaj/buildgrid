@@ -1,0 +1,24 @@
+# Main package includes:
+include buildgrid/_app/settings/reference.yml
+
+# Data includes:
+include data/config/*.conf
+
+# Documentation includes:
+include docs/source/data/*.conf
+include docs/source/*.rst
+include docs/Makefile
+
+# Tests includes:
+include tests/auth/data/*
+recursive-include tests/cas/data/*
+include tests/cas/data
+
+# Toplevel includes:
+include BuildGrid.doap
+include COMMITTERS.rst
+include CONTRIBUTING.rst
+include LICENSE
+include README.rst
+include requirements.txt
+include requirements.*.txt
