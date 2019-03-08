@@ -28,6 +28,9 @@ HASH = hashlib.sha256
 # Length in bytes of a hash string returned by HASH:
 HASH_LENGTH = HASH().digest_size * 2
 
+# Maximum number of client auth. credentials to cache:
+AUTH_CACHE_SIZE = 200
+
 # Period, in seconds, for the monitoring cycle:
 MONITORING_PERIOD = 5.0
 

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 from datetime import datetime
 from enum import Enum
 import functools
@@ -22,6 +22,7 @@ import logging
 import grpc
 
 from buildgrid._exceptions import InvalidArgumentError
+from buildgrid.settings import AUTH_CACHE_SIZE
 
 
 try:
@@ -152,7 +153,7 @@ class AuthMetadataServerInterceptor(grpc.ServerInterceptor):
         """
         self.__logger = logging.getLogger(__name__)
 
-        self.__bearer_cache = {}
+        self.__bearer_cache = OrderedDict()
         self.__terminators = {}
         self.__validator = None
         self.__secret = secret
@@ -242,6 +243,8 @@ class AuthMetadataServerInterceptor(grpc.ServerInterceptor):
 
         # Cache the validated token and store expiration time:
         self.__bearer_cache[bearer] = expiration_time
+        if len(self.__bearer_cache) > AUTH_CACHE_SIZE:
+            self.__bearer_cache.popitem(last=False)
 
         return continuation(handler_call_details)  # Accepted
 
