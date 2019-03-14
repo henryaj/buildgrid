@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import itertools
 import logging
 import os
 import subprocess
@@ -77,11 +78,11 @@ def work_host_tools(lease, context, event):
         else:
             working_directory = temp_directory
 
-        # Ensure that output files structure exists:
-        for output_path in command.output_files:
-            directory_path = os.path.join(working_directory,
-                                          os.path.dirname(output_path))
-            os.makedirs(directory_path, exist_ok=True)
+        # Ensure that output files and directories structure exists:
+        for output_path in itertools.chain(command.output_files, command.output_directories):
+            parent_path = os.path.join(working_directory,
+                                       os.path.dirname(output_path))
+            os.makedirs(parent_path, exist_ok=True)
 
         logger.info("Starting execution: [{}...]".format(command.arguments[0]))
 
