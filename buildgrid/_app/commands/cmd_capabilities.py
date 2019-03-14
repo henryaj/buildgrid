@@ -61,6 +61,10 @@ def cli(context, remote, instance_name, auth_token, client_key, client_cert,
     context.instance_name = instance_name
 
     interface = CapabilitiesInterface(context.channel)
-    response = interface.get_capabilities(context.instance_name)
+    try:
+        response = interface.get_capabilities(context.instance_name)
+    except ConnectionError as e:
+        click.echo('Error: Getting capabilities: {}'.format(e), err=True)
+        sys.exit(-1)
 
     click.echo(json_format.MessageToJson(response))

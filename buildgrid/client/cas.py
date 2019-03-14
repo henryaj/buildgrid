@@ -104,7 +104,7 @@ class _CasBatchRequestSizesCache:
             # The server could set this value to 0 (no limit set).
             if max_batch_total_size:
                 return min(max_batch_total_size, MAX_REQUEST_SIZE)
-        except Exception:
+        except ConnectionError:
             pass
 
         return MAX_REQUEST_SIZE
@@ -164,8 +164,10 @@ class Downloader:
         """
         try:
             blob = self._fetch_blob(digest)
-        except NotFoundError:
+        except FileNotFoundError:
             return None
+        except ConnectionError:
+            raise
 
         return blob
 
@@ -243,7 +245,7 @@ class Downloader:
                 to True.
 
         Raises:
-            NotFoundError: if `digest` is not present in the remote CAS server.
+            FileNotFoundError: if `digest` is not present in the remote CAS server.
             OSError: if `file_path` does not exist or is not readable.
         """
         if not os.path.isabs(file_path):
@@ -318,10 +320,10 @@ class Downloader:
         except grpc.RpcError as e:
             status_code = e.code()
             if status_code == grpc.StatusCode.NOT_FOUND:
-                raise NotFoundError("Requested data does not exist on the remote.")
+                raise FileNotFoundError("Requested data does not exist on the remote.")
 
             else:
-                assert False
+                raise ConnectionError(e.details())
 
         return read_blob
 
@@ -344,8 +346,11 @@ class Downloader:
 
                     read_blobs.append(response.data)
 
+                    if response.status.code == code_pb2.NOT_FOUND:
+                        raise FileNotFoundError('Requested blob does not exist '
+                                                'on the remote.')
                     if response.status.code != code_pb2.OK:
-                        assert False
+                        raise ConnectionError('Error in CAS reply while fetching blob.')
 
                 batch_fetched = True
 
@@ -359,7 +364,7 @@ class Downloader:
                     batch_fetched = False
 
                 else:
-                    assert False
+                    raise ConnectionError(e.details())
 
         # Fallback to Read() if no BatchReadBlobs():
         if not batch_fetched:
@@ -475,10 +480,10 @@ class Downloader:
                     _CallCache.mark_unimplemented(self.channel, 'GetTree')
 
                 elif status_code == grpc.StatusCode.NOT_FOUND:
-                    raise NotFoundError("Requested directory does not exist on the remote.")
+                    raise FileNotFoundError("Requested directory does not exist on the remote.")
 
                 else:
-                    assert False
+                    raise ConnectionError(e.details())
 
         # If no GetTree(), _write_directory() will use BatchReadBlobs()
         # if available or Read() if not.
@@ -857,7 +862,10 @@ class Uploader:
 
         write_resquests = __write_request_stream(resource_name, blob)
         # TODO: Handle connection loss/recovery using QueryWriteStatus()
-        write_response = self.__bytestream_stub.Write(write_resquests)
+        try:
+            write_response = self.__bytestream_stub.Write(write_resquests)
+        except grpc.RpcError as e:
+            raise ConnectionError(e.details())
 
         assert write_response.committed_size == blob_digest.size_bytes
 
@@ -925,7 +933,7 @@ class Uploader:
                     batch_fetched = False
 
                 else:
-                    assert False
+                    raise ConnectionError(e.details())
 
         # Fallback to Write() if no BatchUpdateBlobs():
         if not batch_fetched:

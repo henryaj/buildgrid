@@ -20,6 +20,7 @@ Execute command
 Request work to be executed and monitor status of jobs.
 """
 
+from grpc import RpcError
 import os
 import stat
 import sys
@@ -123,19 +124,21 @@ def request_dummy(context, number, wait_for_completion):
         responses.append(stub.Execute(request))
 
     for response in responses:
-        if wait_for_completion:
-            result = None
-            for stream in response:
-                result = stream
-                click.echo(result)
+        try:
+            if wait_for_completion:
+                result = None
+                for stream in response:
+                    result = stream
+                    click.echo(result)
 
-            if not result.done:
-                click.echo("Result did not return True." +
-                           "Was the action uploaded to CAS?", err=True)
-                sys.exit(-1)
-
-        else:
-            click.echo(next(response))
+                if not result.done:
+                    click.echo("Result did not return True." +
+                               "Was the action uploaded to CAS?", err=True)
+                    sys.exit(-1)
+            else:
+                click.echo(next(response))
+        except RpcError as e:
+            click.echo('Error: Requesting dummy: {}'.format(e.details()), err=True)
 
 
 @cli.command('command', short_help="Send a command to be executed.")
@@ -150,11 +153,54 @@ def request_dummy(context, number, wait_for_completion):
 @pass_context
 def run_command(context, input_root, commands, output_file, output_directory,
                 platform_property):
+
     stub = remote_execution_pb2_grpc.ExecutionStub(context.channel)
 
     output_executables = []
 
-    with upload(context.channel, instance=context.instance_name) as uploader:
+    try:
+        action_digest = upload_action(commands, context, input_root,
+                                      output_executables, output_file,
+                                      platform_property)
+    except ConnectionError as e:
+        click.echo('Error: Uploading action: {}'.format(e), err=True)
+        sys.exit(-1)
+
+    request = remote_execution_pb2.ExecuteRequest(instance_name=context.instance_name,
+                                                  action_digest=action_digest,
+                                                  skip_cache_lookup=True)
+
+    response = stub.Execute(request)
+
+    stream = None
+    for stream in response:
+        click.echo(stream)
+
+    execute_response = remote_execution_pb2.ExecuteResponse()
+    stream.response.Unpack(execute_response)
+
+    try:
+        with download(context.cas_channel, instance=context.instance_name) as downloader:
+            for output_file_response in execute_response.result.output_files:
+                path = os.path.join(output_directory, output_file_response.path)
+
+                if not os.path.exists(os.path.dirname(path)):
+                    os.makedirs(os.path.dirname(path), exist_ok=True)
+
+                downloader.download_file(output_file_response.digest, path)
+    except ConnectionError as e:
+        click.echo('Error: Uploading action: {}'.format(e), err=True)
+        sys.exit(-1)
+
+    for output_file_response in execute_response.result.output_files:
+        if output_file_response.path in output_executables:
+            st = os.stat(path)
+            os.chmod(path, st.st_mode | stat.S_IXUSR)
+
+
+def upload_action(commands, context, input_root, output_executables, output_file,
+                  platform_property):
+    with upload(context.cas_channel, instance=context.instance_name) as uploader:
         command = remote_execution_pb2.Command()
 
         for arg in commands:
@@ -187,30 +233,4 @@ def run_command(context, input_root, commands, output_file, output_directory,
 
         click.echo("Sent action=[{}]".format(action_digest))
 
-    request = remote_execution_pb2.ExecuteRequest(instance_name=context.instance_name,
-                                                  action_digest=action_digest,
-                                                  skip_cache_lookup=True)
-
-    response = stub.Execute(request)
-
-    stream = None
-    for stream in response:
-        click.echo(stream)
-
-    execute_response = remote_execution_pb2.ExecuteResponse()
-    stream.response.Unpack(execute_response)
-
-    with download(context.cas_channel, instance=context.instance_name) as downloader:
-
-        for output_file_response in execute_response.result.output_files:
-            path = os.path.join(output_directory, output_file_response.path)
-
-            if not os.path.exists(os.path.dirname(path)):
-                os.makedirs(os.path.dirname(path), exist_ok=True)
-
-            downloader.download_file(output_file_response.digest, path)
-
-    for output_file_response in execute_response.result.output_files:
-        if output_file_response.path in output_executables:
-            st = os.stat(path)
-            os.chmod(path, st.st_mode | stat.S_IXUSR)
+        return action_digest

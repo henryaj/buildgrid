@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-import os
 import sys
-from textwrap import indent
 
 import click
 from google.protobuf import json_format
@@ -84,7 +81,12 @@ def get(context, action_digest_string, json):
 
     # Simply hit the action cache with the given action digest:
     with query(context.channel, instance=context.instance_name) as action_cache:
-        action_result = action_cache.get(action_digest)
+        try:
+            action_result = action_cache.get(action_digest)
+        except ConnectionError as e:
+            click.echo('Error: Fetching from the action cache: {}'.format(e),
+                       err=True)
+            sys.exit(-1)
 
     if action_result is not None:
         if not json:
@@ -124,14 +126,24 @@ def update(context, action_digest_string, action_result_digest_string):
         click.echo("Error: Invalid digest string '{}'.".format(action_result_digest_string), err=True)
         sys.exit(-1)
 
-    # We have to download the ActionResult message fom CAS first...
+    # We have to download the ActionResult message from CAS first...
     with download(context.channel, instance=context.instance_name) as downloader:
-        action_result = downloader.get_message(action_result_digest,
-                                               remote_execution_pb2.ActionResult())
+        try:
+            action_result = downloader.get_message(action_result_digest,
+                                                   remote_execution_pb2.ActionResult())
+        except ConnectionError as e:
+            click.echo('Error: Fetching ActionResult from CAS: {}'.format(e),
+                       err=True)
+            sys.exit(-1)
 
         # And only then we can update the action cache for the given digest:
         with query(context.channel, instance=context.instance_name) as action_cache:
-            action_result = action_cache.update(action_digest, action_result)
+            try:
+                action_result = action_cache.update(action_digest, action_result)
+            except ConnectionError as e:
+                click.echo('Error: Uploading to ActionCache: {}'.format(e),
+                           err=True)
+                sys.exit(-1)
 
             if action_result is None:
                 click.echo("Error: Failed updating cache result for action=[{}/{}]."

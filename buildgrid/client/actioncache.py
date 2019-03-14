@@ -80,7 +80,7 @@ class ActionCacheClient:
         except grpc.RpcError as e:
             status_code = e.code()
             if status_code != grpc.StatusCode.NOT_FOUND:
-                raise
+                raise ConnectionError(e.details())
 
         return None
 
@@ -109,7 +109,7 @@ class ActionCacheClient:
         except grpc.RpcError as e:
             status_code = e.code()
             if status_code != grpc.StatusCode.NOT_FOUND:
-                raise
+                raise ConnectionError(e.details())
 
         return None
 

@@ -42,5 +42,5 @@ class CapabilitiesInterface:
             return self.__stub.GetCapabilities(request)
 
         except grpc.RpcError as e:
-            self.__logger.error(e)
-            raise
+            self.__logger.debug(e)
+            raise ConnectionError(e.details())

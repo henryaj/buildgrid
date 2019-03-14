@@ -74,8 +74,12 @@ def cli(context, remote, instance_name, auth_token, client_key, client_cert,
 @pass_context
 def upload_dummy(context):
     command = remote_execution_pb2.Command()
-    with upload(context.channel, instance=context.instance_name) as uploader:
-        command_digest = uploader.put_message(command)
+    try:
+        with upload(context.channel, instance=context.instance_name) as uploader:
+            command_digest = uploader.put_message(command)
+    except ConnectionError as e:
+        click.echo('Error: Uploading dummy: {}'.format(e), err=True)
+        sys.exit(-1)
 
     if command_digest.ByteSize():
         click.echo('Success: Pushed Command, digest=["{}/{}]"'
@@ -103,16 +107,20 @@ def upload_dummy(context):
 @pass_context
 def upload_file(context, file_path, verify):
     sent_digests = []
-    with upload(context.channel, instance=context.instance_name) as uploader:
-        for path in file_path:
-            if not os.path.isabs(path):
-                path = os.path.relpath(path)
+    try:
+        with upload(context.channel, instance=context.instance_name) as uploader:
+            for path in file_path:
+                if not os.path.isabs(path):
+                    path = os.path.relpath(path)
 
-            click.echo("Queueing path=[{}]".format(path))
+                click.echo("Queueing path=[{}]".format(path))
 
-            file_digest = uploader.upload_file(path, queue=True)
+                file_digest = uploader.upload_file(path, queue=True)
 
-            sent_digests.append((file_digest, path))
+                sent_digests.append((file_digest, path))
+    except ConnectionError as e:
+        click.echo('Error: Uploading file: {}'.format(e), err=True)
+        sys.exit(-1)
 
     for file_digest, file_path in sent_digests:
         if verify and file_digest.size_bytes != os.stat(file_path).st_size:
@@ -131,14 +139,18 @@ def upload_file(context, file_path, verify):
 @pass_context
 def upload_directory(context, directory_path, verify):
     sent_digests = []
-    with upload(context.channel, instance=context.instance_name) as uploader:
-        for node, blob, path in merkle_tree_maker(directory_path):
-            if not os.path.isabs(directory_path):
-                path = os.path.relpath(path)
-            click.echo("Queueing path=[{}]".format(path))
+    try:
+        with upload(context.channel, instance=context.instance_name) as uploader:
+            for node, blob, path in merkle_tree_maker(directory_path):
+                if not os.path.isabs(directory_path):
+                    path = os.path.relpath(path)
+                click.echo("Queueing path=[{}]".format(path))
 
-            node_digest = uploader.put_blob(blob, digest=node.digest, queue=True)
-            sent_digests.append((node_digest, path))
+                node_digest = uploader.put_blob(blob, digest=node.digest, queue=True)
+                sent_digests.append((node_digest, path))
+    except ConnectionError as e:
+        click.echo('Error: Uploading directory: {}'.format(e), err=True)
+        sys.exit(-1)
 
     for node_digest, node_path in sent_digests:
         if verify and (os.path.isfile(node_path) and
@@ -160,18 +172,25 @@ def upload_directory(context, directory_path, verify):
 def download_file(context, digest_path_list, verify):
     # Downloading files:
     downloaded_files = {}
-    with download(context.channel, instance=context.instance_name) as downloader:
-        for (digest_string, file_path) in zip(digest_path_list[0::2],
-                                              digest_path_list[1::2]):
-            if os.path.exists(file_path):
-                click.echo("Error: Invalid value for " +
-                           "path=[{}] already exists.".format(file_path), err=True)
-                continue
+    try:
+        with download(context.channel, instance=context.instance_name) as downloader:
+            for (digest_string, file_path) in zip(digest_path_list[0::2],
+                                                  digest_path_list[1::2]):
+                if os.path.exists(file_path):
+                    click.echo("Error: Invalid value for " +
+                               "path=[{}] already exists.".format(file_path), err=True)
+                    continue
 
-            digest = parse_digest(digest_string)
+                digest = parse_digest(digest_string)
 
-            downloader.download_file(digest, file_path)
-            downloaded_files[file_path] = digest
+                downloader.download_file(digest, file_path)
+                downloaded_files[file_path] = digest
+    except Exception as e:
+        click.echo('Error: Downloading file: {}'.format(e), err=True)
+        sys.exit(-1)
+    except FileNotFoundError:
+        click.echo('Error: Blob not found in CAS', err=True)
+        sys.exit(-1)
 
     # Verifying:
     for (file_path, digest) in downloaded_files.items():
@@ -202,8 +221,13 @@ def download_directory(context, digest_string, directory_path, verify):
             return
 
     digest = parse_digest(digest_string)
-    with download(context.channel, instance=context.instance_name) as downloader:
-        downloader.download_directory(digest, directory_path)
+
+    try:
+        with download(context.channel, instance=context.instance_name) as downloader:
+            downloader.download_directory(digest, directory_path)
+    except ConnectionError as e:
+        click.echo('Error: Downloading directory: {}'.format(e), err=True)
+        sys.exit(-1)
 
     if verify:
         last_directory_node = None

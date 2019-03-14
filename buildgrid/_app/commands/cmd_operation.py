@@ -27,7 +27,7 @@ from textwrap import indent
 
 import click
 from google.protobuf import json_format
-import grpc
+from grpc import RpcError, StatusCode
 
 from buildgrid.client.channel import setup_channel
 from buildgrid._enums import OperationStage
@@ -78,7 +78,9 @@ def cli(context, remote, instance_name, auth_token, client_key, client_cert,
 def _print_operation_status(operation, print_details=False):
     metadata = remote_execution_pb2.ExecuteOperationMetadata()
     # The metadata is expected to be an ExecuteOperationMetadata message:
-    assert operation.metadata.Is(metadata.DESCRIPTOR)
+    if not operation.metadata.Is(metadata.DESCRIPTOR):
+        raise InvalidArgumentError('Metadata is not an ExecuteOperationMetadata '
+                                   'message')
     operation.metadata.Unpack(metadata)
 
     stage = OperationStage(metadata.stage)
@@ -151,7 +153,11 @@ def status(context, operation_name, json):
     stub = operations_pb2_grpc.OperationsStub(context.channel)
     request = operations_pb2.GetOperationRequest(name=operation_name)
 
-    operation = stub.GetOperation(request)
+    try:
+        operation = stub.GetOperation(request)
+    except RpcError as e:
+        click.echo('Error: {}'.format(e.details()), err=True)
+        sys.exit(-1)
 
     if not json:
         _print_operation_status(operation, print_details=True)
@@ -165,9 +171,15 @@ def status(context, operation_name, json):
 def cancel(context, operation_name):
     click.echo("Cancelling an operation...")
     stub = operations_pb2_grpc.OperationsStub(context.channel)
+
     request = operations_pb2.CancelOperationRequest(name=operation_name)
 
-    stub.CancelOperation(request)
+    try:
+        stub.CancelOperation(request)
+    except RpcError as e:
+        click.echo('Error: {}'.format(e.details()), err=True)
+        sys.exit(-1)
+
     click.echo("Operation cancelled: [{}]".format(request))
 
 
@@ -179,7 +191,11 @@ def lists(context, json):
     stub = operations_pb2_grpc.OperationsStub(context.channel)
     request = operations_pb2.ListOperationsRequest(name=context.instance_name)
 
-    response = stub.ListOperations(request)
+    try:
+        response = stub.ListOperations(request)
+    except RpcError as e:
+        click.echo('Error: {}'.format(e.details()), err=True)
+        sys.exit(-1)
 
     if not response.operations:
         click.echo('Error: No operations to list.', err=True)
@@ -231,8 +247,12 @@ def wait(context, operation_name, json):
             else:
                 click.echo(json_format.MessageToJson(operation))
 
-    except grpc.RpcError as e:
-        if e.code() != grpc.StatusCode.CANCELLED:
+    except InvalidArgumentError as e:
+        click.echo('Error: In the reply: {}'.format(e), err=True)
+        sys.exit(-1)
+
+    except RpcError as e:
+        if e.code() != StatusCode.CANCELLED:
             click.echo('Error: {}'
-                       .format(e.details), err=True)
+                       .format(e.details()), err=True)
             sys.exit(-1)
