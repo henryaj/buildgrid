@@ -31,6 +31,7 @@ from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_p
 from buildgrid._protos.google.longrunning import operations_pb2
 from buildgrid.server._authentication import AuthContext, authorize
 from buildgrid.server.peer import Peer
+from buildgrid.server._resources import ExecContext, limit
 
 
 class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
@@ -84,6 +85,7 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
     # --- Public API: Servicer ---
 
     @authorize(AuthContext)
+    @limit(ExecContext)
     def Execute(self, request, context):
         """Handles ExecuteRequest messages.
 
@@ -146,6 +148,7 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             yield e.last_response
 
     @authorize(AuthContext)
+    @limit(ExecContext)
     def WaitExecution(self, request, context):
         """Handles WaitExecutionRequest messages.
 
