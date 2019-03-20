@@ -40,6 +40,7 @@ from buildgrid.server.execution.service import ExecutionService
 from buildgrid.server._monitoring import MonitoringBus, MonitoringOutputType, MonitoringOutputFormat
 from buildgrid.server.operations.service import OperationsService
 from buildgrid.server.referencestorage.service import ReferenceStorageService
+from buildgrid.server._resources import ExecContext
 from buildgrid.settings import LOG_RECORD_FORMAT, MIN_THREAD_POOL_SIZE, MONITORING_PERIOD
 
 
@@ -83,6 +84,8 @@ class Server:
                                   "bumping it to [%s]", max_workers, MIN_THREAD_POOL_SIZE)
             # Enforce a minumun for max_workers
             max_workers = MIN_THREAD_POOL_SIZE
+
+        ExecContext.init(max_workers)
 
         self.__grpc_auth_interceptor = None
 
