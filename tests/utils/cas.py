@@ -34,14 +34,14 @@ from buildgrid.utils import create_digest, merkle_tree_maker
 
 @contextmanager
 def serve_cas(instances):
-    server = Server(instances)
+    server = TestServer(instances)
     try:
         yield server
     finally:
         server.quit()
 
 
-class Server:
+class TestServer:
 
     def __init__(self, instances):
 
@@ -52,7 +52,7 @@ class Server:
 
         self.__queue = multiprocessing.Queue()
         self.__process = multiprocessing.Process(
-            target=Server.serve,
+            target=TestServer.serve,
             args=(self.__queue, self.instances, self.__storage_path.name))
         self.__process.start()
 

@@ -26,7 +26,7 @@ import click
 
 from buildgrid._exceptions import PermissionDeniedError
 from buildgrid.server._authentication import AuthMetadataMethod, AuthMetadataAlgorithm
-from buildgrid.server.instance import BuildGridServer
+from buildgrid.server.instance import Server
 from buildgrid.server._monitoring import MonitoringOutputType, MonitoringOutputFormat
 from buildgrid.utils import read_file
 
@@ -127,7 +127,7 @@ def _create_server_from_config(configuration):
             click.echo("Error: Configuration, {}.".format(e), err=True)
             sys.exit(-1)
 
-    server = BuildGridServer(**kargs)
+    server = Server(**kargs)
 
     try:
         for channel in network:

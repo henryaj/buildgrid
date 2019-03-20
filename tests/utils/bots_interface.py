@@ -30,7 +30,7 @@ from buildgrid.server.bots import service
 
 @contextmanager
 def serve_bots_interface(instances):
-    server = Server(instances)
+    server = TestServer(instances)
     try:
         yield server
     finally:
@@ -39,7 +39,7 @@ def serve_bots_interface(instances):
 
 # Use subprocess to avoid creation of gRPC threads in main process
 # See https://github.com/grpc/grpc/blob/master/doc/fork_support.md
-class Server:
+class TestServer:
 
     def __init__(self, instances):
         self.instances = instances
@@ -50,7 +50,7 @@ class Server:
         # Queue to send messages to subprocess
         self.__message_queue = multiprocessing.Queue()
         self.__process = multiprocessing.Process(
-            target=Server.serve,
+            target=TestServer.serve,
             args=(self.__queue, self.instances,
                   self.__bot_session_queue, self.__message_queue))
         self.__process.start()

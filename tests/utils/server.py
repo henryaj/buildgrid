@@ -20,19 +20,19 @@ import signal
 import pytest_cov
 
 from buildgrid._app.settings import parser
-from buildgrid.server.instance import BuildGridServer
+from buildgrid.server.instance import Server
 
 
 @contextmanager
 def serve(configuration):
-    server = Server(configuration)
+    server = TestServer(configuration)
     try:
         yield server
     finally:
         server.quit()
 
 
-class Server:
+class TestServer:
 
     def __init__(self, configuration):
 
@@ -40,7 +40,7 @@ class Server:
 
         self.__queue = multiprocessing.Queue()
         self.__process = multiprocessing.Process(
-            target=Server.serve,
+            target=TestServer.serve,
             args=(self.__queue, self.configuration))
         self.__process.start()
 
@@ -51,7 +51,7 @@ class Server:
     def serve(cls, queue, configuration):
         pytest_cov.embed.cleanup_on_sigterm()
 
-        server = BuildGridServer()
+        server = Server()
 
         def __signal_handler(signum, frame):
             server.stop()

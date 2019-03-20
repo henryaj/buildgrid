@@ -31,17 +31,17 @@ def serve_capabilities_service(instances,
                                cas_instance=None,
                                action_cache_instance=None,
                                execution_instance=None):
-    server = Server(instances,
-                    cas_instance,
-                    action_cache_instance,
-                    execution_instance)
+    server = TestServer(instances,
+                        cas_instance,
+                        action_cache_instance,
+                        execution_instance)
     try:
         yield server
     finally:
         server.quit()
 
 
-class Server:
+class TestServer:
 
     def __init__(self, instances,
                  cas_instance=None,
@@ -51,7 +51,7 @@ class Server:
 
         self.__queue = multiprocessing.Queue()
         self.__process = multiprocessing.Process(
-            target=Server.serve,
+            target=TestServer.serve,
             args=(self.__queue, self.instances, cas_instance, action_cache_instance, execution_instance))
         self.__process.start()
 

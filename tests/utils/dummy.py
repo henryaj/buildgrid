@@ -29,7 +29,7 @@ from buildgrid.server._authentication import AuthMetadataServerInterceptor
 @contextmanager
 def serve_dummy(auth_method=AuthMetadataMethod.NONE,
                 auth_secret=None, auth_algorithm=AuthMetadataAlgorithm.UNSPECIFIED):
-    server = Server(
+    server = TestServer(
         auth_method=auth_method, auth_secret=auth_secret, auth_algorithm=auth_algorithm)
     try:
         yield server
@@ -37,7 +37,7 @@ def serve_dummy(auth_method=AuthMetadataMethod.NONE,
         server.quit()
 
 
-class Server:
+class TestServer:
 
     def __init__(self, auth_method=AuthMetadataMethod.NONE,
                  auth_secret=None, auth_algorithm=AuthMetadataAlgorithm.UNSPECIFIED):
@@ -48,7 +48,7 @@ class Server:
             self.__auth_interceptor = AuthMetadataServerInterceptor(
                 method=auth_method, secret=auth_secret, algorithm=auth_algorithm)
         self.__process = multiprocessing.Process(
-            target=Server.serve, args=(self.__queue, self.__auth_interceptor))
+            target=TestServer.serve, args=(self.__queue, self.__auth_interceptor))
         self.__process.start()
 
         self.port = self.__queue.get()

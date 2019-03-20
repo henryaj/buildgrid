@@ -43,11 +43,10 @@ from buildgrid.server.referencestorage.service import ReferenceStorageService
 from buildgrid.settings import LOG_RECORD_FORMAT, MONITORING_PERIOD
 
 
-class BuildGridServer:
-    """Creates a BuildGrid server.
+class Server:
+    """Creates a BuildGrid server instance.
 
-    The :class:`BuildGridServer` class binds together all the
-    requisite services.
+    The :class:`Server` class binds together all the gRPC services.
     """
 
     def __init__(self,
@@ -58,7 +57,7 @@ class BuildGridServer:
                  auth_method=AuthMetadataMethod.NONE,
                  auth_secret=None,
                  auth_algorithm=AuthMetadataAlgorithm.UNSPECIFIED):
-        """Initializes a new :class:`BuildGridServer` instance.
+        """Initializes a new :class:`Server` instance.
 
         Args:
             max_workers (int, optional): A pool of max worker threads.
