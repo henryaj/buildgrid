@@ -29,6 +29,10 @@ HASH = hashlib.sha256
 # Length in bytes of a hash string returned by HASH:
 HASH_LENGTH = HASH().digest_size * 2
 
+# Minimum required size for the gRPC handlers thread pool, ie.
+# min. value for the 'thread-pool-size' configuration key.
+MIN_THREAD_POOL_SIZE = 5
+
 # Maximum number of client auth. credentials to cache:
 AUTH_CACHE_SIZE = 200
 
