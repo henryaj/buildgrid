@@ -138,5 +138,7 @@ monitoring:
   serialization-format: binary
 
 ##
-# Maximum number of gRPC threads.
+# Maximum number of gRPC threads. Defaults to 5 times
+# the CPU count if not specifed. A minimum of 5 is
+# enforced, whatever the configuration is.
 thread-pool-size: 20

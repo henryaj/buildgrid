@@ -40,7 +40,7 @@ from buildgrid.server.execution.service import ExecutionService
 from buildgrid.server._monitoring import MonitoringBus, MonitoringOutputType, MonitoringOutputFormat
 from buildgrid.server.operations.service import OperationsService
 from buildgrid.server.referencestorage.service import ReferenceStorageService
-from buildgrid.settings import LOG_RECORD_FORMAT, MONITORING_PERIOD
+from buildgrid.settings import LOG_RECORD_FORMAT, MIN_THREAD_POOL_SIZE, MONITORING_PERIOD
 
 
 class Server:
@@ -76,7 +76,13 @@ class Server:
 
         if max_workers is None:
             # Use max_workers default from Python 3.5+
-            max_workers = (os.cpu_count() or 1) * 5
+            max_workers = max(MIN_THREAD_POOL_SIZE, (os.cpu_count() or 1) * 5)
+
+        elif max_workers < MIN_THREAD_POOL_SIZE:
+            self.__logger.warning("Specified thread-limit=[%s] is too small, "
+                                  "bumping it to [%s]", max_workers, MIN_THREAD_POOL_SIZE)
+            # Enforce a minumun for max_workers
+            max_workers = MIN_THREAD_POOL_SIZE
 
         self.__grpc_auth_interceptor = None
 
