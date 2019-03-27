@@ -13,14 +13,18 @@
 # limitations under the License.
 #
 # Disable unwanted pylint rules
-# pylint: disable=anomalous-backslash-in-string
+# pylint: disable=anomalous-backslash-in-string,broad-except
 
 
 import asyncio
 import logging
 from functools import partial
 
+import grpc
+
 from buildgrid._enums import LeaseState
+from buildgrid._protos.google.rpc import code_pb2
+from buildgrid._protos.google.rpc import status_pb2
 
 from .tenant import Tenant
 
@@ -113,10 +117,28 @@ class TenantManager:
         if status is not None:
             self._update_lease_status(lease_id, status)
 
-        if task:
-            if not task.cancelled():
-                self._update_lease_result(lease_id, task.result().result)
-                self._update_lease_state(lease_id, LeaseState.COMPLETED)
+        if task and not task.cancelled():
+            try:
+                result = task.result()
+
+            except grpc.RpcError as e:
+                self.__logger.debug(
+                    'Job was unsuccessful, with code %s', e.code())
+                self._update_lease_status(lease_id, e.code())
+
+            except Exception as e:
+                self.__logger.debug(
+                    'An exception occurred during execution of the work. '
+                    'Setting status to %s', code_pb2.INTERNAL)
+                status = status_pb2.Status()
+                status.code = code_pb2.INTERNAL
+                status.message = str(e)
+                self._update_lease_status(lease_id, status)
+
+            else:
+                self._update_lease_result(lease_id, result.result)
+
+            self._update_lease_state(lease_id, LeaseState.COMPLETED)
 
     def create_work(self, lease_id, work, context):
         """Creates work to do.

@@ -440,8 +440,7 @@ class Job:
             if status.code != code_pb2.OK:
                 self._do_not_cache = True
 
-            if result is not None:
-                assert result.Is(action_result.DESCRIPTOR)
+            if result is not None and result.Is(action_result.DESCRIPTOR):
                 result.Unpack(action_result)
 
             action_metadata = action_result.execution_metadata
