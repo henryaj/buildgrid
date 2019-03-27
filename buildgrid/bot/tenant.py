@@ -24,7 +24,6 @@ from functools import partial
 
 import grpc
 
-from buildgrid._protos.google.rpc import code_pb2
 from buildgrid._enums import LeaseState
 from buildgrid._exceptions import BotError
 
@@ -123,15 +122,18 @@ class Tenant:
 
         except grpc.RpcError as e:
             self.__logger.error(e)
-            lease.status.CopyFrom(e.code())
+            self.__tenant_completed = True
+            raise
 
         except BotError as e:
             self.__logger.error(e)
-            lease.status.code = code_pb2.INTERNAL
+            self.__tenant_completed = True
+            raise
 
         except Exception as e:
             self.__logger.error(e)
-            lease.status.code = code_pb2.INTERNAL
+            self.__tenant_completed = True
+            raise
 
         self.__tenant_completed = True
         self.__logger.debug("Work completed: lease_id=[%s]", lease.id)
