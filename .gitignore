@@ -20,3 +20,6 @@ dist/
 # Documentation related things:
 docs/build/
 docs/source/api/
+
+# Tox environments
+.tox/
