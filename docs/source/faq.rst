@@ -39,7 +39,7 @@ Q. What's going on in the _proto folder?
 R. This project uses gRPC and protocol buffers for network messaging. The .proto files are used to generate python modules which are then used in the project. See the `grpc guide`_ for more details.
 
 Q. How do I set up a BuildGrid?
-R. You can follow this guide to give you an understanding on basic usecases: :ref:`using`. There is also additional information on how to configure your Grid here: :ref:`parser`.
+R. You can follow this guide to give you an understanding on basic usecases: :ref:`using`. There is also additional information on how to configure your Grid here: :ref:`server-configuration`.
 
 
 .. _BuildStream: https://buildstream.build

@@ -40,7 +40,7 @@ from buildgrid._version import __version__
 
 project = 'BuildGrid'
 copyright = '2018, Bloomberg LP'
-author = None
+author = ''
 
 # The short X.Y version
 version = __version__

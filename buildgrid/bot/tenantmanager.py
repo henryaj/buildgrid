@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Disable unwanted pylint rules
+# pylint: disable=anomalous-backslash-in-string
 
 
 import asyncio
@@ -23,7 +26,7 @@ from .tenant import Tenant
 
 
 class TenantManager:
-    """Manages a number of :class:`Tenant`s.
+    """Manages a number of :class:`Tenant`\ s.
 
     Creates work to do, monitors and removes leases of work.
     """

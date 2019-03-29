@@ -15,7 +15,7 @@
 
 """
 OperationsInstance
-=================
+==================
 An instance of the LongRunningOperations Service.
 """
 

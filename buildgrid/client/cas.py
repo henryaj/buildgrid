@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# pylint: disable=anomalous-backslash-in-string
 
 
 from collections import namedtuple
@@ -175,7 +177,7 @@ class Downloader:
         """Retrieves a list of blobs from the remote CAS server.
 
         Args:
-            digests (list): list of :obj:`Digest`s for the blobs to fetch.
+            digests (list): list of :obj:`Digest`\ s for the blobs to fetch.
 
         Returns:
             list: the fetched blob data list.
@@ -205,15 +207,15 @@ class Downloader:
         return message
 
     def get_messages(self, digests, messages):
-        """Retrieves a list of :obj:`Message`s from the remote CAS server.
+        """Retrieves a list of :obj:`Message`\ s from the remote CAS server.
 
         Note:
             The `digests` and `messages` list **must** contain the same number
             of elements.
 
         Args:
-            digests (list):  list of :obj:`Digest`s for the messages to fetch.
-            messages (list): list of empty :obj:`Message`s to fill.
+            digests (list):  list of :obj:`Digest`\ s for the messages to fetch.
+            messages (list): list of empty :obj:`Message`\ s to fill.
 
         Returns:
             list: the fetched and filled message list.
