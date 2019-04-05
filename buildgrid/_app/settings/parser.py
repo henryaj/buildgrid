@@ -23,6 +23,7 @@ import yaml
 
 from buildgrid.server.controller import ExecutionController
 from buildgrid.server.actioncache.instance import ActionCache
+from buildgrid.server.actioncache.remote import RemoteActionCache
 from buildgrid.server.referencestorage.storage import ReferenceCache
 from buildgrid.server.cas.instance import ByteStreamInstance, ContentAddressableStorageInstance
 from buildgrid.server.cas.storage.disk import DiskStorage
@@ -288,6 +289,59 @@ class Action(YamlFactory):
         return ActionCache(storage, max_cached_refs, allow_updates, cache_failed_actions)
 
 
+class RemoteAction(YamlFactory):
+    """Generates :class:`buildgrid.server.actioncache.remote.RemoteActionCache`
+    using the tag ``!remote-action-cache``.
+
+    Args:
+      url (str): URL to remote action cache. If used with ``https``, needs credentials.
+      instance_name (str): Instance of the remote to connect to.
+      credentials (dict, optional): A dictionary in the form::
+
+           tls-client-key: /path/to/client-key
+           tls-client-cert: /path/to/client-cert
+           tls-server-cert: /path/to/server-cert
+    """
+
+    yaml_tag = u'!remote-action-cache'
+
+    def __new__(cls, url, instance_name, credentials=None):
+        # TODO: Context could be passed into the parser.
+        # Also find way to get instance_name from parent
+        # Issue 82
+        context = Context()
+
+        url = urlparse(url)
+        remote = '{}:{}'.format(url.hostname, url.port or 50051)
+
+        channel = None
+        if url.scheme == 'http':
+            channel = grpc.insecure_channel(remote)
+
+        else:
+            if not credentials:
+                click.echo("ERROR: no TLS keys were specified and no defaults could be found.\n" +
+                           "Set remote url scheme to `http` in order to deactivate" +
+                           "TLS encryption.\n", err=True)
+                sys.exit(-1)
+
+            client_key = credentials['tls-client-key']
+            client_cert = credentials['tls-client-cert']
+            server_cert = credentials['tls-server-cert']
+            credentials = context.load_client_credentials(client_key,
+                                                          client_cert,
+                                                          server_cert)
+            if not credentials:
+                click.echo("ERROR: no TLS keys were specified and no defaults could be found.\n" +
+                           "Set remote url scheme to `http` in order to deactivate" +
+                           "TLS encryption.\n", err=True)
+                sys.exit(-1)
+
+            channel = grpc.secure_channel(remote, credentials)
+
+        return RemoteActionCache(channel, instance_name)
+
+
 class Reference(YamlFactory):
     """Generates :class:`buildgrid.server.referencestorage.service.ReferenceStorageService`
     using the tag ``!reference-cache``.
@@ -351,6 +405,7 @@ def get_parser():
     yaml.SafeLoader.add_constructor(ReadFile.yaml_tag, ReadFile.from_yaml)
     yaml.SafeLoader.add_constructor(Execution.yaml_tag, Execution.from_yaml)
     yaml.SafeLoader.add_constructor(Action.yaml_tag, Action.from_yaml)
+    yaml.SafeLoader.add_constructor(RemoteAction.yaml_tag, RemoteAction.from_yaml)
     yaml.SafeLoader.add_constructor(Reference.yaml_tag, Reference.from_yaml)
     yaml.SafeLoader.add_constructor(Disk.yaml_tag, Disk.from_yaml)
     yaml.SafeLoader.add_constructor(LRU.yaml_tag, LRU.from_yaml)
