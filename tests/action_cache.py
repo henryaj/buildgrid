@@ -15,12 +15,17 @@
 # pylint: disable=redefined-outer-name
 
 
+import grpc
 import pytest
 
 from buildgrid._exceptions import NotFoundError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid.server.actioncache.instance import ActionCache
+from buildgrid.server.actioncache.remote import RemoteActionCache
 from buildgrid.server.cas.storage import lru_memory_cache
+
+from .utils.action_cache import serve_cache
+from .utils.utils import run_in_subprocess
 
 
 @pytest.fixture
@@ -101,3 +106,73 @@ def test_checks_cas(cas):
     with pytest.raises(NotFoundError):
         cache.get_action_result(action_digest2)
         cache.get_action_result(action_digest3)
+
+
+def test_remote_update():
+
+    def __test_update():
+        with serve_cache(['testing']) as server:
+            channel = grpc.insecure_channel(server.remote)
+            cache = RemoteActionCache(channel, 'testing')
+
+            action_digest = remote_execution_pb2.Digest(hash='alpha', size_bytes=4)
+            result = remote_execution_pb2.ActionResult()
+            cache.update_action_result(action_digest, result)
+
+            fetched = cache.get_action_result(action_digest)
+            assert result == fetched
+
+    def __test_remote_update(queue):
+        try:
+            __test_update()
+        except AssertionError:
+            queue.put(False)
+        else:
+            queue.put(True)
+
+    run_in_subprocess(__test_remote_update)
+
+
+def test_remote_update_disallowed():
+
+    def __test_update_disallowed():
+        with serve_cache(['testing'], allow_updates=False) as server:
+            channel = grpc.insecure_channel(server.remote)
+            cache = RemoteActionCache(channel, 'testing')
+
+            action_digest = remote_execution_pb2.Digest(hash='alpha', size_bytes=4)
+            result = remote_execution_pb2.ActionResult()
+            with pytest.raises(NotImplementedError, match='Updating cache not allowed'):
+                cache.update_action_result(action_digest, result)
+
+    def __test_remote_update_disallowed(queue):
+        try:
+            __test_update_disallowed()
+        except AssertionError:
+            queue.put(False)
+        else:
+            queue.put(True)
+
+    run_in_subprocess(__test_remote_update_disallowed)
+
+
+def test_remote_get_missing():
+
+    def __test_get_missing():
+        with serve_cache(['testing']) as server:
+            channel = grpc.insecure_channel(server.remote)
+            cache = RemoteActionCache(channel, 'testing')
+
+            action_digest = remote_execution_pb2.Digest(hash='alpha', size_bytes=4)
+            with pytest.raises(NotFoundError):
+                cache.get_action_result(action_digest)
+
+    def __test_remote_get_missing(queue):
+        try:
+            __test_get_missing()
+        except AssertionError:
+            queue.put(False)
+        else:
+            queue.put(True)
+
+    run_in_subprocess(__test_remote_get_missing)
