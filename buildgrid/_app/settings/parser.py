@@ -22,7 +22,7 @@ import grpc
 import yaml
 
 from buildgrid.server.controller import ExecutionController
-from buildgrid.server.actioncache.storage import ActionCache
+from buildgrid.server.actioncache.instance import ActionCache
 from buildgrid.server.referencestorage.storage import ReferenceCache
 from buildgrid.server.cas.instance import ByteStreamInstance, ContentAddressableStorageInstance
 from buildgrid.server.cas.storage.disk import DiskStorage

@@ -31,7 +31,7 @@ from buildgrid.utils import create_digest
 from buildgrid.server import job
 from buildgrid.server.controller import ExecutionController
 from buildgrid.server.cas.storage import lru_memory_cache
-from buildgrid.server.actioncache.storage import ActionCache
+from buildgrid.server.actioncache.instance import ActionCache
 from buildgrid.server.execution import service
 from buildgrid.server.execution.service import ExecutionService
 
