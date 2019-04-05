@@ -40,6 +40,23 @@ services:
       - backend
       - host
 
+  cache:
+    build:
+      context: .
+    image: buildgrid:local
+    command: [
+      "server", "start", "-vvv",
+      "/app/config/cache.conf"]
+    volumes:
+      - type: bind
+        source: ./data/config/cache.conf
+        target: /app/config/cache.conf
+    ports:
+      - "50053:50053"
+    networks:
+      - backend
+      - host
+
   controller:
     image: buildgrid:local
     command: [
