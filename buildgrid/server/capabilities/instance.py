@@ -90,6 +90,7 @@ class CapabilitiesInstance:
             # capabilities.cache_priority_capabilities =
 
         if self.__action_cache_instance:
+            capabilities.digest_function.extend([self.__action_cache_instance.hash_type()])
             action_cache_update_capabilities.update_enabled = self.__action_cache_instance.allow_updates
 
         capabilities.action_cache_update_capabilities.CopyFrom(action_cache_update_capabilities)

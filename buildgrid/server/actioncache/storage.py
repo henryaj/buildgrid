@@ -23,6 +23,7 @@ Implements an in-memory action Cache
 import logging
 
 from ..referencestorage.storage import ReferenceCache
+from ...utils import get_hash_type
 
 
 class ActionCache(ReferenceCache):
@@ -49,6 +50,9 @@ class ActionCache(ReferenceCache):
     @property
     def instance_name(self):
         return self._instance_name
+
+    def hash_type(self):
+        return get_hash_type()
 
     def register_instance_with_server(self, instance_name, server):
         """Names and registers the action-cache instance with a given server."""

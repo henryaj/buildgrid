@@ -103,6 +103,8 @@ def test_action_cache_not_allow_updates_capabilities(instance):
         response = server_interface.get_capabilities(instance)
 
         assert not response.cache_capabilities.action_cache_update_capabilities.update_enabled
+        assert len(response.cache_capabilities.digest_function) == 1
+        assert response.cache_capabilities.digest_function[0]
 
 
 @pytest.mark.parametrize('instance', INSTANCES)
