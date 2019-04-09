@@ -49,7 +49,7 @@ class S3Storage(StorageABC):
     def get_blob(self, digest):
         try:
             obj = self._s3.Object(self._bucket, digest.hash + '_' + str(digest.size_bytes))
-            return obj.get()['Body']
+            return io.BytesIO(obj.get()['Body'].read())
         except ClientError as e:
             if e.response['Error']['Code'] not in ['404', 'NoSuchKey']:
                 raise

@@ -49,7 +49,9 @@ def any_storage(request):
             yield DiskStorage(path)
     elif request.param == 's3':
         with mock_s3():
-            boto3.resource('s3').create_bucket(Bucket='testing')
+            auth_args = {"aws_access_key_id": "access_key",
+                         "aws_secret_access_key": "secret_key"}
+            boto3.resource('s3', **auth_args).create_bucket(Bucket='testing')
             yield S3Storage('testing')
     elif request.param == 'lru_disk':
         # LRU cache with a uselessly small limit, so requests always fall back
@@ -60,7 +62,9 @@ def any_storage(request):
         # are always handled by the cache
         with tempfile.TemporaryDirectory() as path:
             with mock_s3():
-                boto3.resource('s3').create_bucket(Bucket='testing')
+                auth_args = {"aws_access_key_id": "access_key",
+                             "aws_secret_access_key": "secret_key"}
+                boto3.resource('s3', **auth_args).create_bucket(Bucket='testing')
                 yield WithCacheStorage(DiskStorage(path), S3Storage('testing'))
     elif request.param == 'remote':
         with serve_cas(['testing']) as server:

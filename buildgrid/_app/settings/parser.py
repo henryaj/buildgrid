@@ -105,6 +105,36 @@ class ExpandPath(YamlFactory):
         return path
 
 
+class ReadFile(YamlFactory):
+    """Returns a string of the contents of the specified file.
+
+    The :class:`ReadFile` class returns a string and is generated from the tag ``!read-file``.
+
+    Args:
+       path (str): Can be used with strings such as: ``~/path/to/some/file`` or ``$HOME/myfile`` or ``/path/to/file``
+    """
+
+    yaml_tag = u'!read-file'
+
+    def __new__(cls, path):
+        # Expand path
+        path = os.path.expanduser(path)
+        path = os.path.expandvars(path)
+
+        if not os.path.exists(path):
+            click.echo("ERROR: read-file `{}` failed due to it not existing or bad permissions.".format(path),
+                       err=True)
+            sys.exit(-1)
+        else:
+            with open(path, 'r') as file:
+                try:
+                    file_contents = "\n".join(file.readlines()).strip()
+                    return file_contents
+                except IOError as e:
+                    click.echo("ERROR: read-file failed to read file `{}`: {}".format(path, e), err=True)
+                    sys.exit(-1)
+
+
 class Disk(YamlFactory):
     """Generates :class:`buildgrid.server.cas.storage.disk.DiskStorage` using the tag ``!disk-storage``.
 
@@ -143,12 +173,14 @@ class S3(YamlFactory):
     Args:
         bucket (str): Name of bucket
         endpoint (str): URL of endpoint.
+        access-key (str): S3-ACCESS-KEY
+        secret-key (str): S3-SECRET-KEY
     """
 
     yaml_tag = u'!s3-storage'
 
-    def __new__(cls, bucket, endpoint):
-        return S3Storage(bucket, endpoint_url=endpoint)
+    def __new__(cls, bucket, endpoint, access_key, secret_key):
+        return S3Storage(bucket, endpoint_url=endpoint, aws_access_key_id=access_key, aws_secret_access_key=secret_key)
 
 
 class Remote(YamlFactory):
@@ -316,6 +348,7 @@ def get_parser():
 
     yaml.SafeLoader.add_constructor(Channel.yaml_tag, Channel.from_yaml)
     yaml.SafeLoader.add_constructor(ExpandPath.yaml_tag, ExpandPath.from_yaml)
+    yaml.SafeLoader.add_constructor(ReadFile.yaml_tag, ReadFile.from_yaml)
     yaml.SafeLoader.add_constructor(Execution.yaml_tag, Execution.from_yaml)
     yaml.SafeLoader.add_constructor(Action.yaml_tag, Action.from_yaml)
     yaml.SafeLoader.add_constructor(Reference.yaml_tag, Reference.from_yaml)
