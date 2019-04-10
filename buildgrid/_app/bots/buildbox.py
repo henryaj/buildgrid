@@ -59,88 +59,95 @@ def work_buildbox(lease, context, event):
 
     os.makedirs(os.path.join(local_cas_directory, 'tmp'), exist_ok=True)
     os.makedirs(context.fuse_dir, exist_ok=True)
+    tempdir = os.path.join(local_cas_directory, 'tmp')
 
-    with tempfile.NamedTemporaryFile(dir=os.path.join(local_cas_directory, 'tmp')) as input_digest_file:
+    with tempfile.NamedTemporaryFile(dir=tempdir) as input_digest_file:
         # Input hash must be written to disk for BuildBox
         write_file(input_digest_file.name, action.input_root_digest.SerializeToString())
 
-        with tempfile.NamedTemporaryFile(dir=os.path.join(local_cas_directory, 'tmp')) as output_digest_file:
-            command_line = ['buildbox',
-                            '--remote={}'.format(context.remote_cas_url),
-                            '--input-digest={}'.format(input_digest_file.name),
-                            '--output-digest={}'.format(output_digest_file.name),
-                            '--chdir={}'.format(working_directory),
-                            '--local={}'.format(local_cas_directory)]
+        with tempfile.NamedTemporaryFile(dir=tempdir) as output_digest_file:
+            with tempfile.NamedTemporaryFile(dir=tempdir) as timestamps_file:
+                command_line = ['buildbox',
+                                '--remote={}'.format(context.remote_cas_url),
+                                '--input-digest={}'.format(input_digest_file.name),
+                                '--output-digest={}'.format(output_digest_file.name),
+                                '--chdir={}'.format(working_directory),
+                                '--local={}'.format(local_cas_directory),
+                                '--output-times={}'.format(timestamps_file.name)]
 
-            if context.cas_client_key:
-                command_line.append('--client-key={}'.format(context.cas_client_key))
-            if context.cas_client_cert:
-                command_line.append('--client-cert={}'.format(context.cas_client_cert))
-            if context.cas_server_cert:
-                command_line.append('--server-cert={}'.format(context.cas_server_cert))
+                if context.cas_client_key:
+                    command_line.append('--client-key={}'.format(context.cas_client_key))
+                if context.cas_client_cert:
+                    command_line.append('--client-cert={}'.format(context.cas_client_cert))
+                if context.cas_server_cert:
+                    command_line.append('--server-cert={}'.format(context.cas_server_cert))
 
-            command_line.append('--clearenv')
-            for variable in command.environment_variables:
-                command_line.append('--setenv')
-                command_line.append(variable.name)
-                command_line.append(variable.value)
+                command_line.append('--clearenv')
+                for variable in command.environment_variables:
+                    command_line.append('--setenv')
+                    command_line.append(variable.name)
+                    command_line.append(variable.value)
 
-            command_line.append(context.fuse_dir)
-            command_line.extend(command.arguments)
+                command_line.append(context.fuse_dir)
+                command_line.extend(command.arguments)
 
-            logger.info("Starting execution: [{}...]".format(command.arguments[0]))
+                logger.info("Starting execution: [{}...]".format(command.arguments[0]))
 
-            command_line = subprocess.Popen(command_line,
-                                            stdin=subprocess.PIPE,
-                                            stdout=subprocess.PIPE,
-                                            stderr=subprocess.PIPE)
-            stdout, stderr = command_line.communicate()
-            returncode = command_line.returncode
+                command_line = subprocess.Popen(command_line,
+                                                stdin=subprocess.PIPE,
+                                                stdout=subprocess.PIPE,
+                                                stderr=subprocess.PIPE)
+                stdout, stderr = command_line.communicate()
+                returncode = command_line.returncode
 
-            action_result = remote_execution_pb2.ActionResult()
-            action_result.exit_code = returncode
+                action_result = remote_execution_pb2.ActionResult()
+                action_result.exit_code = returncode
 
-            logger.info("Execution finished with code: [{}]".format(returncode))
+                logger.info("Execution finished with code: [{}]".format(returncode))
 
-            output_digest = remote_execution_pb2.Digest()
-            output_digest.ParseFromString(read_file(output_digest_file.name))
+                output_digest = remote_execution_pb2.Digest()
+                output_digest.ParseFromString(read_file(output_digest_file.name))
 
-            logger.debug("Output root digest: [{}/{}]"
-                         .format(output_digest.hash, output_digest.size_bytes))
+                logger.debug("Output root digest: [{}/{}]"
+                             .format(output_digest.hash, output_digest.size_bytes))
 
-            if len(output_digest.hash) != HASH_LENGTH:
-                raise BotError(stdout,
-                               detail=stderr, reason="Output root digest too small.")
+                metadata = read_file(timestamps_file.name)
+                logger.debug("metadata: {}".format(metadata))
+                action_result.execution_metadata.ParseFromString(metadata)
 
-            # TODO: Have BuildBox helping us creating the Tree instance here
-            # See https://gitlab.com/BuildStream/buildbox/issues/7 for details
-            with download(context.cas_channel) as downloader:
-                output_tree = _cas_tree_maker(downloader, output_digest)
+                if len(output_digest.hash) != HASH_LENGTH:
+                    raise BotError(
+                        stdout, detail=stderr, reason="Output root digest too small.")
 
-            with upload(context.cas_channel) as uploader:
-                output_tree_digest = uploader.put_message(output_tree)
+                # TODO: Have BuildBox helping us creating the Tree instance here
+                # See https://gitlab.com/BuildStream/buildbox/issues/7 for details
+                with download(context.cas_channel) as downloader:
+                    output_tree = _cas_tree_maker(downloader, output_digest)
 
-                output_directory = remote_execution_pb2.OutputDirectory()
-                output_directory.tree_digest.CopyFrom(output_tree_digest)
-                output_directory.path = os.path.relpath(working_directory, start='/')
+                with upload(context.cas_channel) as uploader:
+                    output_tree_digest = uploader.put_message(output_tree)
 
-                action_result.output_directories.extend([output_directory])
+                    output_directory = remote_execution_pb2.OutputDirectory()
+                    output_directory.tree_digest.CopyFrom(output_tree_digest)
+                    output_directory.path = os.path.relpath(working_directory, start='/')
 
-                if action_result.ByteSize() + len(stdout) > MAX_REQUEST_SIZE:
-                    stdout_digest = uploader.put_blob(stdout)
-                    action_result.stdout_digest.CopyFrom(stdout_digest)
+                    action_result.output_directories.extend([output_directory])
 
-                else:
-                    action_result.stdout_raw = stdout
+                    if action_result.ByteSize() + len(stdout) > MAX_REQUEST_SIZE:
+                        stdout_digest = uploader.put_blob(stdout)
+                        action_result.stdout_digest.CopyFrom(stdout_digest)
 
-                if action_result.ByteSize() + len(stderr) > MAX_REQUEST_SIZE:
-                    stderr_digest = uploader.put_blob(stderr)
-                    action_result.stderr_digest.CopyFrom(stderr_digest)
+                    else:
+                        action_result.stdout_raw = stdout
 
-                else:
-                    action_result.stderr_raw = stderr
+                    if action_result.ByteSize() + len(stderr) > MAX_REQUEST_SIZE:
+                        stderr_digest = uploader.put_blob(stderr)
+                        action_result.stderr_digest.CopyFrom(stderr_digest)
 
-            lease.result.Pack(action_result)
+                    else:
+                        action_result.stderr_raw = stderr
+
+                lease.result.Pack(action_result)
 
     return lease
 
