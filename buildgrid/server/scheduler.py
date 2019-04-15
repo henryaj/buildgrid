@@ -22,6 +22,7 @@ Schedules jobs.
 import bisect
 from datetime import timedelta
 import logging
+from queue import PriorityQueue, Empty
 from threading import Lock
 
 from buildgrid._enums import LeaseState, OperationStage
@@ -55,7 +56,7 @@ class Scheduler:
 
         self.__delete_lock = Lock()  # Lock protecting deletion of jobs
 
-        self.__queue = []
+        self.__queue = PriorityQueue()
         self.__queue_lock = Lock()
 
         self._is_instrumented = False
@@ -191,9 +192,6 @@ class Scheduler:
                 if priority < job.priority:
                     job.priority = priority
 
-                    if job.operation_stage == OperationStage.QUEUED:
-                        self._queue_job(job.name)
-
                 self.__logger.debug("Job deduplicated for action [%s]: [%s]",
                                     action_digest.hash[:8], job.name)
 
@@ -294,40 +292,47 @@ class Scheduler:
 
     # --- Public API: RWAPI ---
 
-    def request_job_leases(self, worker_capabilities):
+    def request_job_leases(self, worker_capabilities, timeout=None):
         """Generates a list of the highest priority leases to be run.
 
         Args:
             worker_capabilities (dict): a set of key-value pairs describing the
                 worker properties, configuration and state at the time of the
                 request.
+            timeout (int): time to block waiting on job queue
         """
-        # TODO: Replace with a more efficient way of doing this.
-        with self.__queue_lock:
-            # Looking for the first job that could be assigned to the worker...
-            for job_index, job in enumerate(self.__queue):
-                # Don't queue a cancelled job, it would be unable to get a lease anyway
-                if job.cancelled:
-                    self.__logger.debug("Dropping cancelled job: [%s] from queue", job.name)
-                    del self.__queue[job_index]
-                    continue
-
-                if self._worker_is_capable(worker_capabilities, job):
-                    self.__logger.info("Job scheduled to run: [%s]", job.name)
-
-                    lease = job.lease
-
-                    if not lease:
-                        # For now, one lease at a time:
-                        lease = job.create_lease()
-
-                    if lease:
-                        del self.__queue[job_index]
-                        return [lease]
-
-                    return []
-
+        if not timeout and self.__queue.empty():
             return []
+
+        try:
+            job = (self.__queue.get(block=True, timeout=timeout)
+                   if timeout
+                   else self.__queue.get(block=False))
+        except Empty:
+            return []
+
+        # Don't queue a cancelled job, it would be unable to get a lease anyway
+        if job.cancelled:
+            self.__logger.debug("Dropping cancelled job: [%s] from queue", job.name)
+            return []
+
+        if self._worker_is_capable(worker_capabilities, job):
+            self.__logger.info("Job scheduled to run: [%s]", job.name)
+
+            lease = job.lease
+
+            if not lease:
+                # For now, one lease at a time:
+                lease = job.create_lease()
+
+            if lease:
+                return [lease]
+
+        # If we get here, we claimed a valid job but couldn't handle it. Re-enqueue it.
+        # The job is added to the queue explicitly instead of using _queue_job since the
+        # latter function doesn't add jobs in the QUEUED operation stage to the queue.
+        self.__queue.put(job)
+        return []
 
     def update_job_lease_state(self, job_name, lease):
         """Requests a state transition for a job's current :class:Lease.
@@ -560,25 +565,18 @@ class Scheduler:
     # --- Private API ---
 
     def _queue_job(self, job_name):
-        """Schedules or reschedules a job."""
+        """Schedules a job."""
         job = self.__jobs_by_name[job_name]
 
-        with self.__queue_lock:
-            if job.operation_stage == OperationStage.QUEUED:
-                self.__queue.sort()
-
-            else:
-                bisect.insort(self.__queue, job)
-
-        self.__logger.info("Job queued: [%s]", job.name)
+        if job.operation_stage != OperationStage.QUEUED:
+            self.__queue.put(job)
+            self.__logger.info("Job queued: [%s]", job.name)
+        else:
+            self.__logger.info("Job already queued: [%s]", job.name)
 
     def _delete_job(self, job_name):
         """Drops an entry from the internal list of jobs."""
         job = self.__jobs_by_name[job_name]
-
-        if job.operation_stage == OperationStage.QUEUED:
-            with self.__queue_lock:
-                self.__queue.remove(job)
 
         del self.__jobs_by_action[job.action_digest.hash]
         del self.__jobs_by_name[job.name]
