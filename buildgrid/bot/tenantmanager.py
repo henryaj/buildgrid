@@ -175,6 +175,13 @@ class TenantManager:
         """
         return self._tenants[lease_id].tenant_completed
 
+    async def wait_on_tenants(self, timeout):
+        if self._tasks:
+            tasks = self._tasks.values()
+            await asyncio.wait(tasks,
+                               timeout=timeout,
+                               return_when=asyncio.FIRST_COMPLETED)
+
     def _update_lease_result(self, lease_id, result):
         """Updates the lease with the result."""
         self._tenants[lease_id].update_lease_result(result)

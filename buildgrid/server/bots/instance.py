@@ -24,6 +24,7 @@ import logging
 import uuid
 
 from buildgrid._exceptions import InvalidArgumentError, NotFoundError
+from buildgrid.settings import NETWORK_TIMEOUT
 
 from ..job import LeaseState
 
@@ -96,7 +97,7 @@ class BotsInterface:
 
         return bot_session
 
-    def update_bot_session(self, name, bot_session):
+    def update_bot_session(self, name, bot_session, deadline=None):
         """ Client updates the server. Any changes in state to the Lease should be
         registered server side. Assigns available leases with work.
         """
@@ -119,7 +120,7 @@ class BotsInterface:
 
                 bot_session.leases.remove(lease)
 
-        self._request_leases(bot_session)
+        self._request_leases(bot_session, deadline)
 
         self.__logger.debug("Sending session update, name=[%s], for bot=[%s], leases=[%s]",
                             bot_session.name, bot_session.bot_id,
@@ -129,7 +130,7 @@ class BotsInterface:
 
     # --- Private API ---
 
-    def _request_leases(self, bot_session):
+    def _request_leases(self, bot_session, deadline=None):
         # Only send one lease at a time currently.
         if not bot_session.leases:
             worker_capabilities = {}
@@ -147,7 +148,9 @@ class BotsInterface:
                         worker_capabilities[device_property.key] = set()
                     worker_capabilities[device_property.key].add(device_property.value)
 
-            leases = self._scheduler.request_job_leases(worker_capabilities)
+            leases = self._scheduler.request_job_leases(
+                worker_capabilities,
+                timeout=deadline - NETWORK_TIMEOUT if deadline else None)
 
             if leases:
                 for lease in leases:

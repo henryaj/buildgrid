@@ -36,7 +36,7 @@ from .tenantmanager import TenantManager
 
 class BotSession:
     def __init__(self, parent, bots_interface, hardware_interface, work,
-                 context=None, update_period=1):
+                 context=None):
         """ Unique bot ID within the farm used to identify this bot
         Needs to be human readable.
         All prior sessions with bot_id of same ID are invalidated.
@@ -59,7 +59,6 @@ class BotSession:
         self._context = context
 
         self.__connected = False
-        self.__update_period = update_period
 
     @property
     def bot_id(self):
@@ -70,6 +69,7 @@ class BotSession:
         return self.__connected
 
     async def run(self):
+        interval = self._bots_interface.interval
         try:
             while True:
                 if not self.connected:
@@ -77,7 +77,10 @@ class BotSession:
                 else:
                     self.update_bot_session()
 
-                await asyncio.sleep(self.__update_period)
+                if not self.connected:
+                    await asyncio.sleep(interval)
+                else:
+                    await self._tenant_manager.wait_on_tenants(interval)
         except asyncio.CancelledError:
             pass
 

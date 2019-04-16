@@ -19,7 +19,6 @@ Scheduler
 Schedules jobs.
 """
 
-import bisect
 from datetime import timedelta
 import logging
 from queue import PriorityQueue, Empty
@@ -28,6 +27,7 @@ from threading import Lock
 from buildgrid._enums import LeaseState, OperationStage
 from buildgrid._exceptions import NotFoundError
 from buildgrid.server.job import Job
+from buildgrid.settings import MAX_JOB_BLOCK_TIME
 from buildgrid.utils import BrowserURL
 
 
@@ -299,10 +299,15 @@ class Scheduler:
             worker_capabilities (dict): a set of key-value pairs describing the
                 worker properties, configuration and state at the time of the
                 request.
-            timeout (int): time to block waiting on job queue
+            timeout (int): time to block waiting on job queue, caps if longer
+                than MAX_JOB_BLOCK_TIME
         """
         if not timeout and self.__queue.empty():
             return []
+
+        # Cap the timeout if it's larger than MAX_JOB_BLOCK_TIME
+        if timeout:
+            timeout = min(timeout, MAX_JOB_BLOCK_TIME)
 
         try:
             job = (self.__queue.get(block=True, timeout=timeout)

@@ -35,7 +35,9 @@ server = mock.create_autospec(grpc.server)
 # GRPC context
 @pytest.fixture
 def context():
-    yield mock.MagicMock(spec=_Context)
+    context_mock = mock.MagicMock(spec=_Context)
+    context_mock.time_remaining.return_value = 10
+    yield context_mock
 
 
 @pytest.fixture

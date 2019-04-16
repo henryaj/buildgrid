@@ -124,7 +124,7 @@ class BotsInterface:
         self.__bot_session_queue.put(bot_session.SerializeToString())
         return bot_session
 
-    def update_bot_session(self, name, bot_session):
+    def update_bot_session(self, name, bot_session, deadline=None):
         for lease in bot_session.leases:
             state = LeaseState(lease.state)
             if state == LeaseState.COMPLETED:

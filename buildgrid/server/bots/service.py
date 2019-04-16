@@ -141,8 +141,10 @@ class BotsService(bots_pb2_grpc.BotsServicer):
             instance_name = '/'.join(names[:-1])
 
             instance = self._get_instance(instance_name)
-            bot_session = instance.update_bot_session(request.name,
-                                                      request.bot_session)
+            bot_session = instance.update_bot_session(
+                request.name,
+                request.bot_session,
+                deadline=context.time_remaining())
 
             if self._is_instrumented:
                 self.__bots[bot_id].GetCurrentTime()

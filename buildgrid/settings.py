@@ -72,3 +72,10 @@ REQUEST_METADATA_HEADER_NAME = 'requestmetadata-bin'
 # attaching optional metadata to a gRPC request's header:
 REQUEST_METADATA_TOOL_NAME = 'buildgrid'
 REQUEST_METADATA_TOOL_VERSION = __version__
+
+# Time in seconds to pad timeouts
+NETWORK_TIMEOUT = 5
+
+# Hard limit for waiting on jobs, avoids grpc timeouts not being set defaulting
+# the interval to the max int64 value
+MAX_JOB_BLOCK_TIME = 300

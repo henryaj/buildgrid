@@ -24,6 +24,7 @@ import logging
 import grpc
 
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2, bots_pb2_grpc
+from buildgrid.settings import NETWORK_TIMEOUT
 
 
 class BotInterface:
@@ -31,10 +32,15 @@ class BotInterface:
     Interface handles calls to the server.
     """
 
-    def __init__(self, channel):
+    def __init__(self, channel, interval):
         self.__logger = logging.getLogger(__name__)
 
         self._stub = bots_pb2_grpc.BotsStub(channel)
+        self.__interval = interval
+
+    @property
+    def interval(self):
+        return self.__interval
 
     def create_bot_session(self, parent, bot_session):
         """ Create bot session request
@@ -55,7 +61,7 @@ class BotInterface:
 
     def _bot_call(self, call, request):
         try:
-            return call(request)
+            return call(request, timeout=self.interval + NETWORK_TIMEOUT)
         except grpc.RpcError as e:
             self.__logger.error(e)
             return e.code()

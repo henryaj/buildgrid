@@ -32,6 +32,7 @@ from ..utils.bots_interface import serve_bots_interface
 
 
 INSTANCES = ['', 'instance']
+TIMEOUT = 5
 
 
 # Use subprocess to avoid creation of gRPC threads in main process
@@ -49,7 +50,7 @@ class ServerInterface:
             bot_session = bots_pb2.BotSession()
             bot_session.ParseFromString(string_bot_session)
 
-            interface = BotInterface(grpc.insecure_channel(remote))
+            interface = BotInterface(grpc.insecure_channel(remote), TIMEOUT)
 
             result = interface.create_bot_session(parent, bot_session)
             queue.put(result.SerializeToString())
@@ -68,7 +69,7 @@ class ServerInterface:
             bot_session = bots_pb2.BotSession()
             bot_session.ParseFromString(string_bot_session)
 
-            interface = BotInterface(grpc.insecure_channel(remote))
+            interface = BotInterface(grpc.insecure_channel(remote), TIMEOUT)
 
             result = interface.update_bot_session(bot_session, update_mask)
             queue.put(result.SerializeToString())
