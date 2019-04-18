@@ -98,7 +98,8 @@ class Server:
 
         self.__grpc_executor = futures.ThreadPoolExecutor(max_workers)
         self.__grpc_server = grpc.server(self.__grpc_executor,
-                                         options=(('grpc.so_reuseport', 0),))
+                                         options=(('grpc.so_reuseport', 0),),
+                                         maximum_concurrent_rpcs=max_workers)
 
         self.__logger.debug("Setting up gRPC server with thread-limit=[%s]", max_workers)
 
