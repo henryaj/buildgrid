@@ -57,6 +57,9 @@ from ..cli import pass_context, setup_logging
               help="Public CAS server certificate for TLS (PEM-encoded).")
 @click.option('--update-period', type=click.FLOAT, default=30, show_default=True,
               help="Time period for bot updates to the server in seconds.")
+@click.option('--executing-update-period', type=click.FLOAT, default=5, show_default=True,
+              help="Time period for bot updates to the server whilst execution is happening, "
+                   "in seconds.")
 @click.option('--parent', type=click.STRING, default=None, show_default=True,
               help="Targeted farm resource.")
 @click.option('-w', '--worker-property', nargs=2, type=(click.STRING, click.STRING), multiple=True,
@@ -64,8 +67,8 @@ from ..cli import pass_context, setup_logging
 @click.option('-v', '--verbose', count=True,
               help='Increase log verbosity level.')
 @pass_context
-def cli(context, parent, update_period, remote, auth_token, client_key,
-        client_cert, server_cert, remote_cas, cas_client_key, cas_client_cert,
+def cli(context, parent, update_period, executing_update_period, remote, auth_token,
+        client_key, client_cert, server_cert, remote_cas, cas_client_key, cas_client_cert,
         cas_server_cert, worker_property, verbose):
     setup_logging(verbosity=verbose)
     # Setup the remote execution server channel:
@@ -94,7 +97,8 @@ def cli(context, parent, update_period, remote, auth_token, client_key,
 
     context.parent = parent
 
-    bot_interface = interface.BotInterface(context.channel, update_period)
+    bot_interface = interface.BotInterface(
+        context.channel, update_period, executing_update_period)
 
     worker_properties_dict = {}
     for property_name, property_value in worker_property:

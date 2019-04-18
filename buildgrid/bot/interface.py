@@ -32,15 +32,20 @@ class BotInterface:
     Interface handles calls to the server.
     """
 
-    def __init__(self, channel, interval):
+    def __init__(self, channel, interval, executing_interval):
         self.__logger = logging.getLogger(__name__)
 
         self._stub = bots_pb2_grpc.BotsStub(channel)
         self.__interval = interval
+        self.__executing_interval = executing_interval
 
     @property
     def interval(self):
         return self.__interval
+
+    @property
+    def executing_interval(self):
+        return self.__executing_interval
 
     def create_bot_session(self, parent, bot_session):
         """ Create bot session request

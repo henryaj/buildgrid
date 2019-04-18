@@ -70,6 +70,7 @@ class BotSession:
 
     async def run(self):
         interval = self._bots_interface.interval
+        executing_interval = self._bots_interface.executing_interval
         try:
             while True:
                 if not self.connected:
@@ -80,7 +81,7 @@ class BotSession:
                 if not self.connected:
                     await asyncio.sleep(interval)
                 else:
-                    await self._tenant_manager.wait_on_tenants(interval)
+                    await self._tenant_manager.wait_on_tenants(executing_interval)
         except asyncio.CancelledError:
             pass
 
