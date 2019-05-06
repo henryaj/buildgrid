@@ -121,13 +121,9 @@ class BotsInterface:
 
         self._request_leases(bot_session)
 
-        if self.__debug:
-            self.__logger.info("Sending session update, name=[%s], for bot=[%s], leases=[%s]",
-                               bot_session.name, bot_session.bot_id,
-                               ",".join([lease.id[:8] for lease in bot_session.leases]))
-        else:
-            self.__logger.info("Sending session update, name=[%s], for bot=[%s]",
-                               bot_session.name, bot_session.bot_id)
+        self.__logger.debug("Sending session update, name=[%s], for bot=[%s], leases=[%s]",
+                            bot_session.name, bot_session.bot_id,
+                            ",".join([lease.id[:8] for lease in bot_session.leases]))
 
         return bot_session
 
