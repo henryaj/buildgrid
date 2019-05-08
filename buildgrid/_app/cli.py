@@ -164,6 +164,9 @@ class DebugFilter(logging.Filter):
                 domains_tree = domains_tree[label]
 
     def filter(self, record):
+        # Only evaluate DEBUG records for filtering
+        if record.levelname != "DEBUG":
+            return True
         domains_tree, last_match = self.__domains_tree, None
         for label in record.name.split('.'):
             if all(key not in domains_tree for key in [label, '*']):
