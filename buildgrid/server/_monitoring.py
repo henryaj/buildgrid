@@ -38,6 +38,8 @@ class MonitoringOutputFormat(Enum):
     BINARY = 'binary'
     # JSON format.
     JSON = 'json'
+    # StatsD format. Only metrics are kept - logs are dropped.
+    STATSD = 'statsd'
 
 
 class MonitoringBus:
@@ -54,6 +56,7 @@ class MonitoringBus:
         self.__output_location = None
         self.__async_output = False
         self.__json_output = False
+        self.__statsd_output = False
         self.__print_output = False
 
         if endpoint_type == MonitoringOutputType.FILE:
@@ -72,6 +75,8 @@ class MonitoringBus:
 
         if serialisation_format == MonitoringOutputFormat.JSON:
             self.__json_output = True
+        elif serialisation_format == MonitoringOutputFormat.STATSD:
+            self.__statsd_output = True
 
     # --- Public API ---
 
@@ -113,6 +118,25 @@ class MonitoringBus:
 
     # --- Private API ---
 
+    @staticmethod
+    def _convert_metric_to_statsd(record):
+        if record.type == monitoring_pb2.MetricRecord.COUNTER:
+            if record.count is None:
+                raise ValueError(
+                    "COUNTER record {} is missing a count".format(record.name))
+            return "{}:{}|c\n".format(record.name, record.count)
+        elif record.type is monitoring_pb2.MetricRecord.TIMER:
+            if record.duration is None:
+                raise ValueError(
+                    "TIMER record {} is missing a duration".format(record.name))
+            return "{}:{}|ms\n".format(record.name, record.duration.ToMilliseconds())
+        elif record.type is monitoring_pb2.MetricRecord.GAUGE:
+            if record.value is None:
+                raise ValueError(
+                    "GAUGE record {} is missing a value".format(record.name))
+            return "{}:{}|g\n".format(record.name, record.value)
+        raise ValueError("Unknown record type.")
+
     async def _streaming_worker(self):
         """Handles bus messages streaming work."""
         async def __streaming_worker(end_points):
@@ -135,6 +159,13 @@ class MonitoringBus:
 
                 for end_point in end_points:
                     end_point.write(blob_message)
+
+            elif self.__statsd_output:
+                if record.DESCRIPTOR is monitoring_pb2.MetricRecord.DESCRIPTOR:
+                    statsd_message = MonitoringBus._convert_metric_to_statsd(
+                        record)
+                    for end_point in end_points:
+                        end_point.write(statsd_message.encode())
 
             else:
                 blob_size = ctypes.c_uint32(message.ByteSize())

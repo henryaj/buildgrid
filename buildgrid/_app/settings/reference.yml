@@ -135,6 +135,7 @@ monitoring:
   # Messages serialisation format.
   #  binary  - Protobuf binary format.
   #  json    - JSON format.
+  #  statsd  - StatsD format. Only metrics are kept - logs are dropped.
   serialization-format: binary
 
 ##
