@@ -17,6 +17,7 @@ import asyncio
 import ctypes
 from enum import Enum
 import sys
+import socket
 
 from google.protobuf import json_format
 
@@ -31,6 +32,8 @@ class MonitoringOutputType(Enum):
     FILE = 'file'
     # UNIX domain socket.
     SOCKET = 'socket'
+    # UDP IP:port
+    UDP = 'udp'
 
 
 class MonitoringOutputFormat(Enum):
@@ -40,6 +43,23 @@ class MonitoringOutputFormat(Enum):
     JSON = 'json'
     # StatsD format. Only metrics are kept - logs are dropped.
     STATSD = 'statsd'
+
+
+class UdpWrapper:
+    """ Wraps socket sendto() in write() so it can be used polymorphically """
+
+    def __init__(self, endpoint_location):
+        try:
+            self._addr, self._port = endpoint_location.split(":")
+            self._port = int(self._port)
+        except ValueError as e:
+            error_msg = "udp endpoint-location {} does not have the form address:port".format(
+                endpoint_location)
+            raise ValueError(error_msg) from e
+        self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    def write(self, message):
+        self._socket.sendto(message, (self._addr, self._port))
 
 
 class MonitoringBus:
@@ -58,6 +78,7 @@ class MonitoringBus:
         self.__json_output = False
         self.__statsd_output = False
         self.__print_output = False
+        self.__udp_output = False
 
         if endpoint_type == MonitoringOutputType.FILE:
             self.__output_location = endpoint_location
@@ -68,6 +89,10 @@ class MonitoringBus:
 
         elif endpoint_type == MonitoringOutputType.STDOUT:
             self.__print_output = True
+
+        elif endpoint_type == MonitoringOutputType.UDP:
+            self.__output_location = endpoint_location
+            self.__udp_output = True
 
         else:
             raise InvalidArgumentError("Invalid endpoint output type: [{}]"
@@ -194,6 +219,12 @@ class MonitoringBus:
 
                         for writer in output_writers:
                             await writer.drain()
+
+            elif self.__udp_output and self.__output_location:
+                output_writers.append(UdpWrapper(self.__output_location))
+                while True:
+                    if await __streaming_worker(output_writers):
+                        self.__sequence_number += 1
 
             elif self.__output_location:
                 output_file = open(self.__output_location, mode='wb')
