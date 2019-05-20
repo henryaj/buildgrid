@@ -115,6 +115,10 @@ def _create_server_from_config(configuration):
             if 'serialization-format' in monitoring:
                 kargs['mon_serialisation_format'] = MonitoringOutputFormat(monitoring['serialization-format'])
 
+            if 'metric-prefix' in monitoring:
+                # Ensure there's only one period at the end of the prefix
+                kargs['mon_metric_prefix'] = monitoring['metric-prefix'].strip().rstrip('.') + "."
+
         except (ValueError, OSError) as e:
             click.echo("Error: Configuration, {}.".format(e), err=True)
             sys.exit(-1)

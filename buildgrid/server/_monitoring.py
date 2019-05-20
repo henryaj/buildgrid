@@ -66,6 +66,7 @@ class MonitoringBus:
 
     def __init__(self, event_loop,
                  endpoint_type=MonitoringOutputType.SOCKET, endpoint_location=None,
+                 metric_prefix="",
                  serialisation_format=MonitoringOutputFormat.BINARY):
         self.__event_loop = event_loop
         self.__streaming_task = None
@@ -97,6 +98,8 @@ class MonitoringBus:
         else:
             raise InvalidArgumentError("Invalid endpoint output type: [{}]"
                                        .format(endpoint_type))
+
+        self.__metric_prefix = metric_prefix
 
         if serialisation_format == MonitoringOutputFormat.JSON:
             self.__json_output = True
@@ -131,6 +134,22 @@ class MonitoringBus:
         Args:
             record (Message): The
         """
+        instance_name = record.metadata.get('instance-name')
+        if instance_name is not None:
+            # This is an instance metric, so we'll add the instance name
+            # to the prefix if it isn't empty
+            if instance_name:
+                instance_name = instance_name + "."
+
+            # Prefix the metric with "instance_name.instance." if the instance
+            # name isn't empty, otherwise just "instance."
+            record.name = "{}{}instance.{}".format(
+                self.__metric_prefix, instance_name, record.name)
+
+        else:
+            # Not an instance metric
+            record.name = "{}{}".format(self.__metric_prefix, record.name)
+
         await self.__message_queue.put(record)
 
     def send_record_nowait(self, record):
@@ -139,6 +158,22 @@ class MonitoringBus:
         Args:
             record (Message): The
         """
+        instance_name = record.metadata.get('instance-name')
+        if instance_name is not None:
+            # This is an instance metric, so we'll add the instance name
+            # to the prefix if it isn't empty
+            if instance_name:
+                instance_name = instance_name + "."
+
+            # Prefix the metric with "instance_name.instance." if the instance
+            # name isn't empty, otherwise just "instance."
+            record.name = "{}{}instance.{}".format(
+                self.__metric_prefix, instance_name, record.name)
+
+        else:
+            # This is not an instance metric
+            record.name = "{}{}".format(self.__metric_prefix, record.name)
+
         self.__message_queue.put_nowait(record)
 
     # --- Private API ---

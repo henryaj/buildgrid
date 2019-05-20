@@ -55,6 +55,7 @@ class Server:
                  mon_endpoint_type=MonitoringOutputType.STDOUT,
                  mon_endpoint_location=None,
                  mon_serialisation_format=MonitoringOutputFormat.JSON,
+                 mon_metric_prefix="",
                  auth_method=AuthMetadataMethod.NONE,
                  auth_secret=None,
                  auth_algorithm=AuthMetadataAlgorithm.UNSPECIFIED):
@@ -136,6 +137,7 @@ class Server:
             self.__monitoring_bus = MonitoringBus(
                 self.__main_loop, endpoint_type=mon_endpoint_type,
                 endpoint_location=mon_endpoint_location,
+                metric_prefix=mon_metric_prefix,
                 serialisation_format=mon_serialisation_format)
 
             self.__build_monitoring_tasks = []
