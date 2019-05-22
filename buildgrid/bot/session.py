@@ -23,6 +23,7 @@ import asyncio
 import logging
 import platform
 import grpc
+import os
 
 from buildgrid._enums import BotStatus, LeaseState
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
@@ -51,7 +52,7 @@ class BotSession:
         self._tenant_manager = TenantManager()
 
         self.__parent = parent
-        self.__bot_id = '{}.{}'.format(parent, platform.node())
+        self.__bot_id = '{}.{}.{}'.format(parent, platform.node(), os.getpid())
         self.__name = None
 
         self._work = work
