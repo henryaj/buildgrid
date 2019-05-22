@@ -128,12 +128,7 @@ class MonitoringBus:
 
         self.__streaming_task.cancel()
 
-    async def send_record(self, record):
-        """Publishes a record onto the bus asynchronously.
-
-        Args:
-            record (Message): The
-        """
+    async def prefix_record(self, record):
         instance_name = record.metadata.get('instance-name')
         if instance_name is not None:
             # This is an instance metric, so we'll add the instance name
@@ -150,31 +145,18 @@ class MonitoringBus:
             # Not an instance metric
             record.name = "{}{}".format(self.__metric_prefix, record.name)
 
-        await self.__message_queue.put(record)
+        return record
 
-    def send_record_nowait(self, record):
-        """Publishes a record onto the bus.
+    async def send_record(self, record):
+        """Publishes a record onto the bus asynchronously.
 
         Args:
             record (Message): The
         """
-        instance_name = record.metadata.get('instance-name')
-        if instance_name is not None:
-            # This is an instance metric, so we'll add the instance name
-            # to the prefix if it isn't empty
-            if instance_name:
-                instance_name = instance_name + "."
+        if record.DESCRIPTOR is monitoring_pb2.MetricRecord.DESCRIPTOR:
+            record = await self.prefix_record(record)
 
-            # Prefix the metric with "instance_name.instance." if the instance
-            # name isn't empty, otherwise just "instance."
-            record.name = "{}{}instance.{}".format(
-                self.__metric_prefix, instance_name, record.name)
-
-        else:
-            # This is not an instance metric
-            record.name = "{}{}".format(self.__metric_prefix, record.name)
-
-        self.__message_queue.put_nowait(record)
+        await self.__message_queue.put(record)
 
     # --- Private API ---
 
