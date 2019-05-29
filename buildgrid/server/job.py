@@ -304,7 +304,7 @@ class Job:
             self._n_tries += 1
 
         elif self.__operation_metadata.stage == OperationStage.EXECUTING.value:
-            queue_in, queue_out = self.__queued_timestamp.ToDatetime(), datetime.now()
+            queue_in, queue_out = self.__queued_timestamp.ToDatetime(), datetime.utcnow()
             self.__queued_time_duration.FromTimedelta(queue_out - queue_in)
 
         elif self.__operation_metadata.stage == OperationStage.COMPLETED.value:
