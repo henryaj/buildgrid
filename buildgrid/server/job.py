@@ -26,6 +26,7 @@ from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_p
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 from buildgrid._protos.google.rpc import code_pb2
+from buildgrid.server.persistence import DataStore
 
 
 class Job:
@@ -65,6 +66,8 @@ class Job:
             if platform_requirements else dict()
 
         self._done = False
+
+        DataStore.create_job(self)
 
     def __lt__(self, other):
         try:
@@ -112,6 +115,12 @@ class Job:
     def priority(self):
         return self._priority
 
+    @priority.setter
+    def priority(self, new_priority):
+        self._priority = new_priority
+        changes = {'priority': new_priority}
+        DataStore.update_job(self.name, changes)
+
     @property
     def done(self):
         return self._done
@@ -147,6 +156,22 @@ class Job:
             return self.__execute_response.cached_result
         else:
             return False
+
+    @property
+    def queued_timestamp(self):
+        return self.__queued_timestamp
+
+    @property
+    def queued_time_duration(self):
+        return self.__queued_time_duration
+
+    @property
+    def worker_start_timestamp(self):
+        return self.__worker_start_timestamp
+
+    @property
+    def worker_completed_timestamp(self):
+        return self.__worker_completed_timestamp
 
     def set_action_url(self, url):
         """Generates a CAS browser URL for the job's action."""
@@ -198,6 +223,8 @@ class Job:
         self.__operations_by_name[new_operation.name] = new_operation
         self.__operations_by_peer[peer] = new_operation
         self.__operations_message_queues[peer] = message_queue
+
+        DataStore.create_operation(new_operation, self._name)
 
         self._send_operations_updates(peers=[peer])
 
@@ -295,7 +322,10 @@ class Job:
         if stage.value == self.__operation_metadata.stage:
             return
 
+        changes = {}
+
         self.__operation_metadata.stage = stage.value
+        changes["stage"] = stage.value
 
         self.__logger.debug("Stage changed for job [%s]: [%s] (operation)",
                             self._name, stage.name)
@@ -303,14 +333,18 @@ class Job:
         if self.__operation_metadata.stage == OperationStage.QUEUED.value:
             if self.__queued_timestamp.ByteSize() == 0:
                 self.__queued_timestamp.GetCurrentTime()
+                changes["queued_timestamp"] = self.__queued_timestamp.ToDatetime()
             self._n_tries += 1
 
         elif self.__operation_metadata.stage == OperationStage.EXECUTING.value:
             queue_in, queue_out = self.__queued_timestamp.ToDatetime(), datetime.utcnow()
             self.__queued_time_duration.FromTimedelta(queue_out - queue_in)
+            changes["queued_time_duration"] = self.__queued_time_duration.seconds
 
         elif self.__operation_metadata.stage == OperationStage.COMPLETED.value:
             self._done = True
+
+        DataStore.update_job(self.name, changes)
 
         self._send_operations_updates()
 
@@ -397,6 +431,7 @@ class Job:
         self._lease.id = self._name
         self._lease.payload.Pack(self.__operation_metadata.action_digest)
         self._lease.state = LeaseState.UNSPECIFIED.value
+        DataStore.create_lease(self._lease)
 
         self.__logger.debug("Lease created for job [%s]: [%s]",
                             self._name, self._lease.id)
@@ -418,7 +453,11 @@ class Job:
         if state.value == self._lease.state:
             return
 
+        job_changes = {}
+        lease_changes = {}
+
         self._lease.state = state.value
+        lease_changes["state"] = state.value
 
         self.__logger.debug("State changed for job [%s]: [%s] (lease)",
                             self._name, state.name)
@@ -426,21 +465,29 @@ class Job:
         if self._lease.state == LeaseState.PENDING.value:
             self.__worker_start_timestamp.Clear()
             self.__worker_completed_timestamp.Clear()
+            job_changes["worker_start_timestamp"] = self.__worker_start_timestamp.ToDatetime()
+            job_changes["worker_completed_timestamp"] = self.__worker_completed_timestamp.ToDatetime()
 
             self._lease.status.Clear()
             self._lease.result.Clear()
+            lease_changes["status"] = self._lease.status.code
 
         elif self._lease.state == LeaseState.ACTIVE.value:
             self.__worker_start_timestamp.GetCurrentTime()
+            job_changes["worker_start_timestamp"] = self.__worker_start_timestamp.ToDatetime()
 
         elif self._lease.state == LeaseState.COMPLETED.value:
             self.__worker_completed_timestamp.GetCurrentTime()
+            job_changes["worker_completed_timestamp"] = self.__worker_completed_timestamp.ToDatetime()
 
             action_result = remote_execution_pb2.ActionResult()
 
             # TODO: Make a distinction between build and bot failures!
             if status.code != code_pb2.OK:
                 self._do_not_cache = True
+                job_changes["do_not_cache"] = True
+
+            lease_changes["status"] = status.code
 
             if result is not None and result.Is(action_result.DESCRIPTOR):
                 result.Unpack(action_result)
@@ -453,6 +500,9 @@ class Job:
             self.__execute_response.result.CopyFrom(action_result)
             self.__execute_response.cached_result = False
             self.__execute_response.status.CopyFrom(status)
+
+        DataStore.update_job(self.name, job_changes)
+        DataStore.update_lease(self.name, lease_changes)
 
     def cancel_lease(self):
         """Triggers a job's :class:`Lease` cancellation.
@@ -507,6 +557,8 @@ class Job:
             operation.response.Pack(execute_response)
 
         operation.done = done
+        changes = {"done": done}
+        DataStore.update_operation(operation.name, changes)
 
     def _update_cancelled_operation(self, operation, operation_metadata, execute_response=None):
         """Forges a cancelled :class:`Operation` message given input data."""
@@ -525,6 +577,8 @@ class Job:
         operation.response.Pack(cancelled_execute_response)
 
         operation.done = True
+        changes = {"done": True}
+        DataStore.update_operation(operation.name, changes)
 
     def _send_operations_updates(self, peers=None, notify_cancelled=False):
         """Sends :class:`Operation` stage change messages to watchers."""
