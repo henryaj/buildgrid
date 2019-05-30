@@ -23,3 +23,6 @@ docs/source/api/
 
 # Tox environments
 .tox/
+
+# Default database name
+example.db

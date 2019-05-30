@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+from inspect import getfullargspec
 import os
 import sys
 from urllib.parse import urlparse
@@ -31,6 +32,8 @@ from buildgrid.server.cas.storage.lru_memory_cache import LRUMemoryCache
 from buildgrid.server.cas.storage.remote import RemoteStorage
 from buildgrid.server.cas.storage.s3 import S3Storage
 from buildgrid.server.cas.storage.with_cache import WithCacheStorage
+from buildgrid.server.persistence import DataStore
+from buildgrid.server.persistence.sql.impl import SQLDataStore
 
 from ..cli import Context
 
@@ -268,7 +271,30 @@ class Execution(YamlFactory):
 
     yaml_tag = u'!execution'
 
-    def __new__(cls, storage, action_cache=None, action_browser_url=None):
+    def __new__(cls, storage, action_cache=None, action_browser_url=None, data_store=None):
+        if data_store:
+            try:
+                store_type = data_store.pop('type')
+            except KeyError:
+                click.echo("Data store definition must have a 'type' key.", err=True)
+                sys.exit(-1)
+
+            if store_type == "sql":
+                implementation_class = SQLDataStore
+            else:
+                click.echo("Backend type '%s' doesn't exist" % store_type, err=True)
+                sys.exit(-1)
+
+            try:
+                DataStore.backend = implementation_class(**data_store)
+            except TypeError:
+                spec = getfullargspec(implementation_class)
+                invalid_args = yaml.dump([arg for arg in data_store.keys()
+                                          if arg not in spec.kwonlyargs])
+                click.echo("The following arguments are unsupported for a data store "
+                           "with type '%s':\n\n%s" % (store_type, invalid_args), err=True)
+                sys.exit(-1)
+
         return ExecutionController(storage, action_cache, action_browser_url)
 
 
