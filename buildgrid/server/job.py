@@ -17,7 +17,8 @@ from datetime import datetime
 import logging
 import uuid
 
-from google.protobuf import duration_pb2, timestamp_pb2
+from google.protobuf.duration_pb2 import Duration
+from google.protobuf.timestamp_pb2 import Timestamp
 
 from buildgrid._enums import LeaseState, OperationStage
 from buildgrid._exceptions import CancelledError, NotFoundError
@@ -29,34 +30,35 @@ from buildgrid._protos.google.rpc import code_pb2
 
 class Job:
 
-    def __init__(self, action, action_digest, platform_requirements=None, priority=0):
+    def __init__(self, do_not_cache, action_digest, platform_requirements=None, priority=0,
+                 name=None, operations=(), lease=None, stage=OperationStage.UNKNOWN.value,
+                 cancelled=False, queued_timestamp=Timestamp(), queued_time_duration=Duration(),
+                 worker_start_timestamp=Timestamp(), worker_completed_timestamp=Timestamp()):
         self.__logger = logging.getLogger(__name__)
 
-        self._name = str(uuid.uuid4())
+        self._name = name or str(uuid.uuid4())
         self._priority = priority
-        self._action = remote_execution_pb2.Action()
-        self._lease = None
+        self._lease = lease
 
         self.__execute_response = remote_execution_pb2.ExecuteResponse()
         self.__operation_metadata = remote_execution_pb2.ExecuteOperationMetadata()
 
-        self.__queued_timestamp = timestamp_pb2.Timestamp()
-        self.__queued_time_duration = duration_pb2.Duration()
-        self.__worker_start_timestamp = timestamp_pb2.Timestamp()
-        self.__worker_completed_timestamp = timestamp_pb2.Timestamp()
+        self.__queued_timestamp = queued_timestamp
+        self.__queued_time_duration = queued_time_duration
+        self.__worker_start_timestamp = worker_start_timestamp
+        self.__worker_completed_timestamp = worker_completed_timestamp
 
         self.__operations_message_queues = {}
-        self.__operations_by_name = {}  # Name to Operation 1:1 mapping
+        self.__operations_by_name = {op.name: op for op in operations}  # Name to Operation 1:1 mapping
         self.__operations_by_peer = {}  # Peer to Operation 1:1 mapping
         self.__operations_cancelled = set()
-        self.__lease_cancelled = False
-        self.__job_cancelled = False
+        self.__lease_cancelled = cancelled
+        self.__job_cancelled = cancelled
 
         self.__operation_metadata.action_digest.CopyFrom(action_digest)
-        self.__operation_metadata.stage = OperationStage.UNKNOWN.value
+        self.__operation_metadata.stage = stage
 
-        self._action.CopyFrom(action)
-        self._do_not_cache = self._action.do_not_cache
+        self._do_not_cache = do_not_cache
         self._n_tries = 0
 
         self._platform_requirements = platform_requirements \

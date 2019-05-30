@@ -197,7 +197,7 @@ class Scheduler:
 
                 return job.name
 
-        job = Job(action, action_digest,
+        job = Job(action.do_not_cache, action_digest,
                   platform_requirements=platform_requirements,
                   priority=priority)
 
