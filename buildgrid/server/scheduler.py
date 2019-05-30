@@ -27,6 +27,7 @@ from threading import Lock
 from buildgrid._enums import LeaseState, OperationStage
 from buildgrid._exceptions import NotFoundError
 from buildgrid.server.job import Job
+from buildgrid.server.persistence import DataStore
 from buildgrid.settings import MAX_JOB_BLOCK_TIME
 from buildgrid.utils import BrowserURL
 
@@ -62,6 +63,15 @@ class Scheduler:
         self._is_instrumented = False
         if monitor:
             self.activate_monitoring()
+
+        jobs = DataStore.load_unfinished_jobs() or []
+        for job in jobs:
+            self.__jobs_by_action[job.action_digest.hash] = job
+            self.__jobs_by_name[job.name] = job
+            for operation in job.list_operations():
+                self.__jobs_by_operation[operation] = job
+            if job.operation_stage == OperationStage.QUEUED:
+                self.__queue.put(job)
 
     # --- Public API ---
 
