@@ -173,6 +173,13 @@ class Job:
     def worker_completed_timestamp(self):
         return self.__worker_completed_timestamp
 
+    def mark_worker_started(self):
+        self.__worker_start_timestamp.GetCurrentTime()
+        changes = {
+            "worker_start_timestamp": self.__worker_start_timestamp.ToDatetime()
+        }
+        DataStore.update_job(self.name, changes)
+
     def set_action_url(self, url):
         """Generates a CAS browser URL for the job's action."""
         if url.for_message('action', self.__operation_metadata.action_digest):
@@ -471,10 +478,6 @@ class Job:
             self._lease.status.Clear()
             self._lease.result.Clear()
             lease_changes["status"] = self._lease.status.code
-
-        elif self._lease.state == LeaseState.ACTIVE.value:
-            self.__worker_start_timestamp.GetCurrentTime()
-            job_changes["worker_start_timestamp"] = self.__worker_start_timestamp.ToDatetime()
 
         elif self._lease.state == LeaseState.COMPLETED.value:
             self.__worker_completed_timestamp.GetCurrentTime()

@@ -341,6 +341,7 @@ class Scheduler:
                 lease = job.create_lease()
 
             if lease:
+                job.mark_worker_started()
                 return [lease]
 
         # If we get here, we claimed a valid job but couldn't handle it. Re-enqueue it.
