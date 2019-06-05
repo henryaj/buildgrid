@@ -15,7 +15,9 @@
 # pylint: disable=redefined-outer-name
 
 
+import os
 import queue
+import tempfile
 import uuid
 from unittest import mock
 
@@ -34,6 +36,9 @@ from buildgrid.server.cas.storage import lru_memory_cache
 from buildgrid.server.actioncache.instance import ActionCache
 from buildgrid.server.execution import service
 from buildgrid.server.execution.service import ExecutionService
+from buildgrid.server.persistence import DataStore
+from buildgrid.server.persistence.sql.impl import SQLDataStore
+from buildgrid.server.persistence.sql import models
 
 
 server = mock.create_autospec(grpc.server)
@@ -67,18 +72,24 @@ def controller(request):
     if request.param == "action-cache":
         cache = ActionCache(storage, 50)
         yield ExecutionController(storage=storage, action_cache=cache)
-
     else:
         yield ExecutionController(storage=storage)
 
 
 # Instance to test
-@pytest.fixture
-def instance(controller):
+@pytest.fixture(params=["mem", "sql"])
+def instance(controller, request):
+    if request.param == "sql":
+        _, db = tempfile.mkstemp()
+        DataStore.backend = SQLDataStore(connection_string="sqlite:///%s" % db)
     with mock.patch.object(service, 'remote_execution_pb2_grpc'):
         execution_service = ExecutionService(server)
         execution_service.add_instance("", controller.execution_instance)
         yield execution_service
+    if request.param == "sql":
+        DataStore.backend = None
+        if os.path.exists(db):
+            os.remove(db)
 
 
 @pytest.mark.parametrize("skip_cache_lookup", [True, False])
@@ -140,6 +151,14 @@ def test_wait_execution(instance, controller, context):
     assert metadata.stage == job.OperationStage.COMPLETED.value
     assert result.done is True
 
+    if isinstance(DataStore.backend, SQLDataStore):
+        with DataStore.backend.session() as session:
+            record = session.query(models.Job).filter_by(name=job_name).first()
+            assert record is not None
+            assert record.stage == job.OperationStage.COMPLETED.value
+            assert record.operations
+            assert all(op.done for op in record.operations)
+
 
 def test_wrong_instance_wait_execution(instance, context):
     request = remote_execution_pb2.WaitExecutionRequest(name="blade")
@@ -173,6 +192,15 @@ def test_job_deduplication_in_scheduling(instance, controller, context):
     assert job_name1 == job_name2
     assert operation_name1 != operation_name2
 
+    if isinstance(DataStore.backend, SQLDataStore):
+        with DataStore.backend.session() as session:
+            query = session.query(models.Job)
+            job_count = query.filter_by(name=job_name1).count()
+            assert job_count == 1
+            query = session.query(models.Operation)
+            operation_count = query.filter_by(job_name=job_name1).count()
+            assert operation_count == 2
+
 
 @pytest.mark.parametrize("do_not_cache", [True, False])
 def test_do_not_cache_no_deduplication(do_not_cache, instance, controller, context):
@@ -201,3 +229,11 @@ def test_do_not_cache_no_deduplication(do_not_cache, instance, controller, conte
     # and two operations are created
     assert job_name1 != job_name2
     assert operation_name1 != operation_name2
+
+    if isinstance(DataStore.backend, SQLDataStore):
+        with DataStore.backend.session() as session:
+            job_count = session.query(models.Job).count()
+            assert job_count == 2
+
+            operation_count = session.query(models.Operation).count()
+            assert operation_count == 2
