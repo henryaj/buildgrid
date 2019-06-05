@@ -107,6 +107,7 @@ setup(
     cmdclass={
         'build_grpc': BuildGRPC, },
     packages=find_packages(),
+    package_data={'buildgrid.server.persistence.sql': ['alembic/*', 'alembic/**/*']},
     python_requires='>= 3.5.3',  # janus requirement
     install_requires=install_requirements,
     setup_requires=['pytest-runner'],

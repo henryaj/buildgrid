@@ -6,3 +6,4 @@ janus
 protobuf >= 3.6.1
 pyyaml
 sqlalchemy
+alembic

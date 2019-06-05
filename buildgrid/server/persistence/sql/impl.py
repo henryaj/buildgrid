@@ -17,12 +17,14 @@ from contextlib import contextmanager
 import logging
 import os
 
+from alembic import command
+from alembic.config import Config
 from sqlalchemy import and_, create_engine, or_
 from sqlalchemy.orm.session import sessionmaker
 
 from ...._enums import OperationStage
 from ..interface import DataStoreInterface
-from .models import digest_to_string, Base, Job, Lease, Operation, PlatformRequirement
+from .models import digest_to_string, Job, Lease, Operation, PlatformRequirement
 
 
 Session = sessionmaker()
@@ -35,12 +37,16 @@ class SQLDataStore(DataStoreInterface):
 
         self.automigrate = automigrate
         self.engine = create_engine(connection_string, echo=False)
-        self._create_db()
         Session.configure(bind=self.engine)
+        cfg = Config()
+        cfg.set_main_option("script_location",
+                            os.path.join(os.path.dirname(__file__), "alembic"))
+        cfg.set_main_option("sqlalchemy.url", connection_string)
+        self._create_db(cfg)
 
-    def _create_db(self):
+    def _create_db(self, config):
         if self.automigrate:
-            Base.metadata.create_all(self.engine)
+            command.upgrade(config, "head")
 
     @contextmanager
     def session(self):
