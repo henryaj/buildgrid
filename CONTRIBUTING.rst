@@ -249,21 +249,17 @@ We intend to make use of some of GitLab's features in order to structure the
 activity of the BuildGrid project. In doing so we are trying to achieve the
 following goals:
 
-- Full transparency of the current work in progress items.
+- Full transparency of the current work in progress items
 - Provide a view of all current and planned activity which is relatively easy
-  for the viewer to digest.
-- Ensure that we keep it simple and easy to contribute to the project.
+  for the viewer to digest
+- Ensure that we keep it simple and easy to contribute to the project
 
 Explanation of how the project is currenlty using some GitLab features:
 
-- `Milestones`_: we have seen them used in the same way as `Epics`_ in other
-  projects and are trying not to do that here. Instead we are going to 
-  use milestones to denote development cycles (ie, two week 'sprints'). See the
-  `BuildGrid milestones`_.
 - `Labels`_: allow us to filter tickets (ie, 'issues' in gitlab terminology)
   in useful ways. They add complexity and effort as they grow in number, so the
-  general approach is to have the minimum possible but 
-  ensure we use them consistently. See the `BuildGrid labels`_. 
+  general approach is to ensure the ones we have are actually used and are 
+  applied consistently. See the `BuildGrid labels`_. 
 - `Boards`_: allow us to visualise and manage issues and labels in a simple way.
   Issues start life in the ``Backlog`` column by default, and we move them into
   ``ToDo`` when we aim to complete them in the current development cycle.
@@ -284,7 +280,6 @@ Guidelines for using GitLab features when working on this project:
 - If you plan to work on an issue, please:
 
   - self-assign the ticket
-  - ensure it's captured in the current sprint (ie, Gitlab milestone)
   - ensure the ticket is in the ``ToDo`` column of the board if you aim to 
     complete in the current sprint but aren't yet working on it, and
     the ``Doing`` column if you are working on it currently.
@@ -298,9 +293,6 @@ it right the first few times. The worst that can happen is that you'll get a
 friendly message from a current contributor who explains the process. We welcome
 and value all contributions to the project!  
 
-.. _Milestones: https://docs.gitlab.com/ee/user/project/milestones
-.. _Epics: https://docs.gitlab.com/ee/user/group/epics
-.. _BuildGrid milestones: https://gitlab.com/BuildGrid/buildgrid/milestones
 .. _Labels: https://docs.gitlab.com/ee/user/project/labels.html
 .. _BuildGrid labels: https://gitlab.com/BuildGrid/buildgrid/labels
 .. _Boards: https://docs.gitlab.com/ee/user/project/issue_board.html
