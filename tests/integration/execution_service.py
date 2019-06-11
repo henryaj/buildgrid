@@ -81,7 +81,7 @@ def controller(request):
 def instance(controller, request):
     if request.param == "sql":
         _, db = tempfile.mkstemp()
-        DataStore.backend = SQLDataStore(connection_string="sqlite:///%s" % db)
+        DataStore.backend = SQLDataStore(connection_string="sqlite:///%s" % db, automigrate=True)
     with mock.patch.object(service, 'remote_execution_pb2_grpc'):
         execution_service = ExecutionService(server)
         execution_service.add_instance("", controller.execution_instance)

@@ -16,11 +16,13 @@
 from contextlib import contextmanager
 import logging
 import os
+import time
 
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import and_, create_engine, or_
 from sqlalchemy.orm.session import sessionmaker
+from sqlalchemy.exc import OperationalError
 
 from ...._enums import OperationStage
 from ..interface import DataStoreInterface
@@ -32,12 +34,14 @@ Session = sessionmaker()
 
 class SQLDataStore(DataStoreInterface):
 
-    def __init__(self, *, connection_string="sqlite:///", automigrate=False):
+    def __init__(self, *, connection_string="sqlite:///", automigrate=False, retry_limit=10):
         self.__logger = logging.getLogger(__name__)
 
         self.automigrate = automigrate
+        self.retry_limit = retry_limit
         self.engine = create_engine(connection_string, echo=False)
         Session.configure(bind=self.engine)
+
         cfg = Config()
         cfg.set_main_option("script_location",
                             os.path.join(os.path.dirname(__file__), "alembic"))
@@ -45,8 +49,15 @@ class SQLDataStore(DataStoreInterface):
         self._create_db(cfg)
 
     def _create_db(self, config):
-        if self.automigrate:
-            command.upgrade(config, "head")
+        retries = 0
+        while retries < self.retry_limit:
+            try:
+                if self.automigrate:
+                    command.upgrade(config, "head")
+                    break
+            except OperationalError:
+                retries += 1
+                time.sleep(retries * 5)
 
     @contextmanager
     def session(self):
