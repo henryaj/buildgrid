@@ -18,6 +18,21 @@
 version: "3.2"
 
 services:
+  database:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: bgd
+      POSTGRES_PASSWORD: insecure
+      POSTGRES_DB: bgd
+    volumes:
+      - type: volume
+        source: db
+        target: /var/lib/postgresql/data
+    networks:
+      - backend
+    ports:
+      - "5432:5432"
+
   storage:
     build:
       context: .
@@ -105,3 +120,4 @@ networks:
 volumes:
   cache:
   data:
+  db:

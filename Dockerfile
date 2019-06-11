@@ -39,6 +39,14 @@ RUN [ \
 "requirements.txt" \
 ]
 
+# Install the database requirements:
+ADD requirements.db.txt /app
+RUN [ \
+"/app/env/bin/python", "-m", "pip", \
+"install", "--requirement", \
+"requirements.db.txt" \
+]
+
 # Install the auth. requirements:
 ADD requirements.auth.txt /app
 RUN [ \
