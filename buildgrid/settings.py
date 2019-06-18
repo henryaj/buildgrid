@@ -74,7 +74,7 @@ REQUEST_METADATA_TOOL_NAME = 'buildgrid'
 REQUEST_METADATA_TOOL_VERSION = __version__
 
 # Time in seconds to pad timeouts
-NETWORK_TIMEOUT = 5
+NETWORK_TIMEOUT = 1
 
 # Hard limit for waiting on jobs, avoids grpc timeouts not being set defaulting
 # the interval to the max int64 value
