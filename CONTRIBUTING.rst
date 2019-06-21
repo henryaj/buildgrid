@@ -125,12 +125,6 @@ project needs a bunch of very trivial patches whose only purpose is to gain comm
 access; knowing what's worth a patch post and what's not is part of showing good
 judgement.)
 
-When submitting a merge request, please obtain a review from another committer
-who is familiar with the area of the code base which the branch effects. Asking on
-slack is probably the best way to go about this. An approval from a committer
-who is not the patch author will be needed before any merge (we use Gitlab's
-'approval' feature for this).
-
 
 .. _coding-style:
 
