@@ -26,7 +26,7 @@ import uuid
 from buildgrid._exceptions import InvalidArgumentError, NotFoundError
 from buildgrid.settings import NETWORK_TIMEOUT
 
-from ..job import LeaseState
+from ..job import LeaseState, BotStatus
 
 
 class BotsInterface:
@@ -132,7 +132,7 @@ class BotsInterface:
 
     def _request_leases(self, bot_session, deadline=None):
         # Only send one lease at a time currently.
-        if not bot_session.leases:
+        if bot_session.status == BotStatus.OK.value and not bot_session.leases:
             worker_capabilities = {}
 
             # TODO? Fail if there are no devices in the worker?

@@ -24,10 +24,9 @@ import pytest
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid.server.controller import ExecutionController
-from buildgrid.server.job import LeaseState
+from buildgrid.server.job import LeaseState, BotStatus
 from buildgrid.server.bots import service
 from buildgrid.server.bots.service import BotsService
-
 
 server = mock.create_autospec(grpc.server)
 
@@ -44,6 +43,7 @@ def context():
 def bot_session():
     bot = bots_pb2.BotSession()
     bot.bot_id = 'ana'
+    bot.status = BotStatus.OK.value
     yield bot
 
 
@@ -166,6 +166,21 @@ def test_unmet_platform_requirements(bot_session, context, instance):
 
     response = instance.CreateBotSession(request, context)
 
+    assert len(response.leases) == 0
+
+
+def test_unhealthy_bot(bot_session, context, instance):
+    # set botstatus to unhealthy
+    bot_session.status = BotStatus.UNHEALTHY.value
+    request = bots_pb2.CreateBotSessionRequest(parent='',
+                                               bot_session=bot_session)
+
+    action_digest = remote_execution_pb2.Digest(hash='gaff')
+    _inject_work(instance._instances[""]._scheduler, action_digest=action_digest)
+
+    response = instance.CreateBotSession(request, context)
+
+    # No leases should be given
     assert len(response.leases) == 0
 
 

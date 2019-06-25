@@ -20,7 +20,7 @@ import uuid
 from google.protobuf.duration_pb2 import Duration
 from google.protobuf.timestamp_pb2 import Timestamp
 
-from buildgrid._enums import LeaseState, OperationStage
+from buildgrid._enums import LeaseState, OperationStage, BotStatus
 from buildgrid._exceptions import CancelledError, NotFoundError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
