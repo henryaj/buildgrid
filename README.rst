@@ -24,6 +24,26 @@ that conforms to the above API protocols.
 .. _RECC: https://gitlab.com/bloomberg/recc
 
 
+.. _whats-going-on:
+
+What's Going On?
+----------------
+
+Recently we merged support for making BuildGrid "bounceable" by storing its
+state in a configurable external SQL database (anything that SQLAlchemy supports
+**should** be supported, and it has been shown to work with PostgreSQL and
+SQLite).
+
+Some work on improving performance by making bots long-poll instead of
+rapidly polling over and over was also done recently, along with support for
+outputting metrics in statsd format.
+
+Next, we're looking at making it possible to horizontally scale BuildGrid
+deployments, by making use of the external database support recently added to
+share state between an arbitrary number of ExecutionService and BotsService
+instances.
+
+
 .. _getting-started:
 
 Getting started
