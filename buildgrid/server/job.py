@@ -59,6 +59,8 @@ class Job:
         self.__operations_by_name = {op.name: op for op in operations}  # Name to Operation 1:1 mapping
         self.__operations_by_peer = {}  # Peer to Operation 1:1 mapping
         self.__operations_cancelled = set()
+        if cancelled:
+            self.__operations_cancelled = set(op.name for op in operations)
         self.__lease_cancelled = cancelled
         self.__job_cancelled = cancelled
 
@@ -388,8 +390,11 @@ class Job:
         # Job is cancelled if all the operation are:
         self.__job_cancelled = ongoing_operations.issubset(self.__operations_cancelled)
 
-        if self.__job_cancelled and self._lease is not None:
-            self.cancel_lease()
+        if self.__job_cancelled:
+            self.__operation_metadata.stage = OperationStage.COMPLETED.value
+            DataStore.update_job(self.name, {"stage": OperationStage.COMPLETED.value})
+            if self._lease is not None:
+                self.cancel_lease()
 
         peers_to_notify = set()
         # If the job is not cancelled, notify all the peers watching the given
