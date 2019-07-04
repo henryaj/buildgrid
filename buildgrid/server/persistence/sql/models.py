@@ -79,12 +79,7 @@ class Job(Base):
 
     operations = relationship('Operation', backref='job')
 
-    reqs = relationship('PlatformRequirement', backref='job',
-                        collection_class=attribute_mapped_collection('key'))
-    platform_requirements = association_proxy(
-        'reqs', 'value',
-        creator=lambda k, v: PlatformRequirement(key=k, value=v)
-    )
+    platform_requirements = relationship('PlatformRequirement', backref='job')
 
     def to_internal_job(self):
         # There should never be more than one active lease for a job. If we
@@ -104,10 +99,16 @@ class Job(Base):
         wc_timestamp = Timestamp()
         if self.worker_completed_timestamp:
             wc_timestamp.FromDatetime(self.worker_completed_timestamp)
+
+        requirements = {}
+        for req in self.platform_requirements:
+            values = requirements.setdefault(req.key, set())
+            values.add(req.value)
+
         return job.Job(
             self.do_not_cache,
             string_to_digest(self.action_digest),
-            platform_requirements=self.platform_requirements,
+            platform_requirements=requirements,
             priority=self.priority,
             name=self.name,
             operations=[op.to_protobuf() for op in self.operations],

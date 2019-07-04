@@ -78,13 +78,18 @@ class SQLDataStore(DataStoreInterface):
     def create_job(self, job):
         with self.session() as session:
             if self._get_job(job.name, session) is None:
+                requirements = [
+                    PlatformRequirement(key=k, value=v)
+                    for k, values in job.platform_requirements.items()
+                    for v in values
+                ]
                 session.add(Job(
                     name=job.name,
                     action_digest=digest_to_string(job.action_digest),
                     do_not_cache=job.do_not_cache,
                     priority=job.priority,
                     operations=[],
-                    platform_requirements=job.platform_requirements,
+                    platform_requirements=requirements,
                     stage=job.operation_stage.value,
                     queued_timestamp=job.queued_timestamp.ToDatetime(),
                     queued_time_duration=job.queued_time_duration.seconds,
@@ -157,10 +162,14 @@ class SQLDataStore(DataStoreInterface):
             # jobs with requirement keys that are a subset of the worker's
             # advertised capabilities keys
             jobs = jobs.filter(or_(
-                ~Job.reqs.any(),
+                ~Job.platform_requirements.any(),
                 and_(
-                    Job.reqs.any(PlatformRequirement.key.in_(capabilities.keys())),
-                    ~Job.reqs.any(~PlatformRequirement.key.in_(capabilities.keys()))
+                    Job.platform_requirements.any(
+                        PlatformRequirement.key.in_(capabilities.keys())
+                    ),
+                    ~Job.platform_requirements.any(
+                        ~PlatformRequirement.key.in_(capabilities.keys())
+                    )
                 )
             ))
 
@@ -169,9 +178,9 @@ class SQLDataStore(DataStoreInterface):
             # capability
             for key, value in capabilities.items():
                 jobs = jobs.filter(or_(
-                    ~Job.reqs.any(),
-                    ~Job.reqs.any(PlatformRequirement.key == key),
-                    Job.reqs.any(and_(
+                    ~Job.platform_requirements.any(),
+                    ~Job.platform_requirements.any(PlatformRequirement.key == key),
+                    Job.platform_requirements.any(and_(
                         PlatformRequirement.key == key,
                         PlatformRequirement.value.in_(value)
                     ))

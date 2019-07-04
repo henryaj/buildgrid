@@ -67,9 +67,12 @@ def populate_database():
                         done=False
                     )
                 ],
-                platform_requirements={
-                    "os": "solaris"
-                }
+                platform_requirements=[
+                    models.PlatformRequirement(
+                        key="os",
+                        value="solaris"
+                    )
+                ]
             ),
             models.Job(
                 name="other-job",
@@ -86,9 +89,12 @@ def populate_database():
                         done=False
                     )
                 ],
-                platform_requirements={
-                    "os": "linux"
-                }
+                platform_requirements=[
+                    models.PlatformRequirement(
+                        key="os",
+                        value="linux"
+                    )
+                ]
             ),
             models.Job(
                 name="extra-job",
@@ -105,10 +111,16 @@ def populate_database():
                         done=False
                     )
                 ],
-                platform_requirements={
-                    "os": "linux",
-                    "generic": "requirement"
-                }
+                platform_requirements=[
+                    models.PlatformRequirement(
+                        key="os",
+                        value="linux"
+                    ),
+                    models.PlatformRequirement(
+                        key="generic",
+                        value="requirement"
+                    )
+                ]
             ),
             models.Job(
                 name="cancelled-job",
@@ -129,9 +141,12 @@ def populate_database():
                         done=True
                     )
                 ],
-                platform_requirements={
-                    "os": "linux"
-                }
+                platform_requirements=[
+                    models.PlatformRequirement(
+                        key="os",
+                        value="linux"
+                    )
+                ]
             ),
             models.Job(
                 name="finished-job",
@@ -152,9 +167,12 @@ def populate_database():
                         done=True
                     )
                 ],
-                platform_requirements={
-                    "os": "linux"
-                }
+                platform_requirements=[
+                    models.PlatformRequirement(
+                        key="os",
+                        value="linux"
+                    )
+                ]
             )
         ])
 
