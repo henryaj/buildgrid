@@ -15,6 +15,8 @@
 # pylint: disable=redefined-outer-name
 
 
+import os
+import tempfile
 from unittest import mock
 
 import grpc
@@ -27,6 +29,9 @@ from buildgrid.server.controller import ExecutionController
 from buildgrid.server.job import LeaseState, BotStatus
 from buildgrid.server.bots import service
 from buildgrid.server.bots.service import BotsService
+from buildgrid.server.persistence import DataStore
+from buildgrid.server.persistence.mem.impl import MemoryDataStore
+from buildgrid.server.persistence.sql.impl import SQLDataStore
 
 server = mock.create_autospec(grpc.server)
 
@@ -53,14 +58,25 @@ def controller():
 
 
 # Instance to test
-@pytest.fixture
-def instance(controller):
-    instances = {"": controller.bots_interface}
-    with mock.patch.object(service, 'bots_pb2_grpc'):
-        bots_service = BotsService(server)
-        for k, v in instances.items():
-            bots_service.add_instance(k, v)
-        yield bots_service
+@pytest.fixture(params=["mem", "sql"])
+def instance(controller, request):
+    if request.param == "sql":
+        _, db = tempfile.mkstemp()
+        DataStore.backend = SQLDataStore(connection_string="sqlite:///%s" % db, automigrate=True)
+    elif request.param == "mem":
+        DataStore.backend = MemoryDataStore(storage)
+    try:
+        instances = {"": controller.bots_interface}
+        with mock.patch.object(service, 'bots_pb2_grpc'):
+            bots_service = BotsService(server)
+            for k, v in instances.items():
+                bots_service.add_instance(k, v)
+            yield bots_service
+    finally:
+        if request.param == "sql":
+            DataStore.backend = None
+            if os.path.exists(db):
+                os.remove(db)
 
 
 def test_create_bot_session(bot_session, context, instance):

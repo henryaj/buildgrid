@@ -37,6 +37,7 @@ from buildgrid.server.actioncache.instance import ActionCache
 from buildgrid.server.execution import service
 from buildgrid.server.execution.service import ExecutionService
 from buildgrid.server.persistence import DataStore
+from buildgrid.server.persistence.mem.impl import MemoryDataStore
 from buildgrid.server.persistence.sql.impl import SQLDataStore
 from buildgrid.server.persistence.sql import models
 
@@ -82,14 +83,18 @@ def instance(controller, request):
     if request.param == "sql":
         _, db = tempfile.mkstemp()
         DataStore.backend = SQLDataStore(connection_string="sqlite:///%s" % db, automigrate=True)
-    with mock.patch.object(service, 'remote_execution_pb2_grpc'):
-        execution_service = ExecutionService(server)
-        execution_service.add_instance("", controller.execution_instance)
-        yield execution_service
-    if request.param == "sql":
-        DataStore.backend = None
-        if os.path.exists(db):
-            os.remove(db)
+    elif request.param == "mem":
+        DataStore.backend = MemoryDataStore()
+    try:
+        with mock.patch.object(service, 'remote_execution_pb2_grpc'):
+            execution_service = ExecutionService(server)
+            execution_service.add_instance("", controller.execution_instance)
+            yield execution_service
+    finally:
+        if request.param == "sql":
+            DataStore.backend = None
+            if os.path.exists(db):
+                os.remove(db)
 
 
 @pytest.mark.parametrize("skip_cache_lookup", [True, False])

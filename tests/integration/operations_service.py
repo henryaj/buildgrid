@@ -15,7 +15,9 @@
 # pylint: disable=redefined-outer-name
 
 
+import os
 import queue
+import tempfile
 from unittest import mock
 
 from google.protobuf import any_pb2
@@ -31,6 +33,9 @@ from buildgrid.server.cas.storage import lru_memory_cache
 from buildgrid.server.controller import ExecutionController
 from buildgrid.server.operations import service
 from buildgrid.server.operations.service import OperationsService
+from buildgrid.server.persistence import DataStore
+from buildgrid.server.persistence.mem.impl import MemoryDataStore
+from buildgrid.server.persistence.sql.impl import SQLDataStore
 from buildgrid.utils import create_digest
 
 
@@ -75,23 +80,43 @@ def controller():
 
 
 # Instance to test
-@pytest.fixture
-def instance(controller):
+@pytest.fixture(params=["mem", "sql"])
+def instance(controller, request):
+    if request.param == "sql":
+        _, db = tempfile.mkstemp()
+        DataStore.backend = SQLDataStore(connection_string="sqlite:///%s" % db, automigrate=True)
+    elif request.param == "mem":
+        DataStore.backend = MemoryDataStore()
     with mock.patch.object(service, 'operations_pb2_grpc'):
         operation_service = OperationsService(server)
         operation_service.add_instance(instance_name, controller.operations_instance)
 
         yield operation_service
+    if request.param == "sql":
+        DataStore.backend = None
+        if os.path.exists(db):
+            os.remove(db)
 
 
 # Blank instance
-@pytest.fixture
-def blank_instance(controller):
-    with mock.patch.object(service, 'operations_pb2_grpc'):
-        operation_service = OperationsService(server)
-        operation_service.add_instance('', controller.operations_instance)
+@pytest.fixture(params=["mem", "sql"])
+def blank_instance(controller, request):
+    if request.param == "sql":
+        _, db = tempfile.mkstemp()
+        DataStore.backend = SQLDataStore(connection_string="sqlite:///%s" % db, automigrate=True)
+    elif request.param == "mem":
+        DataStore.backend = MemoryDataStore()
+    try:
+        with mock.patch.object(service, 'operations_pb2_grpc'):
+            operation_service = OperationsService(server)
+            operation_service.add_instance('', controller.operations_instance)
 
-        yield operation_service
+            yield operation_service
+    finally:
+        if request.param == "sql":
+            DataStore.backend = None
+            if os.path.exists(db):
+                os.remove(db)
 
 
 # Queue an execution, get operation corresponding to that request
