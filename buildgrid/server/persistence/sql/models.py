@@ -117,7 +117,8 @@ class Job(Base):
             queued_timestamp=q_timestamp,
             queued_time_duration=q_time_duration,
             worker_start_timestamp=ws_timestamp,
-            worker_completed_timestamp=wc_timestamp
+            worker_completed_timestamp=wc_timestamp,
+            done=all(op.done for op in self.operations) and len(self.operations) > 0
         )
 
 

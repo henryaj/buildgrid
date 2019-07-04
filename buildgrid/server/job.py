@@ -34,7 +34,8 @@ class Job:
     def __init__(self, do_not_cache, action_digest, platform_requirements=None, priority=0,
                  name=None, operations=(), lease=None, stage=OperationStage.UNKNOWN.value,
                  cancelled=False, queued_timestamp=Timestamp(), queued_time_duration=Duration(),
-                 worker_start_timestamp=Timestamp(), worker_completed_timestamp=Timestamp()):
+                 worker_start_timestamp=Timestamp(), worker_completed_timestamp=Timestamp(),
+                 done=False):
         self.__logger = logging.getLogger(__name__)
 
         self._name = name or str(uuid.uuid4())
@@ -73,7 +74,7 @@ class Job:
         self._platform_requirements = platform_requirements \
             if platform_requirements else dict()
 
-        self._done = False
+        self._done = done
 
         DataStore.create_job(self)
 
