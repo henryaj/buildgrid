@@ -17,6 +17,7 @@ from urllib.parse import urljoin
 from operator import attrgetter
 import os
 import socket
+import threading
 
 from buildgrid.settings import HASH, HASH_LENGTH, BROWSER_URL_FORMAT
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
@@ -66,6 +67,48 @@ class BrowserURL:
             url_tail = url_tail.replace(url_marker, self.__url_spec[url_marker])
 
         return urljoin(self.__base_url, url_tail)
+
+
+class Condition(threading.Condition):
+
+    """Subclass of ``threading.Condition`` with ``wait`` overridden.
+
+    In this implementation, ``wait`` only releases the lock if other
+    threads are actually waiting for the lock, otherwise it does nothing.
+
+    """
+
+    def __init__(self, lock=None):
+        super().__init__(lock=lock)
+        self.thread_count = 0
+
+    def __enter__(self):
+        self.thread_count += 1
+        return super().__enter__()
+
+    def __exit__(self, *args):
+        self.thread_count -= 1
+        return super().__exit__(*args)
+
+    def wait(self, timeout=None):
+        """Wait if other threads are trying to acquire the lock.
+
+        If other threads have attempted to acquire the lock for this Condition
+        using ``with``, this method behaves the same as ``wait`` on a regular
+        ``threading.Condition``.
+
+        If only one thread has attempted to acquire the lock, then that thread
+        must be the current thread. In that case, this method doesn't release
+        the lock or wait at all, it simply returns ``True`` as if it had been
+        woken by ``threading.Condition.notify``.
+
+        """
+        if not super()._is_owned:
+            raise RuntimeError("cannot wait on un-acquired lock")
+
+        if self.thread_count > 1:
+            return super().wait(timeout)
+        return True
 
 
 def get_hostname():
