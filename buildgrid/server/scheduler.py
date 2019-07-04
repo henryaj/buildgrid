@@ -22,14 +22,12 @@ Schedules jobs.
 import bisect
 from datetime import timedelta
 import logging
-import time
-from threading import Condition, Lock
+from threading import Lock
 
 from buildgrid._enums import LeaseState, OperationStage
 from buildgrid._exceptions import NotFoundError
 from buildgrid.server.job import Job
 from buildgrid.server.persistence import DataStore
-from buildgrid.settings import MAX_JOB_BLOCK_TIME
 from buildgrid.utils import BrowserURL
 
 
@@ -44,37 +42,17 @@ class Scheduler:
 
         self.__build_metadata_queues = None
 
-        self.__operations_by_stage = None
-        self.__leases_by_state = None
         self.__queue_time_average = None
         self.__retries_count = 0
 
         self._action_cache = action_cache
         self._action_browser_url = action_browser_url
 
-        self.__jobs_by_action = {}  # Action to Job 1:1 mapping
-        self.__jobs_by_operation = {}  # Operation to Job 1:1 mapping
-        self.__jobs_by_name = {}  # Name to Job 1:1 mapping
-
         self.__delete_lock = Lock()  # Lock protecting deletion of jobs
-
-        self.__queue = []
-        self.__queue_lock = Lock()
-        self.__queue_condition = Condition(lock=self.__queue_lock)
 
         self._is_instrumented = False
         if monitor:
             self.activate_monitoring()
-
-        jobs = DataStore.load_unfinished_jobs() or []
-        for job in jobs:
-            self.__jobs_by_action[job.action_digest.hash] = job
-            self.__jobs_by_name[job.name] = job
-            for operation in job.list_operations():
-                self.__jobs_by_operation[operation] = job
-            if job.operation_stage == OperationStage.QUEUED:
-                with self.__queue_lock:
-                    bisect.insort(self.__queue, job)
 
     # --- Public API ---
 
@@ -88,14 +66,15 @@ class Scheduler:
 
     def list_current_jobs(self):
         """Returns a list of the :class:`Job` names currently managed."""
-        return self.__jobs_by_name.keys()
+        jobs = DataStore.get_all_jobs()
+        return [job.name for job in jobs]
 
     def list_job_operations(self, job_name):
         """Returns a list of :class:`Operation` names for a :class:`Job`."""
-        if job_name in self.__jobs_by_name:
-            return self.__jobs_by_name[job_name].list_operations()
-        else:
-            return []
+        job = DataStore.get_job_by_name(job_name)
+        if job is not None:
+            return job.list_operations()
+        return []
 
     # --- Public API: REAPI ---
 
@@ -113,16 +92,12 @@ class Scheduler:
         Raises:
             NotFoundError: If no job with `job_name` exists.
         """
-        try:
-            job = self.__jobs_by_name[job_name]
+        job = DataStore.get_job_by_name(job_name)
 
-        except KeyError:
-            raise NotFoundError("Job name does not exist: [{}]"
-                                .format(job_name))
+        if job is None:
+            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
 
         operation_name = job.register_new_operation_peer(peer, message_queue)
-
-        self.__jobs_by_operation[operation_name] = job
 
         return operation_name
 
@@ -140,10 +115,9 @@ class Scheduler:
         Raises:
             NotFoundError: If no operation with `operation_name` exists.
         """
-        try:
-            job = self.__jobs_by_operation[operation_name]
+        job = DataStore.get_job_by_operation(operation_name)
 
-        except KeyError:
+        if job is None:
             raise NotFoundError("Operation name does not exist: [{}]"
                                 .format(operation_name))
 
@@ -160,20 +134,19 @@ class Scheduler:
             NotFoundError: If no operation with `operation_name` exists.
         """
         with self.__delete_lock:
-            try:
-                job = self.__jobs_by_operation[operation_name]
+            job = DataStore.get_job_by_operation(operation_name)
 
-            except KeyError:
+            if job is None:
                 raise NotFoundError("Operation name does not exist: [{}]"
                                     .format(operation_name))
 
             job.unregister_operation_peer(operation_name, peer)
 
             if not job.n_peers_for_operation(operation_name):
-                del self.__jobs_by_operation[operation_name]
+                DataStore.delete_operation(operation_name)
 
             if not job.n_peers and job.done and not job.lease:
-                self._delete_job(job.name)
+                DataStore.delete_job(job.name)
 
     def queue_job_action(self, action, action_digest, platform_requirements=None,
                          priority=0, skip_cache_lookup=False):
@@ -196,8 +169,8 @@ class Scheduler:
         Returns:
             str: the newly created job's name.
         """
-        if action_digest.hash in self.__jobs_by_action and not action.do_not_cache:
-            job = self.__jobs_by_action[action_digest.hash]
+        job = DataStore.get_job_by_action(action_digest)
+        if job is not None and not action.do_not_cache:
             # If existing job has been cancelled or isn't
             # cacheable, create a new one.
             if not job.cancelled and not job.do_not_cache:
@@ -206,7 +179,7 @@ class Scheduler:
                     job.priority = priority
 
                     if job.operation_stage == OperationStage.QUEUED:
-                        self._queue_job(job.name)
+                        DataStore.queue_job(job.name)
 
                 self.__logger.debug("Job deduplicated for action [%s]: [%s]",
                                     action_digest.hash[:8], job.name)
@@ -224,9 +197,6 @@ class Scheduler:
         self.__logger.debug("Job created for action [%s]: [%s]",
                             action_digest.hash[:8], job.name)
 
-        self.__jobs_by_action[job.action_digest.hash] = job
-        self.__jobs_by_name[job.name] = job
-
         operation_stage = None
 
         if self._action_cache is not None and not skip_cache_lookup:
@@ -241,11 +211,11 @@ class Scheduler:
 
             except NotFoundError:
                 operation_stage = OperationStage.QUEUED
-                self._queue_job(job.name)
+                DataStore.queue_job(job.name)
 
         else:
             operation_stage = OperationStage.QUEUED
-            self._queue_job(job.name)
+            DataStore.queue_job(job.name)
 
         self._update_job_operation_stage(job.name, operation_stage)
 
@@ -260,10 +230,9 @@ class Scheduler:
         Raises:
             NotFoundError: If no operation with `operation_name` exists.
         """
-        try:
-            job = self.__jobs_by_operation[operation_name]
+        job = DataStore.get_job_by_operation(operation_name)
 
-        except KeyError:
+        if job is None:
             raise NotFoundError("Operation name does not exist: [{}]"
                                 .format(operation_name))
 
@@ -278,10 +247,9 @@ class Scheduler:
         Raises:
             NotFoundError: If no operation with `operation_name` exists.
         """
-        try:
-            job = self.__jobs_by_operation[operation_name]
+        job = DataStore.get_job_by_operation(operation_name)
 
-        except KeyError:
+        if job is None:
             raise NotFoundError("Operation name does not exist: [{}]"
                                 .format(operation_name))
 
@@ -297,14 +265,13 @@ class Scheduler:
             NotFoundError: If no operation with `operation_name` exists.
         """
         with self.__delete_lock:
-            try:
-                job = self.__jobs_by_operation[operation_name]
+            job = DataStore.get_job_by_operation(operation_name)
 
-            except KeyError:
+            if job is None:
                 raise NotFoundError("Operation name does not exist: [{}]"
                                     .format(operation_name))
             if not job.n_peers and job.done and not job.lease:
-                self._delete_job(job.name)
+                DataStore.delete_job(job.name)
 
     # --- Public API: RWAPI ---
 
@@ -318,30 +285,21 @@ class Scheduler:
             timeout (int): time to block waiting on job queue, caps if longer
                 than MAX_JOB_BLOCK_TIME
         """
-        start = time.time()
-        if not timeout and not self.__queue:
-            return []
+        job = DataStore.get_next_runnable_job(worker_capabilities, timeout=timeout)
+        if job is not None:
+            self.__logger.info("Job scheduled to run: [%s]", job.name)
 
-        with self.__queue_condition:
-            leases = self._assign_lease(worker_capabilities)
+            lease = job.lease
 
-            self.__queue_condition.notify()
+            if not lease:
+                # For now, one lease at a time:
+                lease = job.create_lease()
 
-            if timeout:
-                # Cap the timeout if it's larger than MAX_JOB_BLOCK_TIME
-                timeout = min(timeout, MAX_JOB_BLOCK_TIME)
-                deadline = start + timeout
-                while not leases and time.time() < deadline:
-                    ready = self.__queue_condition.wait(timeout=deadline - time.time())
-                    if not ready:
-                        # If we ran out of time waiting for the condition variable,
-                        # give up early.
-                        break
+            if lease:
+                job.mark_worker_started()
+                return [lease]
 
-                    leases = self._assign_lease(worker_capabilities, deadline=deadline)
-                    self.__queue_condition.notify()
-
-        return leases
+        return []
 
     def update_job_lease_state(self, job_name, lease):
         """Requests a state transition for a job's current :class:Lease.
@@ -356,10 +314,9 @@ class Scheduler:
         Raises:
             NotFoundError: If no job with `job_name` exists.
         """
-        try:
-            job = self.__jobs_by_name[job_name]
+        job = DataStore.get_job_by_name(job_name)
 
-        except KeyError:
+        if job is None:
             raise NotFoundError("Job name does not exist: [{}]".format(job_name))
 
         lease_state = LeaseState(lease.state)
@@ -369,19 +326,9 @@ class Scheduler:
             job.update_lease_state(LeaseState.PENDING)
             operation_stage = OperationStage.QUEUED
 
-            if self._is_instrumented:
-                self.__leases_by_state[LeaseState.PENDING].add(lease.id)
-                self.__leases_by_state[LeaseState.ACTIVE].discard(lease.id)
-                self.__leases_by_state[LeaseState.COMPLETED].discard(lease.id)
-
         elif lease_state == LeaseState.ACTIVE:
             job.update_lease_state(LeaseState.ACTIVE)
             operation_stage = OperationStage.EXECUTING
-
-            if self._is_instrumented:
-                self.__leases_by_state[LeaseState.PENDING].discard(lease.id)
-                self.__leases_by_state[LeaseState.ACTIVE].add(lease.id)
-                self.__leases_by_state[LeaseState.COMPLETED].discard(lease.id)
 
         elif lease_state == LeaseState.COMPLETED:
             job.update_lease_state(LeaseState.COMPLETED,
@@ -392,11 +339,6 @@ class Scheduler:
                 self._action_cache.update_action_result(job.action_digest, job.action_result)
 
             operation_stage = OperationStage.COMPLETED
-
-            if self._is_instrumented:
-                self.__leases_by_state[LeaseState.PENDING].discard(lease.id)
-                self.__leases_by_state[LeaseState.ACTIVE].discard(lease.id)
-                self.__leases_by_state[LeaseState.COMPLETED].add(lease.id)
 
         self._update_job_operation_stage(job_name, operation_stage)
 
@@ -412,10 +354,9 @@ class Scheduler:
         Raises:
             NotFoundError: If no job with `job_name` exists.
         """
-        try:
-            job = self.__jobs_by_name[job_name]
+        job = DataStore.get_job_by_name(job_name)
 
-        except KeyError:
+        if job is None:
             raise NotFoundError("Job name does not exist: [{}]".format(job_name))
 
         operation_stage = None
@@ -426,7 +367,7 @@ class Scheduler:
 
         else:
             operation_stage = OperationStage.QUEUED
-            self._queue_job(job.name)
+            DataStore.queue_job(job.name)
 
             job.update_lease_state(LeaseState.PENDING)
 
@@ -444,10 +385,9 @@ class Scheduler:
         Raises:
             NotFoundError: If no job with `job_name` exists.
         """
-        try:
-            job = self.__jobs_by_name[job_name]
+        job = DataStore.get_job_by_name(job_name)
 
-        except KeyError:
+        if job is None:
             raise NotFoundError("Job name does not exist: [{}]".format(job_name))
 
         return job.lease
@@ -462,16 +402,15 @@ class Scheduler:
             NotFoundError: If no job with `job_name` exists.
         """
         with self.__delete_lock:
-            try:
-                job = self.__jobs_by_name[job_name]
+            job = DataStore.get_job_by_name(job_name)
 
-            except KeyError:
+            if job is None:
                 raise NotFoundError("Job name does not exist: [{}]".format(job_name))
 
             job.delete_lease()
 
             if not job.n_peers and job.done:
-                self._delete_job(job.name)
+                DataStore.delete_job(job.name)
 
     def get_job_lease_cancelled(self, job_name):
         """Returns true if the lease is cancelled.
@@ -482,10 +421,9 @@ class Scheduler:
         Raises:
             NotFoundError: If no job with `job_name` exists.
         """
-        try:
-            job = self.__jobs_by_name[job_name]
+        job = DataStore.get_job_by_name(job_name)
 
-        except KeyError:
+        if job is None:
             raise NotFoundError("Job name does not exist: [{}]".format(job_name))
 
         return job.lease_cancelled
@@ -503,19 +441,8 @@ class Scheduler:
 
         self.__build_metadata_queues = []
 
-        self.__operations_by_stage = {}
-        self.__leases_by_state = {}
         self.__queue_time_average = 0, timedelta()
         self.__retries_count = 0
-
-        self.__operations_by_stage[OperationStage.CACHE_CHECK] = set()
-        self.__operations_by_stage[OperationStage.QUEUED] = set()
-        self.__operations_by_stage[OperationStage.EXECUTING] = set()
-        self.__operations_by_stage[OperationStage.COMPLETED] = set()
-
-        self.__leases_by_state[LeaseState.PENDING] = set()
-        self.__leases_by_state[LeaseState.ACTIVE] = set()
-        self.__leases_by_state[LeaseState.COMPLETED] = set()
 
         self._is_instrumented = True
 
@@ -528,8 +455,6 @@ class Scheduler:
 
         self.__build_metadata_queues = None
 
-        self.__operations_by_stage = None
-        self.__leases_by_state = None
         self.__queue_time_average = None
         self.__retries_count = 0
 
@@ -538,30 +463,20 @@ class Scheduler:
             self.__build_metadata_queues.append(message_queue)
 
     def query_n_jobs(self):
-        return len(self.__jobs_by_name)
+        return len(DataStore.get_all_jobs())
 
     def query_n_operations(self):
         # For now n_operations == n_jobs:
-        return len(self.__jobs_by_operation)
+        return len(DataStore.get_all_operations())
 
     def query_n_operations_by_stage(self, operation_stage):
-        try:
-            if self.__operations_by_stage is not None:
-                return len(self.__operations_by_stage[operation_stage])
-        except KeyError:
-            pass
-        return 0
+        return len(DataStore.get_operations_by_stage(operation_stage))
 
     def query_n_leases(self):
-        return len(self.__jobs_by_name)
+        return len(DataStore.get_all_jobs())
 
     def query_n_leases_by_state(self, lease_state):
-        try:
-            if self.__leases_by_state is not None:
-                return len(self.__leases_by_state[lease_state])
-        except KeyError:
-            pass
-        return 0
+        return len(DataStore.get_leases_by_state(lease_state))
 
     def query_n_retries(self):
         return self.__retries_count
@@ -573,37 +488,6 @@ class Scheduler:
 
     # --- Private API ---
 
-    def _queue_job(self, job_name):
-        """Schedules a job."""
-        job = self.__jobs_by_name[job_name]
-
-        with self.__queue_lock:
-            if job.operation_stage != OperationStage.QUEUED:
-                bisect.insort(self.__queue, job)
-                self.__logger.info("Job queued: [%s]", job.name)
-            else:
-                self.__logger.info("Job already queued: [%s]", job.name)
-                self.__queue.sort()
-
-    def _delete_job(self, job_name):
-        """Drops an entry from the internal list of jobs."""
-        job = self.__jobs_by_name[job_name]
-
-        del self.__jobs_by_action[job.action_digest.hash]
-        del self.__jobs_by_name[job.name]
-
-        self.__logger.info("Job deleted: [%s]", job.name)
-
-        if self._is_instrumented:
-            self.__operations_by_stage[OperationStage.CACHE_CHECK].discard(job.name)
-            self.__operations_by_stage[OperationStage.QUEUED].discard(job.name)
-            self.__operations_by_stage[OperationStage.EXECUTING].discard(job.name)
-            self.__operations_by_stage[OperationStage.COMPLETED].discard(job.name)
-
-            self.__leases_by_state[LeaseState.PENDING].discard(job.name)
-            self.__leases_by_state[LeaseState.ACTIVE].discard(job.name)
-            self.__leases_by_state[LeaseState.COMPLETED].discard(job.name)
-
     def _update_job_operation_stage(self, job_name, operation_stage):
         """Requests a stage transition for the job's :class:Operations.
 
@@ -611,44 +495,21 @@ class Scheduler:
             job_name (str): name of the job to query.
             operation_stage (OperationStage): the stage to transition to.
         """
-        job = self.__jobs_by_name[job_name]
+        job = DataStore.get_job_by_name(job_name)
 
         if operation_stage == OperationStage.CACHE_CHECK:
             job.update_operation_stage(OperationStage.CACHE_CHECK)
 
-            if self._is_instrumented:
-                self.__operations_by_stage[OperationStage.CACHE_CHECK].add(job_name)
-                self.__operations_by_stage[OperationStage.QUEUED].discard(job_name)
-                self.__operations_by_stage[OperationStage.EXECUTING].discard(job_name)
-                self.__operations_by_stage[OperationStage.COMPLETED].discard(job_name)
-
         elif operation_stage == OperationStage.QUEUED:
             job.update_operation_stage(OperationStage.QUEUED)
 
-            if self._is_instrumented:
-                self.__operations_by_stage[OperationStage.CACHE_CHECK].discard(job_name)
-                self.__operations_by_stage[OperationStage.QUEUED].add(job_name)
-                self.__operations_by_stage[OperationStage.EXECUTING].discard(job_name)
-                self.__operations_by_stage[OperationStage.COMPLETED].discard(job_name)
-
         elif operation_stage == OperationStage.EXECUTING:
             job.update_operation_stage(OperationStage.EXECUTING)
-
-            if self._is_instrumented:
-                self.__operations_by_stage[OperationStage.CACHE_CHECK].discard(job_name)
-                self.__operations_by_stage[OperationStage.QUEUED].discard(job_name)
-                self.__operations_by_stage[OperationStage.EXECUTING].add(job_name)
-                self.__operations_by_stage[OperationStage.COMPLETED].discard(job_name)
 
         elif operation_stage == OperationStage.COMPLETED:
             job.update_operation_stage(OperationStage.COMPLETED)
 
             if self._is_instrumented:
-                self.__operations_by_stage[OperationStage.CACHE_CHECK].discard(job_name)
-                self.__operations_by_stage[OperationStage.QUEUED].discard(job_name)
-                self.__operations_by_stage[OperationStage.EXECUTING].discard(job_name)
-                self.__operations_by_stage[OperationStage.COMPLETED].add(job_name)
-
                 average_order, average_time = self.__queue_time_average
 
                 average_order += 1
@@ -668,60 +529,3 @@ class Scheduler:
 
                     for message_queue in self.__build_metadata_queues:
                         message_queue.put(message)
-
-    def _assign_lease(self, worker_capabilities, deadline=None):
-        index = 0
-        while index < len(self.__queue):
-            if deadline is not None and time.time() >= deadline:
-                break
-
-            job = self.__queue[index]
-
-            # Don't queue a cancelled job, it would be unable to get a lease anyway
-            if job.cancelled:
-                self.__logger.debug("Dropping cancelled job: [%s] from queue", job.name)
-                del self.__queue[index]
-                continue
-
-            if self._worker_is_capable(worker_capabilities, job):
-                self.__logger.info("Job scheduled to run: [%s]", job.name)
-
-                lease = job.lease
-
-                if not lease:
-                    # For now, one lease at a time:
-                    lease = job.create_lease()
-
-                if lease:
-                    job.mark_worker_started()
-                    del self.__queue[index]
-                    return [lease]
-
-            index += 1
-        return []
-
-    def _worker_is_capable(self, worker_capabilities, job):
-        """Returns whether the worker is suitable to run the job."""
-        # TODO: Replace this with the logic defined in the Platform msg. standard.
-
-        job_requirements = job.platform_requirements
-        # For now we'll only check OS and ISA properties as defined by
-        # https://github.com/bazelbuild/remote-apis/blob/master/build/bazel/remote/execution/v2/platform.md
-
-        if not job_requirements:
-            return True
-
-        # OSFamily:
-        worker_oses = worker_capabilities.get('OSFamily', set())
-        job_oses = job_requirements.get('OSFamily', set())
-        if job_oses and not (job_oses & worker_oses):
-            return False
-
-        # ISAs:
-        worker_isas = worker_capabilities.get('ISA', [])
-        job_isas = job_requirements.get('ISA', None)
-
-        if job_isas and not (job_isas & worker_isas):
-            return False
-
-        return True
