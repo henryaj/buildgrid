@@ -309,26 +309,40 @@ def test_load_unfinished_jobs(database):
     assert jobs[0].name == "test-job"
 
 
-def test_get_next_runnable_job(database):
+def test_assign_lease_for_next_job(database):
     populate_database()
+
+    def cb(j):
+        lease = j.lease
+        if not lease:
+            lease = j.create_lease()
+        if lease:
+            j.mark_worker_started()
+            return [lease]
+        return []
 
     # The highest priority runnable job with requirements matching these
     # capabilities is other-job, which is priority 5 and only requires linux
-    job = DataStore.get_next_runnable_job({"os": ["linux"]})
-    assert job.name == "other-job"
+    leases = DataStore.assign_lease_for_next_job({"os": ["linux"]}, cb)
+    assert len(leases) == 1
+    assert leases[0].id == "other-job"
+
+    DataStore.queue_job("other-job")
 
     # The highest priority runnable job for these capabilities is still
     # other-job, since priority 5 is more urgent than the priority 20 of
     # example-job. test-job has priority 1, but its requirements are not
     # fulfilled by these capabilities
-    job = DataStore.get_next_runnable_job({"os": ["linux"], "generic": ["requirement"]})
-    assert job.name == "other-job"
+    leases = DataStore.assign_lease_for_next_job({"os": ["linux"], "generic": ["requirement"]}, cb)
+    assert len(leases) == 1
+    assert leases[0].id == "other-job"
 
     # The highest priority runnable job for this magical machine which has
     # multiple values for the `os` capability is test-job, since its requirements
     # are fulfilled and it has priority 1, compared with priority 5 for other-job
-    job = DataStore.get_next_runnable_job({"os": ["linux", "solaris"]})
-    assert job.name == "test-job"
+    leases = DataStore.assign_lease_for_next_job({"os": ["linux", "solaris"]}, cb)
+    assert len(leases) == 1
+    assert leases[0].id == "test-job"
 
 
 def test_to_internal_job(database):

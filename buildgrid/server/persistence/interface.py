@@ -26,6 +26,42 @@ class DataStoreInterface(ABC):  # pragma: no cover
     """
 
     @abstractmethod
+    def activate_monitoring(self):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def deactivate_monitoring(self):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_job_by_action(self, action_digest):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_job_by_name(self, name):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_job_by_operation(self, operation):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_all_jobs(self):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_operations_by_stage(self, operation_stage):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_all_operations(self):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_leases_by_state(self, lease_state):
+        raise NotImplementedError()
+
+    @abstractmethod
     def create_job(self, job):
         raise NotImplementedError()
 
@@ -50,9 +86,17 @@ class DataStoreInterface(ABC):  # pragma: no cover
         raise NotImplementedError()
 
     @abstractmethod
+    def delete_job(self, job_name):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def delete_operation(self, operation_name):
+        raise NotImplementedError()
+
+    @abstractmethod
     def load_unfinished_jobs(self):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_next_runnable_job(self, capabilities):
+    def assign_lease_for_next_job(self, capabilities, callback, timeout=None):
         raise NotImplementedError()

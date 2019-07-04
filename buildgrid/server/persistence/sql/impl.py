@@ -25,6 +25,7 @@ from sqlalchemy.orm.session import sessionmaker
 from sqlalchemy.exc import OperationalError
 
 from ...._enums import OperationStage
+from ....settings import MAX_JOB_BLOCK_TIME
 from ..interface import DataStoreInterface
 from .models import digest_to_string, Job, Lease, Operation, PlatformRequirement
 
@@ -36,6 +37,7 @@ class SQLDataStore(DataStoreInterface):
 
     def __init__(self, *, connection_string="sqlite:///", automigrate=False, retry_limit=10):
         self.__logger = logging.getLogger(__name__)
+        self.__logger.info("Using SQL data store interface")
 
         self.automigrate = automigrate
         self.retry_limit = retry_limit
@@ -47,6 +49,16 @@ class SQLDataStore(DataStoreInterface):
                             os.path.join(os.path.dirname(__file__), "alembic"))
         cfg.set_main_option("sqlalchemy.url", connection_string)
         self._create_db(cfg)
+
+    def activate_monitoring(self):
+        # Don't do anything. This function needs to exist but there's no
+        # need to actually toggle monitoring in this implementation.
+        pass
+
+    def deactivate_monitoring(self):
+        # Don't do anything. This function needs to exist but there's no
+        # need to actually toggle monitoring in this implementation.
+        pass
 
     def _create_db(self, config):
         retries = 0
@@ -71,9 +83,37 @@ class SQLDataStore(DataStoreInterface):
         finally:
             session.close()
 
-    def _get_job(self, job_name, session):
-        jobs = session.query(Job).filter_by(name=job_name)
+    def _get_job(self, job_name, session, with_for_update=False):
+        jobs = session.query(Job)
+        if with_for_update:
+            jobs = jobs.with_for_update()
+        jobs = jobs.filter_by(name=job_name)
         return jobs.first()
+
+    def get_job_by_action(self, action_digest):
+        with self.session() as session:
+            jobs = session.query(Job).filter_by(action_digest=digest_to_string(action_digest))
+            jobs = jobs.filter(Job.stage != OperationStage.COMPLETED.value)
+            job = jobs.first()
+            if not job:
+                return None
+            return job.to_internal_job()
+
+    def get_job_by_name(self, name):
+        with self.session() as session:
+            job = self._get_job(name, session)
+            return job.to_internal_job()
+
+    def get_job_by_operation(self, operation_name):
+        with self.session() as session:
+            operation = self._get_operation(operation_name, session)
+            job = operation.job
+            return job.to_internal_job()
+
+    def get_all_jobs(self):
+        with self.session() as session:
+            jobs = session.query(Job)
+            return [j.to_internal_job() for j in jobs]
 
     def create_job(self, job):
         with self.session() as session:
@@ -97,14 +137,38 @@ class SQLDataStore(DataStoreInterface):
                     worker_completed_timestamp=job.worker_completed_timestamp.ToDatetime()
                 ))
 
+    def queue_job(self, job_name):
+        with self.session() as session:
+            job = self._get_job(job_name, session, with_for_update=True)
+            job.assigned = False
+
     def update_job(self, job_name, changes):
         with self.session() as session:
             job = self._get_job(job_name, session)
             job.update(changes)
 
+    def delete_job(self, job_name):
+        # Don't do anything. This function needs to exist but there's no
+        # need to actually delete jobs in this implementation.
+        pass
+
     def _get_operation(self, operation_name, session):
         operations = session.query(Operation).filter_by(name=operation_name)
         return operations.first()
+
+    def get_operations_by_stage(self, operation_stage):
+        with self.session() as session:
+            operations = session.query(Operation)
+            operations = operations.filter(Operation.job.has(stage=operation_stage.value))
+            operations = operations.all()
+            # Return a set of job names here for now, to match the `MemoryDataStore`
+            # implementation's behaviour
+            return set(op.job.name for op in operations)
+
+    def get_all_operations(self):
+        with self.session() as session:
+            operations = session.query(Operation)
+            return [op.name for op in operations]
 
     def create_operation(self, operation, job_name):
         with self.session() as session:
@@ -119,13 +183,28 @@ class SQLDataStore(DataStoreInterface):
             operation = self._get_operation(operation_name, session)
             operation.update(changes)
 
+    def delete_operation(self, operation_name):
+        # Don't do anything. This function needs to exist but there's no
+        # need to actually delete operations in this implementation.
+        pass
+
+    def get_leases_by_state(self, lease_state):
+        with self.session() as session:
+            leases = session.query(Lease).filter_by(state=lease_state.value)
+            leases = leases.all()
+            # `lease.job_name` is the same as `lease.id` for a Lease protobuf
+            return set(lease.job_name for lease in leases)
+
+    def _create_lease(self, lease, session):
+        session.add(Lease(
+            job_name=lease.id,
+            state=lease.state,
+            status=None
+        ))
+
     def create_lease(self, lease):
         with self.session() as session:
-            session.add(Lease(
-                job_name=lease.id,
-                state=lease.state,
-                status=None
-            ))
+            self._create_lease(lease, session)
 
     def update_lease(self, job_name, changes):
         with self.session() as session:
@@ -140,9 +219,10 @@ class SQLDataStore(DataStoreInterface):
             jobs = jobs.order_by(Job.priority)
             return [j.to_internal_job() for j in jobs.all()]
 
-    # NOTE(SotK): This isn't actually used anywhere yet
-    def get_next_runnable_job(self, capabilities):
-        """Return the highest priority job that can be run by a worker.
+    def assign_lease_for_next_job(self, capabilities, callback, timeout=None):
+        """Return a list of leases for the highest priority jobs that can be run by a worker.
+
+        NOTE: Currently the list only ever has one or zero leases.
 
         Query the jobs table to find queued jobs which match the capabilities of
         a given worker, and return the one with the highest priority. Takes a
@@ -151,12 +231,34 @@ class SQLDataStore(DataStoreInterface):
         :param capabilities: Dictionary of worker capabilities to compare
             with job requirements when finding a job.
         :type capabilities: dict
-        :returns: A job
+        :param callback: Function to run on the next runnable job, should return
+            a list of leases.
+        :type callback: function
+        :param timeout: time to wait for new jobs, caps if longer
+            than MAX_JOB_BLOCK_TIME.
+        :type timeout: int
+        :returns: List of leases
 
         """
+        if not timeout:
+            return self._assign_job_leases(capabilities, callback)
+
+        # Cap the timeout if it's larger than MAX_JOB_BLOCK_TIME
+        if timeout:
+            timeout = min(timeout, MAX_JOB_BLOCK_TIME)
+
+        start = time.time()
+        while time.time() + 1 - start < timeout:
+            leases = self._assign_job_leases(capabilities, callback)
+            if leases is not None:
+                return leases
+            time.sleep(0.5)
+
+    def _assign_job_leases(self, capabilities, callback):
         with self.session() as session:
             jobs = session.query(Job).with_for_update()
             jobs = jobs.filter(Job.stage == OperationStage.QUEUED.value)
+            jobs = jobs.filter(Job.assigned != True)  # noqa
 
             # Filter to find just jobs that either don't have requirements, or
             # jobs with requirement keys that are a subset of the worker's
@@ -188,4 +290,13 @@ class SQLDataStore(DataStoreInterface):
 
             jobs = jobs.order_by(Job.priority)
             job = jobs.first()
-            return job.to_internal_job()
+            if job:
+                internal_job = job.to_internal_job(self.storage, self.response_cache)
+                leases = callback(internal_job)
+                if leases:
+                    job.assigned = True
+                    job.worker_start_timestamp = internal_job.worker_start_timestamp.ToDatetime()
+                for lease in leases:
+                    self._create_lease(lease, session)
+                return leases
+            return None
