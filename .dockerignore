@@ -9,6 +9,7 @@
 !README.rst
 !requirements.txt
 !requirements.auth.txt
+!requirements.db.txt
 !requirements.tests.txt
 !setup.cfg
 !setup.py
