@@ -43,6 +43,11 @@ deployments, by making use of the external database support recently added to
 share state between an arbitrary number of ExecutionService and BotsService
 instances.
 
+We're also working on implementing an indexed CAS server to faciliate a faster
+FindMissingBlobs() and CAS cleanup. See
+https://gitlab.com/BuildGrid/buildgrid/issues/181
+for more details.
+
 
 .. _getting-started:
 
