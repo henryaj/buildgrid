@@ -54,7 +54,7 @@ class Peer:
             if uid in cls.__peers_by_uid:
                 existing_peer = cls.__peers_by_uid[uid]
                 logging.getLogger(__name__).debug('Registering another instance '
-                                                  'of Peer with uid {} ', uid)
+                                                  'of Peer with uid %s ', uid)
                 existing_peer.__instance_count += 1
                 return existing_peer
             else:

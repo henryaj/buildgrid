@@ -50,6 +50,9 @@ class Scheduler:
 
         self.__delete_lock = Lock()  # Lock protecting deletion of jobs
 
+        self.__operations_by_peer = {}
+        self.__peer_message_queues = {}
+
         self._is_instrumented = False
         if monitor:
             self.activate_monitoring()
@@ -97,7 +100,8 @@ class Scheduler:
         if job is None:
             raise NotFoundError("Job name does not exist: [{}]".format(job_name))
 
-        operation_name = job.register_new_operation_peer(peer, message_queue)
+        operation_name = job.register_new_operation_peer(
+            peer, message_queue, self.__operations_by_peer, self.__peer_message_queues)
 
         return operation_name
 
@@ -121,7 +125,11 @@ class Scheduler:
             raise NotFoundError("Operation name does not exist: [{}]"
                                 .format(operation_name))
 
-        job.register_operation_peer(operation_name, peer, message_queue)
+        job.register_operation_peer(operation_name,
+                                    peer,
+                                    message_queue,
+                                    self.__operations_by_peer,
+                                    self.__peer_message_queues)
 
     def unregister_job_operation_peer(self, operation_name, peer):
         """Unsubscribes to one of the job's :class:`Operation` stage change.
@@ -141,11 +149,13 @@ class Scheduler:
                                     .format(operation_name))
 
             job.unregister_operation_peer(operation_name, peer)
+            self.__operations_by_peer[peer].remove(operation_name)
+            self.__peer_message_queues[peer].pop(operation_name)
 
-            if not job.n_peers_for_operation(operation_name):
+            if not job.n_peers_for_operation(operation_name, self.__operations_by_peer):
                 DataStore.delete_operation(operation_name)
 
-            if not job.n_peers and job.done and not job.lease:
+            if not job.n_peers(self.__operations_by_peer) and job.done and not job.lease:
                 DataStore.delete_job(job.name)
 
     def queue_job_action(self, action, action_digest, platform_requirements=None,
@@ -253,7 +263,8 @@ class Scheduler:
             raise NotFoundError("Operation name does not exist: [{}]"
                                 .format(operation_name))
 
-        job.cancel_operation(operation_name)
+        job.cancel_operation(
+            operation_name, self.__operations_by_peer, self.__peer_message_queues)
 
     def delete_job_operation(self, operation_name):
         """"Removes a job.
@@ -270,7 +281,7 @@ class Scheduler:
             if job is None:
                 raise NotFoundError("Operation name does not exist: [{}]"
                                     .format(operation_name))
-            if not job.n_peers and job.done and not job.lease:
+            if not job.n_peers(self.__operations_by_peer) and job.done and not job.lease:
                 DataStore.delete_job(job.name)
 
     # --- Public API: RWAPI ---
@@ -410,7 +421,7 @@ class Scheduler:
 
             job.delete_lease()
 
-            if not job.n_peers and job.done:
+            if not job.n_peers(self.__operations_by_peer) and job.done:
                 DataStore.delete_job(job.name)
 
     def get_job_lease_cancelled(self, job_name):
@@ -499,16 +510,24 @@ class Scheduler:
         job = DataStore.get_job_by_name(job_name)
 
         if operation_stage == OperationStage.CACHE_CHECK:
-            job.update_operation_stage(OperationStage.CACHE_CHECK)
+            job.update_operation_stage(OperationStage.CACHE_CHECK,
+                                       self.__operations_by_peer,
+                                       self.__peer_message_queues)
 
         elif operation_stage == OperationStage.QUEUED:
-            job.update_operation_stage(OperationStage.QUEUED)
+            job.update_operation_stage(OperationStage.QUEUED,
+                                       self.__operations_by_peer,
+                                       self.__peer_message_queues)
 
         elif operation_stage == OperationStage.EXECUTING:
-            job.update_operation_stage(OperationStage.EXECUTING)
+            job.update_operation_stage(OperationStage.EXECUTING,
+                                       self.__operations_by_peer,
+                                       self.__peer_message_queues)
 
         elif operation_stage == OperationStage.COMPLETED:
-            job.update_operation_stage(OperationStage.COMPLETED)
+            job.update_operation_stage(OperationStage.COMPLETED,
+                                       self.__operations_by_peer,
+                                       self.__peer_message_queues)
 
             if self._is_instrumented:
                 average_order, average_time = self.__queue_time_average
