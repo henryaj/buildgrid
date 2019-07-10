@@ -33,9 +33,11 @@ from buildgrid.server.cas.storage.remote import RemoteStorage
 from buildgrid.server.cas.storage.s3 import S3Storage
 from buildgrid.server.cas.storage.with_cache import WithCacheStorage
 from buildgrid.server.persistence import DataStore
+from buildgrid.server.persistence.mem.impl import MemoryDataStore
 from buildgrid.server.persistence.sql.impl import SQLDataStore
 
 from ..cli import Context
+from ..._enums import DataStoreType
 
 
 class YamlFactory(yaml.YAMLObject):
@@ -272,28 +274,37 @@ class Execution(YamlFactory):
     yaml_tag = u'!execution'
 
     def __new__(cls, storage, action_cache=None, action_browser_url=None, data_store=None):
-        if data_store:
-            try:
-                store_type = data_store.pop('type')
-            except KeyError:
-                click.echo("Data store definition must have a 'type' key.", err=True)
-                sys.exit(-1)
+        # If the configuration doesn't define a data store type, fallback to the
+        # in-memory data store implementation from the old scheduler.
+        if not data_store:
+            data_store = {"type": "mem"}
 
-            if store_type == "sql":
-                implementation_class = SQLDataStore
-            else:
-                click.echo("Backend type '%s' doesn't exist" % store_type, err=True)
-                sys.exit(-1)
+        try:
+            store_type = data_store.pop('type')
+        except KeyError:
+            click.echo("Data store definition must have a 'type' key.", err=True)
+            sys.exit(-1)
 
-            try:
-                DataStore.backend = implementation_class(**data_store)
-            except TypeError:
-                spec = getfullargspec(implementation_class)
-                invalid_args = yaml.dump([arg for arg in data_store.keys()
-                                          if arg not in spec.kwonlyargs])
-                click.echo("The following arguments are unsupported for a data store "
-                           "with type '%s':\n\n%s" % (store_type, invalid_args), err=True)
-                sys.exit(-1)
+        try:
+            store_type = DataStoreType(store_type.lower())
+        except ValueError:
+            click.echo("Backend type '%s' doesn't exist" % store_type, err=True)
+            sys.exit(-1)
+
+        if store_type == DataStoreType.SQL:
+            implementation_class = SQLDataStore
+        elif store_type == DataStoreType.MEM:
+            implementation_class = MemoryDataStore
+
+        try:
+            DataStore.backend = implementation_class(**data_store)
+        except TypeError:
+            spec = getfullargspec(implementation_class)
+            invalid_args = yaml.dump([arg for arg in data_store.keys()
+                                      if arg not in spec.kwonlyargs])
+            click.echo("The following arguments are unsupported for a data store "
+                       "with type '%s':\n\n%s" % (store_type, invalid_args), err=True)
+            sys.exit(-1)
 
         return ExecutionController(storage, action_cache, action_browser_url)
 

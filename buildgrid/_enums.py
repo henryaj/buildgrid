@@ -101,3 +101,8 @@ class MetricRecordType(Enum):
     TIMER = monitoring_pb2.MetricRecord.Type.Value('TIMER')
     # A metric in arbitrary value.
     GAUGE = monitoring_pb2.MetricRecord.Type.Value('GAUGE')
+
+
+class DataStoreType(Enum):
+    MEM = "mem"
+    SQL = "sql"
