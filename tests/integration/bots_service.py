@@ -162,7 +162,7 @@ def test_unmet_platform_requirements(bot_session, context, instance):
     action_digest = remote_execution_pb2.Digest(hash='gaff')
     _inject_work(instance._instances[""]._scheduler,
                  action_digest=action_digest,
-                 platform_requirements={'os': set('wonderful-os')})
+                 platform_requirements={'OSFamily': set('wonderful-os')})
 
     response = instance.CreateBotSession(request, context)
 

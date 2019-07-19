@@ -679,20 +679,21 @@ class Scheduler:
         # TODO: Replace this with the logic defined in the Platform msg. standard.
 
         job_requirements = job.platform_requirements
-        # For now we'll only check OS and ISA properties.
+        # For now we'll only check OS and ISA properties as defined by
+        # https://github.com/bazelbuild/remote-apis/blob/master/build/bazel/remote/execution/v2/platform.md
 
         if not job_requirements:
             return True
 
-        # OS:
-        worker_oses = worker_capabilities.get('os', set())
-        job_oses = job_requirements.get('os', set())
+        # OSFamily:
+        worker_oses = worker_capabilities.get('OSFamily', set())
+        job_oses = job_requirements.get('OSFamily', set())
         if job_oses and not (job_oses & worker_oses):
             return False
 
         # ISAs:
-        worker_isas = worker_capabilities.get('isa', [])
-        job_isas = job_requirements.get('isa', None)
+        worker_isas = worker_capabilities.get('ISA', [])
+        job_isas = job_requirements.get('ISA', None)
 
         if job_isas and not (job_isas & worker_isas):
             return False
