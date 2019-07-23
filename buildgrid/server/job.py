@@ -548,13 +548,14 @@ class Job:
         Note:
             This will not cancel the job's :class:`Operation`.
         """
-        self.__worker_start_timestamp.Clear()
-        self.__worker_completed_timestamp.Clear()
+        if self._lease is not None:
+            self.__worker_start_timestamp.Clear()
+            self.__worker_completed_timestamp.Clear()
 
-        self.__logger.debug("Lease deleted for job [%s]: [%s]",
-                            self._name, self._lease.id)
+            self.__logger.debug("Lease deleted for job [%s]: [%s]",
+                                self._name, self._lease.id)
 
-        self._lease = None
+            self._lease = None
 
     # --- Public API: Monitoring ---
 
