@@ -1,0 +1,91 @@
+##
+# BuildGrid's Docker Compose manifest.
+#
+#   ¡FOR LOCAL DEVELOPMENT ONLY!
+#
+# Spins-up a 'local' grid instance:
+#   - Controller at http://localhost:50051
+#   - CAS + AC at: http://localhost:50052
+#
+# Basic usage:
+#  - docker-compose build
+#  - docker-compose up --scale bots=10
+#  - docker-compose down
+#  - docker volume inspect buildgrid_data
+#  - docker volume rm buildgrid_data
+#  - docker image rm buildgrid:local
+#
+version: "3.2"
+
+services:
+  database:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: bgd
+      POSTGRES_PASSWORD: insecure
+      POSTGRES_DB: bgd
+    volumes:
+      - type: volume
+        source: db
+        target: /var/lib/postgresql/data
+    networks:
+      - backend
+    ports:
+      - "5432:5432"
+
+  controller:
+    build:
+      context: .
+    image: buildgrid:local
+    command: [
+      "server", "start", "-vvv",
+      "/app/config/bazel.conf"]
+    volumes:
+      - type: bind
+        source: ./data/config/controller.conf
+        target: /app/config/controller.conf
+      - type: volume
+        source: data
+        target: /var/lib/buildgrid/store
+        volume:
+          nocopy: true
+    ports:
+      - "50051:50051"
+    networks:
+      - backend
+      - host
+
+  bots:  # To be scaled horizontaly
+    image: buildgrid:local
+    command: [
+      "bot", "--parent=",
+      "--remote=http://controller:50051",
+      "--remote-cas=http://controller:50051",
+      "host-tools"]
+    #   "bot", "--parent=",
+    #   "--remote=http://controller:50051",
+    #   "--remote-cas=http://storage:50052",
+    #   "buildbox",
+    #   "--local-cas", "/var/lib/buildgrid/cache",
+    #   "--fuse-dir", "/mnt"]
+    privileged: true
+    volumes:
+      - type: volume
+        source: cache
+        target: /var/lib/buildgrid/cache
+      - type: bind
+        source: ./data/bin
+        target: /app/tools
+    depends_on:
+      - controller
+    networks:
+      - backend
+
+networks:
+  backend:
+  host:
+
+volumes:
+  cache:
+  data:
+  db:
