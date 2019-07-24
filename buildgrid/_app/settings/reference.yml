@@ -61,7 +61,7 @@ instances:
     #  action-cache     - REAPI ActionCache service.
     #  bytestream       - Google APIs ByteStream service.
     #  cas              - REAPI ContentAddressableStorage service.
-    #  execution        - REAPI Execution + RWAPI ots services.
+    #  execution        - REAPI Execution + RWAPI Bots services.
     #  reference-cache  - BuildStream ReferenceStorage service.
     services:
       - !action-cache &main-action
@@ -88,6 +88,20 @@ instances:
         ##
         # Base URL for external build action (web) browser service.
         action-browser-url: http://localhost:8080
+        ##
+        # Configuration for the data store used to store state.
+        data-store:
+          ##
+          # Type of the data store to use. Supported types:
+          #  sql - SQL database with a driver supported by SQLAlchemy
+          type: sql
+          ##
+          # URI for connecting to the SQL database.
+          connection_string: postgresql://bgd:insecure@database/bgd
+          ##
+          # Whether or not to automatically run database migrations
+          # when starting the server
+          automigrate: yes
 
       - !cas
         ##
