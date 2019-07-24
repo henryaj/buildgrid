@@ -42,8 +42,8 @@ services:
       "/app/config/bazel.conf"]
     volumes:
       - type: bind
-        source: ./data/config/controller.conf
-        target: /app/config/controller.conf
+        source: ./data/config/bazel.conf
+        target: /app/config/bazel.conf
       - type: volume
         source: data
         target: /var/lib/buildgrid/store
