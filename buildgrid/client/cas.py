@@ -504,8 +504,9 @@ class Downloader:
         for file_node in root_directory.files:
             file_path = os.path.join(root_path, file_node.name)
 
-            self._queue_file(file_node.digest, file_path,
-                             is_executable=file_node.is_executable)
+            self.download_file(file_node.digest, file_path,
+                               is_executable=file_node.is_executable)
+        self.flush()
 
         # ii) Directories:
         pending_directory_digests = []
