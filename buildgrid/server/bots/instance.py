@@ -149,9 +149,11 @@ class BotsInterface:
                     worker_capabilities[device_property.key].add(device_property.value)
 
             # If the client specified deadline is less than NETWORK_TIMEOUT,
-            # the response shouldn't wait for a NETWORK_TIMEOUT.
+            # the response shouldn't long poll for work.
             if deadline and (deadline > NETWORK_TIMEOUT):
                 deadline = deadline - NETWORK_TIMEOUT
+            else:
+                deadline = None
 
             leases = self._scheduler.request_job_leases(
                 worker_capabilities,
