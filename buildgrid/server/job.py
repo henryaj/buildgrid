@@ -572,6 +572,9 @@ class Job:
         new_operation = operations_pb2.Operation()
         new_operation.CopyFrom(operation)
 
+        new_operation.metadata.Pack(self.__operation_metadata)
+        new_operation.response.Pack(self.__execute_response)
+
         return new_operation
 
     def _update_operation(self, operation, operation_metadata, execute_response=None, done=False):
