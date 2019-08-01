@@ -32,8 +32,9 @@ from buildgrid.server.persistence import DataStore
 class Job:
 
     def __init__(self, do_not_cache, action_digest, platform_requirements=None, priority=0,
-                 name=None, operations=(), lease=None, stage=OperationStage.UNKNOWN.value,
-                 cancelled=False, queued_timestamp=Timestamp(), queued_time_duration=Duration(),
+                 name=None, operations=(), cancelled_operations=set(), lease=None,
+                 stage=OperationStage.UNKNOWN.value, cancelled=False,
+                 queued_timestamp=Timestamp(), queued_time_duration=Duration(),
                  worker_start_timestamp=Timestamp(), worker_completed_timestamp=Timestamp(),
                  done=False, result=None, worker_name=None):
         self.__logger = logging.getLogger(__name__)
@@ -59,9 +60,7 @@ class Job:
         self.__worker_completed_timestamp.CopyFrom(worker_completed_timestamp)
 
         self.__operations_by_name = {op.name: op for op in operations}  # Name to Operation 1:1 mapping
-        self.__operations_cancelled = set()
-        if cancelled:
-            self.__operations_cancelled = set(op.name for op in operations)
+        self.__operations_cancelled = cancelled_operations
         self.__lease_cancelled = cancelled
         self.__job_cancelled = cancelled
 
@@ -399,7 +398,11 @@ class Job:
 
         if self.__job_cancelled:
             self.__operation_metadata.stage = OperationStage.COMPLETED.value
-            DataStore.update_job(self.name, {"stage": OperationStage.COMPLETED.value})
+            changes = {
+                "stage": OperationStage.COMPLETED.value,
+                "cancelled": True
+            }
+            DataStore.update_job(self.name, changes)
             if self._lease is not None:
                 self.cancel_lease()
 
@@ -611,7 +614,7 @@ class Job:
         operation.response.Pack(cancelled_execute_response)
 
         operation.done = True
-        changes = {"done": True}
+        changes = {"done": True, "cancelled": True}
         DataStore.update_operation(operation.name, changes)
 
     def _send_operations_updates(self, peers=None, notify_cancelled=False,

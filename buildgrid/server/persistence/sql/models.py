@@ -124,6 +124,7 @@ class Job(Base):
             priority=self.priority,
             name=self.name,
             operations=[op.to_protobuf() for op in self.operations],
+            cancelled_operations=set(op.name for op in self.operations if op.cancelled),
             lease=lease,
             stage=self.stage,
             cancelled=self.cancelled,
@@ -162,6 +163,7 @@ class Operation(Base):
     name = Column(String, primary_key=True)
     job_name = Column(String, ForeignKey('jobs.name'), index=True, nullable=False)
     done = Column(Boolean, default=False, nullable=False)
+    cancelled = Column(Boolean, default=False, nullable=False)
 
     def to_protobuf(self):
         operation = operations_pb2.Operation()
