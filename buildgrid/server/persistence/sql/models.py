@@ -22,7 +22,9 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
 from ...._enums import LeaseState
-from ...._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Digest, ExecuteOperationMetadata
+from ...._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Digest
+from ...._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import ExecuteOperationMetadata
+from ...._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import ExecuteResponse
 from ...._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from ...._protos.google.longrunning import operations_pb2
 from ... import job
@@ -83,7 +85,7 @@ class Job(Base):
 
     platform_requirements = relationship('PlatformRequirement', backref='job')
 
-    def to_internal_job(self):
+    def to_internal_job(self, storage, cache):
         # There should never be more than one active lease for a job. If we
         # have more than one for some reason, just take the first one.
         # TODO(SotK): Log some information here if there are multiple active
@@ -107,6 +109,14 @@ class Job(Base):
             values = requirements.setdefault(req.key, set())
             values.add(req.value)
 
+        if self.name in cache:
+            result = cache[self.name]
+        elif self.result is not None:
+            result_digest = string_to_digest(self.result)
+            result = storage.get_message(result_digest, ExecuteResponse)
+        else:
+            result = None
+
         return job.Job(
             self.do_not_cache,
             string_to_digest(self.action_digest),
@@ -121,7 +131,8 @@ class Job(Base):
             queued_time_duration=q_time_duration,
             worker_start_timestamp=ws_timestamp,
             worker_completed_timestamp=wc_timestamp,
-            done=all(op.done for op in self.operations) and len(self.operations) > 0
+            done=all(op.done for op in self.operations) and len(self.operations) > 0,
+            result=result
         )
 
 

@@ -349,6 +349,7 @@ class Scheduler:
             if (self._action_cache is not None and
                     self._action_cache.allow_updates and not job.do_not_cache):
                 self._action_cache.update_action_result(job.action_digest, job.action_result)
+            DataStore.store_response(job)
 
             operation_stage = OperationStage.COMPLETED
 

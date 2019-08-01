@@ -25,6 +25,7 @@ import pytest
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
+from buildgrid.server.cas.storage import lru_memory_cache
 from buildgrid.server.controller import ExecutionController
 from buildgrid.server.job import LeaseState, BotStatus
 from buildgrid.server.bots import service
@@ -60,9 +61,10 @@ def controller():
 # Instance to test
 @pytest.fixture(params=["mem", "sql"])
 def instance(controller, request):
+    storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
     if request.param == "sql":
         _, db = tempfile.mkstemp()
-        DataStore.backend = SQLDataStore(connection_string="sqlite:///%s" % db, automigrate=True)
+        DataStore.backend = SQLDataStore(storage, connection_string="sqlite:///%s" % db, automigrate=True)
     elif request.param == "mem":
         DataStore.backend = MemoryDataStore(storage)
     try:

@@ -26,7 +26,7 @@ from ..interface import DataStoreInterface
 
 class MemoryDataStore(DataStoreInterface):
 
-    def __init__(self):
+    def __init__(self, storage):
         self.logger = logging.getLogger(__file__)
         self.logger.info("Using in-memory data store interface")
 
@@ -108,6 +108,12 @@ class MemoryDataStore(DataStoreInterface):
 
             for state in LeaseState:
                 self.leases_by_state[state].discard(job.name)
+
+    def store_response(self, job):
+        # The job is always in memory in this implementation, so there's
+        # no need to write anything to the CAS, since the job stays in
+        # memory as long as we need it
+        pass
 
     def get_operations_by_stage(self, operation_stage):
         return self.operations_by_stage.get(operation_stage, set())

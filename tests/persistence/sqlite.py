@@ -23,6 +23,7 @@ import pytest
 
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
+from buildgrid.server.cas.storage import lru_memory_cache
 from buildgrid.server.job import Job
 from buildgrid.server.persistence import DataStore
 from buildgrid.server.persistence.sql import models
@@ -31,8 +32,9 @@ from buildgrid.server.persistence.sql.impl import SQLDataStore
 
 @pytest.fixture()
 def database():
+    storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
     _, db = tempfile.mkstemp()
-    DataStore.backend = SQLDataStore(connection_string="sqlite:///%s" % db, automigrate=True)
+    DataStore.backend = SQLDataStore(storage, connection_string="sqlite:///%s" % db, automigrate=True)
     yield
     DataStore.backend = None
     if os.path.exists(db):
@@ -350,11 +352,11 @@ def test_to_internal_job(database):
 
     with DataStore.backend.session() as session:
         job = session.query(models.Job).filter_by(name="finished-job").first()
-        internal_job = job.to_internal_job()
+        internal_job = job.to_internal_job(DataStore.backend.storage, DataStore.backend.response_cache)
     assert internal_job.operation_stage.value == 4
 
     with DataStore.backend.session() as session:
         job = session.query(models.Job).filter_by(name="cancelled-job").first()
-        internal_job = job.to_internal_job()
+        internal_job = job.to_internal_job(DataStore.backend.storage, DataStore.backend.response_cache)
     assert internal_job.cancelled
     assert internal_job.operation_stage.value == 4

@@ -82,11 +82,12 @@ def controller():
 # Instance to test
 @pytest.fixture(params=["mem", "sql"])
 def instance(controller, request):
+    storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
     if request.param == "sql":
         _, db = tempfile.mkstemp()
-        DataStore.backend = SQLDataStore(connection_string="sqlite:///%s" % db, automigrate=True)
+        DataStore.backend = SQLDataStore(storage, connection_string="sqlite:///%s" % db, automigrate=True)
     elif request.param == "mem":
-        DataStore.backend = MemoryDataStore()
+        DataStore.backend = MemoryDataStore(storage)
     with mock.patch.object(service, 'operations_pb2_grpc'):
         operation_service = OperationsService(server)
         operation_service.add_instance(instance_name, controller.operations_instance)
@@ -101,11 +102,12 @@ def instance(controller, request):
 # Blank instance
 @pytest.fixture(params=["mem", "sql"])
 def blank_instance(controller, request):
+    storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
     if request.param == "sql":
         _, db = tempfile.mkstemp()
-        DataStore.backend = SQLDataStore(connection_string="sqlite:///%s" % db, automigrate=True)
+        DataStore.backend = SQLDataStore(storage, connection_string="sqlite:///%s" % db, automigrate=True)
     elif request.param == "mem":
-        DataStore.backend = MemoryDataStore()
+        DataStore.backend = MemoryDataStore(storage)
     try:
         with mock.patch.object(service, 'operations_pb2_grpc'):
             operation_service = OperationsService(server)

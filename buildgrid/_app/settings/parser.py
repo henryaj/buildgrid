@@ -297,7 +297,7 @@ class Execution(YamlFactory):
             implementation_class = MemoryDataStore
 
         try:
-            DataStore.backend = implementation_class(**data_store)
+            DataStore.backend = implementation_class(storage, **data_store)
         except TypeError:
             spec = getfullargspec(implementation_class)
             invalid_args = yaml.dump([arg for arg in data_store.keys()

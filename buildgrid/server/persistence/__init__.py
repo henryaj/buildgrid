@@ -76,6 +76,11 @@ class DataStore(DataStoreInterface):
             cls.backend.queue_job(job_name)
 
     @classmethod
+    def store_response(cls, job):
+        if cls.backend is not None:
+            cls.backend.store_response(job)
+
+    @classmethod
     def create_operation(cls, operation, job_name):
         if cls.backend is not None:
             cls.backend.create_operation(operation, job_name)

@@ -35,9 +35,12 @@ Session = sessionmaker()
 
 class SQLDataStore(DataStoreInterface):
 
-    def __init__(self, *, connection_string="sqlite:///", automigrate=False, retry_limit=10):
+    def __init__(self, storage, *, connection_string="sqlite:///", automigrate=False, retry_limit=10):
         self.__logger = logging.getLogger(__name__)
         self.__logger.info("Using SQL data store interface")
+
+        self.storage = storage
+        self.response_cache = {}
 
         self.automigrate = automigrate
         self.retry_limit = retry_limit
@@ -97,23 +100,23 @@ class SQLDataStore(DataStoreInterface):
             job = jobs.first()
             if not job:
                 return None
-            return job.to_internal_job()
+            return job.to_internal_job(self.storage, self.response_cache)
 
     def get_job_by_name(self, name):
         with self.session() as session:
             job = self._get_job(name, session)
-            return job.to_internal_job()
+            return job.to_internal_job(self.storage, self.response_cache)
 
     def get_job_by_operation(self, operation_name):
         with self.session() as session:
             operation = self._get_operation(operation_name, session)
             job = operation.job
-            return job.to_internal_job()
+            return job.to_internal_job(self.storage, self.response_cache)
 
     def get_all_jobs(self):
         with self.session() as session:
             jobs = session.query(Job)
-            return [j.to_internal_job() for j in jobs]
+            return [j.to_internal_job(self.storage, self.response_cache) for j in jobs]
 
     def create_job(self, job):
         with self.session() as session:
@@ -136,6 +139,7 @@ class SQLDataStore(DataStoreInterface):
                     worker_start_timestamp=job.worker_start_timestamp.ToDatetime(),
                     worker_completed_timestamp=job.worker_completed_timestamp.ToDatetime()
                 ))
+                self.response_cache[job.name] = job.execute_response
 
     def queue_job(self, job_name):
         with self.session() as session:
@@ -143,14 +147,23 @@ class SQLDataStore(DataStoreInterface):
             job.assigned = False
 
     def update_job(self, job_name, changes):
+        if "result" in changes:
+            changes["result"] = digest_to_string(changes["result"])
+        if "action_digest" in changes:
+            changes["action_digest"] = digest_to_string(changes["action_digest"])
+
         with self.session() as session:
             job = self._get_job(job_name, session)
             job.update(changes)
 
     def delete_job(self, job_name):
-        # Don't do anything. This function needs to exist but there's no
-        # need to actually delete jobs in this implementation.
-        pass
+        if job_name in self.response_cache:
+            del self.response_cache[job_name]
+
+    def store_response(self, job):
+        digest = self.storage.put_message(job.execute_response)
+        self.update_job(job.name, {"result": digest})
+        self.response_cache[job.name] = job.execute_response
 
     def _get_operation(self, operation_name, session):
         operations = session.query(Operation).filter_by(name=operation_name)
@@ -217,7 +230,7 @@ class SQLDataStore(DataStoreInterface):
             jobs = session.query(Job)
             jobs = jobs.filter(Job.stage != OperationStage.COMPLETED.value)
             jobs = jobs.order_by(Job.priority)
-            return [j.to_internal_job() for j in jobs.all()]
+            return [j.to_internal_job(self.storage, self.response_cache) for j in jobs.all()]
 
     def assign_lease_for_next_job(self, capabilities, callback, timeout=None):
         """Return a list of leases for the highest priority jobs that can be run by a worker.
