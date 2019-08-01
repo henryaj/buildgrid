@@ -35,14 +35,16 @@ class Job:
                  name=None, operations=(), lease=None, stage=OperationStage.UNKNOWN.value,
                  cancelled=False, queued_timestamp=Timestamp(), queued_time_duration=Duration(),
                  worker_start_timestamp=Timestamp(), worker_completed_timestamp=Timestamp(),
-                 done=False):
+                 done=False, result=None):
         self.__logger = logging.getLogger(__name__)
 
         self._name = name or str(uuid.uuid4())
         self._priority = priority
         self._lease = lease
 
-        self.__execute_response = remote_execution_pb2.ExecuteResponse()
+        self.__execute_response = result
+        if result is None:
+            self.__execute_response = remote_execution_pb2.ExecuteResponse()
         self.__operation_metadata = remote_execution_pb2.ExecuteOperationMetadata()
 
         self.__queued_timestamp = Timestamp()
@@ -158,6 +160,16 @@ class Job:
             return self.__execute_response.result
         else:
             return None
+
+    @property
+    def execute_response(self):
+        return self.__execute_response
+
+    @execute_response.setter
+    def execute_response(self, response):
+        self.__execute_response = response
+        for operation in self.__operations_by_name.values():
+            operation.response.Pack(self.__execute_response)
 
     @property
     def holds_cached_result(self):

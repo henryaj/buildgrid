@@ -65,6 +65,7 @@ class Job(Base):
     queued_time_duration = Column(Integer)
     worker_start_timestamp = Column(DateTime)
     worker_completed_timestamp = Column(DateTime)
+    result = Column(String)
 
     leases = relationship('Lease', backref='job')
     active_states = [
