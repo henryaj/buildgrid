@@ -66,6 +66,7 @@ class Job(Base):
     worker_start_timestamp = Column(DateTime)
     worker_completed_timestamp = Column(DateTime)
     result = Column(String)
+    assigned = Column(Boolean, default=False)
 
     leases = relationship('Lease', backref='job')
     active_states = [
