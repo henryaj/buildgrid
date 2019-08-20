@@ -21,6 +21,7 @@ import tempfile
 
 import pytest
 
+from buildgrid._enums import LeaseState, OperationStage
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 from buildgrid.server.cas.storage import lru_memory_cache
@@ -195,6 +196,48 @@ def test_rollback(database):
         assert job is not None
 
 
+def test_get_job_by_action(database):
+    populate_database()
+    job = DataStore.get_job_by_action("notarealjob")
+    assert job is None
+
+    # Ensure that get_job_by_action doesn't get completed jobs.
+    # Actions aren't unique in the job history, so we only care
+    # about the one that is currently incomplete (if any).
+    job = DataStore.get_job_by_action(models.string_to_digest("finished-action/35"))
+    assert job is None
+
+    job = DataStore.get_job_by_action(models.string_to_digest("extra-action/50"))
+    assert job.name == "extra-job"
+    assert job.priority == 20
+
+
+def test_get_job_by_name(database):
+    populate_database()
+    job = DataStore.get_job_by_name("notarealjob")
+    assert job is None
+
+    job = DataStore.get_job_by_name("extra-job")
+    assert job.name == "extra-job"
+    assert job.priority == 20
+
+
+def test_get_job_by_operation(database):
+    populate_database()
+    job = DataStore.get_job_by_operation("notarealjob")
+    assert job is None
+
+    job = DataStore.get_job_by_operation("extra-operation")
+    assert job.name == "extra-job"
+    assert job.priority == 20
+
+
+def test_get_all_jobs(database):
+    populate_database()
+    jobs = DataStore.get_all_jobs()
+    assert len(jobs) == 3
+
+
 def test_create_job(database):
     job_name = "test-job"
     job = Job(do_not_cache=False,
@@ -221,6 +264,39 @@ def test_update_job(database):
         job = session.query(models.Job).filter_by(name=job_name).first()
         assert job is not None
         assert job.priority == 1
+
+
+def test_delete_job(database):
+    populate_database()
+    job = DataStore.get_job_by_name("test-job")
+    DataStore.store_response(job)
+    assert "test-job" in DataStore.backend.response_cache
+
+    DataStore.delete_job("test-job")
+    assert "test-job" not in DataStore.backend.response_cache
+
+
+def test_store_response(database):
+    populate_database()
+    job = DataStore.get_job_by_name("test-job")
+    DataStore.store_response(job)
+
+    updated = DataStore.get_job_by_name("test-job")
+    assert updated.execute_response is not None
+    assert "test-job" in DataStore.backend.response_cache
+    assert DataStore.backend.response_cache["test-job"] is not None
+
+
+def test_get_operations_by_stage(database):
+    populate_database()
+    operations = DataStore.get_operations_by_stage(OperationStage(4))
+    assert len(operations) == 2
+
+
+def test_get_all_operations(database):
+    populate_database()
+    operations = DataStore.get_all_operations()
+    assert len(operations) == 5
 
 
 def test_create_operation(database):
@@ -264,6 +340,12 @@ def test_update_operation(database):
         assert op.job.name == job_name
         assert op.name == op_name
         assert op.done
+
+
+def test_get_leases_by_state(database):
+    populate_database()
+    leases = DataStore.get_leases_by_state(LeaseState(1))
+    assert len(leases) == 2
 
 
 def test_create_lease(database):
@@ -317,7 +399,7 @@ def test_assign_lease_for_next_job(database):
     def cb(j):
         lease = j.lease
         if not lease:
-            lease = j.create_lease()
+            lease = j.create_lease("test-suite")
         if lease:
             j.mark_worker_started()
             return [lease]
