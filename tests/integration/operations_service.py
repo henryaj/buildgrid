@@ -278,15 +278,13 @@ def test_cancel_operation(instance, controller, execute_request, context):
 
     instance.CancelOperation(request, context)
 
-    request = operations_pb2.ListOperationsRequest(name=instance_name)
-    response = instance.ListOperations(request, context)
+    request = operations_pb2.GetOperationRequest()
+    request.name = "{}/{}".format(instance_name, operation_name)
+    response = instance.GetOperation(request, context)
 
-    assert len(response.operations) == 1
-
-    for operation in response.operations:
-        operation_metadata = remote_execution_pb2.ExecuteOperationMetadata()
-        operation.metadata.Unpack(operation_metadata)
-        assert operation_metadata.stage == OperationStage.COMPLETED.value
+    operation_metadata = remote_execution_pb2.ExecuteOperationMetadata()
+    response.metadata.Unpack(operation_metadata)
+    assert operation_metadata.stage == OperationStage.COMPLETED.value
 
 
 def test_cancel_operation_blank(blank_instance, context):

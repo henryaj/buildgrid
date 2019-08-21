@@ -115,7 +115,7 @@ class SQLDataStore(DataStoreInterface):
 
     def get_all_jobs(self):
         with self.session() as session:
-            jobs = session.query(Job)
+            jobs = session.query(Job).filter(Job.stage != OperationStage.COMPLETED.value)
             return [j.to_internal_job(self.storage, self.response_cache) for j in jobs]
 
     def create_job(self, job):
