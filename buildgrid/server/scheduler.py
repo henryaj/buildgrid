@@ -19,10 +19,11 @@ Scheduler
 Schedules jobs.
 """
 
+import bisect
 from datetime import timedelta
 import logging
-from queue import PriorityQueue, Empty
-from threading import Lock
+import time
+from threading import Condition, Lock
 
 from buildgrid._enums import LeaseState, OperationStage
 from buildgrid._exceptions import NotFoundError
@@ -57,8 +58,9 @@ class Scheduler:
 
         self.__delete_lock = Lock()  # Lock protecting deletion of jobs
 
-        self.__queue = PriorityQueue()
+        self.__queue = []
         self.__queue_lock = Lock()
+        self.__queue_condition = Condition(lock=self.__queue_lock)
 
         self._is_instrumented = False
         if monitor:
@@ -71,7 +73,8 @@ class Scheduler:
             for operation in job.list_operations():
                 self.__jobs_by_operation[operation] = job
             if job.operation_stage == OperationStage.QUEUED:
-                self.__queue.put(job)
+                with self.__queue_lock:
+                    bisect.insort(self.__queue, job)
 
     # --- Public API ---
 
@@ -202,6 +205,9 @@ class Scheduler:
                 if priority < job.priority:
                     job.priority = priority
 
+                    if job.operation_stage == OperationStage.QUEUED:
+                        self._queue_job(job.name)
+
                 self.__logger.debug("Job deduplicated for action [%s]: [%s]",
                                     action_digest.hash[:8], job.name)
 
@@ -312,43 +318,30 @@ class Scheduler:
             timeout (int): time to block waiting on job queue, caps if longer
                 than MAX_JOB_BLOCK_TIME
         """
-        if not timeout and self.__queue.empty():
+        start = time.time()
+        if not timeout and not self.__queue:
             return []
 
-        # Cap the timeout if it's larger than MAX_JOB_BLOCK_TIME
-        if timeout:
-            timeout = min(timeout, MAX_JOB_BLOCK_TIME)
+        with self.__queue_condition:
+            leases = self._assign_lease(worker_capabilities)
 
-        try:
-            job = (self.__queue.get(block=True, timeout=timeout)
-                   if timeout
-                   else self.__queue.get(block=False))
-        except Empty:
-            return []
+            self.__queue_condition.notify()
 
-        # Don't queue a cancelled job, it would be unable to get a lease anyway
-        if job.cancelled:
-            self.__logger.debug("Dropping cancelled job: [%s] from queue", job.name)
-            return []
+            if timeout:
+                # Cap the timeout if it's larger than MAX_JOB_BLOCK_TIME
+                timeout = min(timeout, MAX_JOB_BLOCK_TIME)
+                deadline = start + timeout
+                while not leases and time.time() < deadline:
+                    ready = self.__queue_condition.wait(timeout=deadline - time.time())
+                    if not ready:
+                        # If we ran out of time waiting for the condition variable,
+                        # give up early.
+                        break
 
-        if self._worker_is_capable(worker_capabilities, job):
-            self.__logger.info("Job scheduled to run: [%s]", job.name)
+                    leases = self._assign_lease(worker_capabilities, deadline=deadline)
+                    self.__queue_condition.notify()
 
-            lease = job.lease
-
-            if not lease:
-                # For now, one lease at a time:
-                lease = job.create_lease()
-
-            if lease:
-                job.mark_worker_started()
-                return [lease]
-
-        # If we get here, we claimed a valid job but couldn't handle it. Re-enqueue it.
-        # The job is added to the queue explicitly instead of using _queue_job since the
-        # latter function doesn't add jobs in the QUEUED operation stage to the queue.
-        self.__queue.put(job)
-        return []
+        return leases
 
     def update_job_lease_state(self, job_name, lease):
         """Requests a state transition for a job's current :class:Lease.
@@ -584,11 +577,13 @@ class Scheduler:
         """Schedules a job."""
         job = self.__jobs_by_name[job_name]
 
-        if job.operation_stage != OperationStage.QUEUED:
-            self.__queue.put(job)
-            self.__logger.info("Job queued: [%s]", job.name)
-        else:
-            self.__logger.info("Job already queued: [%s]", job.name)
+        with self.__queue_lock:
+            if job.operation_stage != OperationStage.QUEUED:
+                bisect.insort(self.__queue, job)
+                self.__logger.info("Job queued: [%s]", job.name)
+            else:
+                self.__logger.info("Job already queued: [%s]", job.name)
+                self.__queue.sort()
 
     def _delete_job(self, job_name):
         """Drops an entry from the internal list of jobs."""
@@ -673,6 +668,37 @@ class Scheduler:
 
                     for message_queue in self.__build_metadata_queues:
                         message_queue.put(message)
+
+    def _assign_lease(self, worker_capabilities, deadline=None):
+        index = 0
+        while index < len(self.__queue):
+            if deadline is not None and time.time() >= deadline:
+                break
+
+            job = self.__queue[index]
+
+            # Don't queue a cancelled job, it would be unable to get a lease anyway
+            if job.cancelled:
+                self.__logger.debug("Dropping cancelled job: [%s] from queue", job.name)
+                del self.__queue[index]
+                continue
+
+            if self._worker_is_capable(worker_capabilities, job):
+                self.__logger.info("Job scheduled to run: [%s]", job.name)
+
+                lease = job.lease
+
+                if not lease:
+                    # For now, one lease at a time:
+                    lease = job.create_lease()
+
+                if lease:
+                    job.mark_worker_started()
+                    del self.__queue[index]
+                    return [lease]
+
+            index += 1
+        return []
 
     def _worker_is_capable(self, worker_capabilities, job):
         """Returns whether the worker is suitable to run the job."""
