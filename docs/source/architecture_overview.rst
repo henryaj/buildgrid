@@ -46,6 +46,12 @@ represented like this:
 	style=filled,
 	shape=box]
 
+	database [label = "Database",
+	color="#8a2be2",
+	fillcolor="#9370db",
+	style=filled,
+	shape=box]
+
 	subgraph cluster_controller{
 	    label = "Controller";
 	    labeljust = "c";
@@ -82,6 +88,14 @@ represented like this:
 	client -> controller [
 	    dir = "both",
 	    headlabel = "REAPI",
+	    labelangle = 20.0,
+	    labeldistance = 9,
+	    labelfontsize = 15.0,
+	    lhead=cluster_controller];
+
+	 database -> controller [
+	    dir = "both",
+	    headlabel = "SQL",
 	    labelangle = 20.0,
 	    labeldistance = 9,
 	    labelfontsize = 15.0,
@@ -132,6 +146,12 @@ following diagram shows a typical setup.
 		fillcolor="#37c1e8",
 		style=filled,
 		shape=box]
+	
+        database [label = "Database",
+	          color="#8a2be2",
+	          fillcolor="#9370db",
+	          style=filled,
+	          shape=box]
 
 	cas [label="CAS",
 	     color="#840202",
@@ -168,6 +188,9 @@ following diagram shows a typical setup.
 	}
 
 	client -> controller [
+	    dir="both"];
+
+	database -> controller [
 	    dir="both"];
 
 	client -> cas [
