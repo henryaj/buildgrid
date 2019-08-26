@@ -44,10 +44,16 @@ class Job:
         self.__execute_response = remote_execution_pb2.ExecuteResponse()
         self.__operation_metadata = remote_execution_pb2.ExecuteOperationMetadata()
 
-        self.__queued_timestamp = queued_timestamp
-        self.__queued_time_duration = queued_time_duration
-        self.__worker_start_timestamp = worker_start_timestamp
-        self.__worker_completed_timestamp = worker_completed_timestamp
+        self.__queued_timestamp = Timestamp()
+        self.__queued_timestamp.CopyFrom(queued_timestamp)
+
+        self.__queued_time_duration = Duration()
+        self.__queued_time_duration.CopyFrom(queued_time_duration)
+
+        self.__worker_start_timestamp = Timestamp()
+        self.__worker_start_timestamp.CopyFrom(worker_start_timestamp)
+        self.__worker_completed_timestamp = Timestamp()
+        self.__worker_completed_timestamp.CopyFrom(worker_completed_timestamp)
 
         self.__operations_message_queues = {}
         self.__operations_by_name = {op.name: op for op in operations}  # Name to Operation 1:1 mapping
