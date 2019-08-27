@@ -46,7 +46,7 @@ BuildGrid's Command Line Interface (CLI) reference documentation.
 .. _invoking-bgd-bot-buildbox:
 
 .. click:: buildgrid._app.commands.cmd_bot:run_buildbox
-   :prog: bgd bot buildbot
+   :prog: bgd bot buildbox
 
 ----
 
