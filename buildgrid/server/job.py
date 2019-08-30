@@ -196,10 +196,6 @@ class Job:
 
     def mark_worker_started(self):
         self.__worker_start_timestamp.GetCurrentTime()
-        changes = {
-            "worker_start_timestamp": self.__worker_start_timestamp.ToDatetime()
-        }
-        DataStore.update_job(self.name, changes)
 
     def set_action_url(self, url):
         """Generates a CAS browser URL for the job's action."""
@@ -462,16 +458,15 @@ class Job:
         self._lease.id = self._name
         self._lease.payload.Pack(self.__operation_metadata.action_digest)
         self._lease.state = LeaseState.UNSPECIFIED.value
-        DataStore.create_lease(self._lease)
 
         self.__logger.debug("Lease created for job [%s]: [%s]",
                             self._name, self._lease.id)
 
-        self.update_lease_state(LeaseState.PENDING)
+        self.update_lease_state(LeaseState.PENDING, skip_lease_persistence=True)
 
         return self._lease
 
-    def update_lease_state(self, state, status=None, result=None):
+    def update_lease_state(self, state, status=None, result=None, skip_lease_persistence=False):
         """Operates a state transition for the job's current :class:`Lease`.
 
         Args:
@@ -529,7 +524,8 @@ class Job:
             self.__execute_response.status.CopyFrom(status)
 
         DataStore.update_job(self.name, job_changes)
-        DataStore.update_lease(self.name, lease_changes)
+        if not skip_lease_persistence:
+            DataStore.update_lease(self.name, lease_changes)
 
     def cancel_lease(self):
         """Triggers a job's :class:`Lease` cancellation.

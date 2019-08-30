@@ -22,5 +22,8 @@ def test_unconfigured_api():
     jobs = DataStore.load_unfinished_jobs()
     assert jobs == []
 
-    job = DataStore.get_next_runnable_job({})
+    def cb(j):
+        return j
+
+    job = DataStore.assign_lease_for_next_job({}, cb)
     assert job is None

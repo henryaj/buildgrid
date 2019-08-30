@@ -285,8 +285,7 @@ class Scheduler:
             timeout (int): time to block waiting on job queue, caps if longer
                 than MAX_JOB_BLOCK_TIME
         """
-        job = DataStore.get_next_runnable_job(worker_capabilities, timeout=timeout)
-        if job is not None:
+        def assign_lease(job):
             self.__logger.info("Job scheduled to run: [%s]", job.name)
 
             lease = job.lease
@@ -298,8 +297,10 @@ class Scheduler:
             if lease:
                 job.mark_worker_started()
                 return [lease]
+            return []
 
-        return []
+        return DataStore.assign_lease_for_next_job(
+            worker_capabilities, assign_lease, timeout=timeout)
 
     def update_job_lease_state(self, job_name, lease):
         """Requests a state transition for a job's current :class:Lease.
