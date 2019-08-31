@@ -55,8 +55,9 @@ Getting started
 ---------------
 
 Please refer to the `documentation`_ for `installation`_ and `usage`_
-instructions.
+instructions, plus guidelines for `contributing`_ to the project.
 
+.. _contributing: https://buildgrid.gitlab.io/buildgrid/contributing.html
 .. _documentation: https://buildgrid.gitlab.io/buildgrid
 .. _installation: https://buildgrid.gitlab.io/buildgrid/installation.html
 .. _usage: https://buildgrid.gitlab.io/buildgrid/using.html
