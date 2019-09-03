@@ -208,11 +208,15 @@ class SQLDataStore(DataStoreInterface):
             # `lease.job_name` is the same as `lease.id` for a Lease protobuf
             return set(lease.job_name for lease in leases)
 
-    def _create_lease(self, lease, session):
+    def _create_lease(self, lease, session, job=None):
+        if job is None:
+            job = self._get_job(lease.id, session)
+            job = job.to_internal_job(self.storage, self.response_cache)
         session.add(Lease(
             job_name=lease.id,
             state=lease.state,
-            status=None
+            status=None,
+            worker_name=job.worker_name
         ))
 
     def create_lease(self, lease):
@@ -310,6 +314,6 @@ class SQLDataStore(DataStoreInterface):
                     job.assigned = True
                     job.worker_start_timestamp = internal_job.worker_start_timestamp.ToDatetime()
                 for lease in leases:
-                    self._create_lease(lease, session)
+                    self._create_lease(lease, session, job=internal_job)
                 return leases
             return None

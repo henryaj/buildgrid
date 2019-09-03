@@ -132,7 +132,8 @@ class Job(Base):
             worker_start_timestamp=ws_timestamp,
             worker_completed_timestamp=wc_timestamp,
             done=all(op.done for op in self.operations) and len(self.operations) > 0,
-            result=result
+            result=result,
+            worker_name=self.active_leases[0].worker_name if self.active_leases else None
         )
 
 

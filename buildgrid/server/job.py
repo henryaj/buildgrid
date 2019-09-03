@@ -35,7 +35,7 @@ class Job:
                  name=None, operations=(), lease=None, stage=OperationStage.UNKNOWN.value,
                  cancelled=False, queued_timestamp=Timestamp(), queued_time_duration=Duration(),
                  worker_start_timestamp=Timestamp(), worker_completed_timestamp=Timestamp(),
-                 done=False, result=None):
+                 done=False, result=None, worker_name=None):
         self.__logger = logging.getLogger(__name__)
 
         self._name = name or str(uuid.uuid4())
@@ -75,6 +75,7 @@ class Job:
             if platform_requirements else dict()
 
         self._done = done
+        self.worker_name = worker_name
 
         DataStore.create_job(self)
 
@@ -444,11 +445,14 @@ class Job:
     def n_tries(self):
         return self._n_tries
 
-    def create_lease(self):
+    def create_lease(self, worker_name):
         """Emits a new :class:`Lease` for the job.
 
         Only one :class:`Lease` can be emitted for a given job. This method
         should only be used once, any further calls are ignored.
+
+        Args:
+            worker_name (string): The name of the worker this lease is for.
         """
         if self._lease is not None:
             return self._lease
@@ -464,6 +468,8 @@ class Job:
                             self._name, self._lease.id)
 
         self.update_lease_state(LeaseState.PENDING, skip_lease_persistence=True)
+
+        self.worker_name = worker_name
 
         return self._lease
 

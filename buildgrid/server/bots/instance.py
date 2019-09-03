@@ -85,7 +85,7 @@ class BotsInterface:
         # We want to keep a copy of lease ids we have assigned
         self._assigned_leases[name] = set()
 
-        self._request_leases(bot_session)
+        self._request_leases(bot_session, name=name)
 
         if self.__debug:
             self.__logger.info("Opened session name=[%s] for bot=[%s], leases=[%s]",
@@ -120,7 +120,7 @@ class BotsInterface:
 
                 bot_session.leases.remove(lease)
 
-        self._request_leases(bot_session, deadline)
+        self._request_leases(bot_session, deadline, name)
 
         self.__logger.debug("Sending session update, name=[%s], for bot=[%s], leases=[%s]",
                             bot_session.name, bot_session.bot_id,
@@ -130,7 +130,7 @@ class BotsInterface:
 
     # --- Private API ---
 
-    def _request_leases(self, bot_session, deadline=None):
+    def _request_leases(self, bot_session, deadline=None, name=None):
         # Only send one lease at a time currently.
         if bot_session.status == BotStatus.OK.value and not bot_session.leases:
             worker_capabilities = {}
@@ -157,7 +157,8 @@ class BotsInterface:
 
             leases = self._scheduler.request_job_leases(
                 worker_capabilities,
-                timeout=deadline)
+                timeout=deadline,
+                worker_name=name)
 
             if leases:
                 for lease in leases:

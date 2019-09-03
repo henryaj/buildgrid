@@ -286,7 +286,7 @@ class Scheduler:
 
     # --- Public API: RWAPI ---
 
-    def request_job_leases(self, worker_capabilities, timeout=None):
+    def request_job_leases(self, worker_capabilities, timeout=None, worker_name=None):
         """Generates a list of the highest priority leases to be run.
 
         Args:
@@ -295,6 +295,7 @@ class Scheduler:
                 request.
             timeout (int): time to block waiting on job queue, caps if longer
                 than MAX_JOB_BLOCK_TIME
+            worker_name (string): name of the worker requesting the leases.
         """
         def assign_lease(job):
             self.__logger.info("Job scheduled to run: [%s]", job.name)
@@ -303,7 +304,7 @@ class Scheduler:
 
             if not lease:
                 # For now, one lease at a time:
-                lease = job.create_lease()
+                lease = job.create_lease(worker_name)
 
             if lease:
                 job.mark_worker_started()
