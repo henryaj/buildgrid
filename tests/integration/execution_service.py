@@ -210,6 +210,28 @@ def test_job_deduplication_in_scheduling(instance, controller, context):
             assert operation_count == 2
 
 
+def test_job_reprioritisation(instance, controller, context):
+    action = remote_execution_pb2.Action(command_digest=command_digest)
+    action_digest = create_digest(action.SerializeToString())
+
+    job_name1 = controller.execution_instance._scheduler.queue_job_action(action,
+                                                                          action_digest,
+                                                                          skip_cache_lookup=True,
+                                                                          priority=10)
+
+    job = DataStore.get_job_by_name(job_name1)
+    assert job.priority == 10
+
+    job_name2 = controller.execution_instance._scheduler.queue_job_action(action,
+                                                                          action_digest,
+                                                                          skip_cache_lookup=True,
+                                                                          priority=1)
+
+    assert job_name1 == job_name2
+    job = DataStore.get_job_by_name(job_name1)
+    assert job.priority == 1
+
+
 @pytest.mark.parametrize("do_not_cache", [True, False])
 def test_do_not_cache_no_deduplication(do_not_cache, instance, controller, context):
     # The default action already has do_not_cache set, so use that
