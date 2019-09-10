@@ -72,7 +72,8 @@ class MemoryDataStore(DataStoreInterface):
         return self.jobs_by_operation.get(name)
 
     def get_all_jobs(self):
-        return self.jobs_by_name.values()
+        return [job for job in self.jobs_by_name.values()
+                if job.operation_stage != OperationStage.COMPLETED]
 
     def create_job(self, job):
         self.jobs_by_action[job.action_digest.hash] = job
