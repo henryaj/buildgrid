@@ -69,6 +69,7 @@ class Job(Base):
     worker_completed_timestamp = Column(DateTime)
     result = Column(String)
     assigned = Column(Boolean, default=False)
+    n_tries = Column(Integer, default=0)
 
     leases = relationship('Lease', backref='job')
     active_states = [
@@ -134,7 +135,8 @@ class Job(Base):
             worker_completed_timestamp=wc_timestamp,
             done=all(op.done for op in self.operations) and len(self.operations) > 0,
             result=result,
-            worker_name=self.active_leases[0].worker_name if self.active_leases else None
+            worker_name=self.active_leases[0].worker_name if self.active_leases else None,
+            n_tries=self.n_tries
         )
 
 

@@ -36,7 +36,7 @@ class Job:
                  stage=OperationStage.UNKNOWN.value, cancelled=False,
                  queued_timestamp=None, queued_time_duration=None,
                  worker_start_timestamp=None, worker_completed_timestamp=None,
-                 done=False, result=None, worker_name=None):
+                 done=False, result=None, worker_name=None, n_tries=0):
         self.__logger = logging.getLogger(__name__)
 
         self._name = name or str(uuid.uuid4())
@@ -73,7 +73,7 @@ class Job:
         self.__operation_metadata.stage = stage
 
         self._do_not_cache = do_not_cache
-        self._n_tries = 0
+        self._n_tries = n_tries
 
         self._platform_requirements = platform_requirements \
             if platform_requirements else dict()
@@ -360,6 +360,7 @@ class Job:
                 self.__queued_timestamp.GetCurrentTime()
                 changes["queued_timestamp"] = self.__queued_timestamp.ToDatetime()
             self._n_tries += 1
+            changes["n_tries"] = self._n_tries
 
         elif self.__operation_metadata.stage == OperationStage.EXECUTING.value:
             queue_in, queue_out = self.__queued_timestamp.ToDatetime(), datetime.utcnow()
