@@ -234,8 +234,8 @@ class MemoryDataStore(DataStoreInterface):
             return False
 
         # ISAs:
-        worker_isas = worker_capabilities.get('ISA', [])
-        job_isas = job_requirements.get('ISA', None)
+        worker_isas = worker_capabilities.get('ISA', set())
+        job_isas = job_requirements.get('ISA', set())
 
         if job_isas and not (job_isas & worker_isas):
             return False
