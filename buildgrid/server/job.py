@@ -34,8 +34,8 @@ class Job:
     def __init__(self, do_not_cache, action_digest, platform_requirements=None, priority=0,
                  name=None, operations=(), cancelled_operations=set(), lease=None,
                  stage=OperationStage.UNKNOWN.value, cancelled=False,
-                 queued_timestamp=Timestamp(), queued_time_duration=Duration(),
-                 worker_start_timestamp=Timestamp(), worker_completed_timestamp=Timestamp(),
+                 queued_timestamp=None, queued_time_duration=None,
+                 worker_start_timestamp=None, worker_completed_timestamp=None,
                  done=False, result=None, worker_name=None):
         self.__logger = logging.getLogger(__name__)
 
@@ -48,16 +48,25 @@ class Job:
             self.__execute_response = remote_execution_pb2.ExecuteResponse()
         self.__operation_metadata = remote_execution_pb2.ExecuteOperationMetadata()
 
-        self.__queued_timestamp = Timestamp()
-        self.__queued_timestamp.CopyFrom(queued_timestamp)
+        if queued_timestamp is not None:
+            self.__queued_timestamp.CopyFrom(queued_timestamp)
+        else:
+            self.__queued_timestamp = Timestamp()
 
-        self.__queued_time_duration = Duration()
-        self.__queued_time_duration.CopyFrom(queued_time_duration)
+        if queued_time_duration is not None:
+            self.__queued_time_duration.CopyFrom(queued_time_duration)
+        else:
+            self.__queued_time_duration = Duration()
 
-        self.__worker_start_timestamp = Timestamp()
-        self.__worker_start_timestamp.CopyFrom(worker_start_timestamp)
-        self.__worker_completed_timestamp = Timestamp()
-        self.__worker_completed_timestamp.CopyFrom(worker_completed_timestamp)
+        if worker_start_timestamp is not None:
+            self.__worker_start_timestamp.CopyFrom(worker_start_timestamp)
+        else:
+            self.__worker_start_timestamp = Timestamp()
+
+        if worker_completed_timestamp is not None:
+            self.__worker_completed_timestamp.CopyFrom(worker_completed_timestamp)
+        else:
+            self.__worker_completed_timestamp = Timestamp()
 
         self.__operations_by_name = {op.name: op for op in operations}  # Name to Operation 1:1 mapping
         self.__operations_cancelled = cancelled_operations
