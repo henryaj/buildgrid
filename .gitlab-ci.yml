@@ -47,7 +47,7 @@ dummy-tests:
   extends: .build-template
   script:
     - ${BGD} server start data/config/default.conf &
-    - sleep 1  # Allows server to boot
+    - sleep 5  # Allows server to boot
     - ${BGD} bot dummy &
     - ${BGD} cas upload-dummy
     - ${BGD} execute request-dummy --wait-for-completion
