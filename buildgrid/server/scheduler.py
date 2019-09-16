@@ -48,7 +48,7 @@ class Scheduler:
         self._action_cache = action_cache
         self._action_browser_url = action_browser_url
 
-        self.__delete_lock = Lock()  # Lock protecting deletion of jobs
+        self.__operation_lock = Lock()  # Lock protecting deletion, and addition of jobs
 
         self.__operations_by_peer = {}
         self.__peer_message_queues = {}
@@ -95,13 +95,14 @@ class Scheduler:
         Raises:
             NotFoundError: If no job with `job_name` exists.
         """
-        job = DataStore.get_job_by_name(job_name)
+        with self.__operation_lock:
+            job = DataStore.get_job_by_name(job_name)
 
-        if job is None:
-            raise NotFoundError("Job name does not exist: [{}]".format(job_name))
+            if job is None:
+                raise NotFoundError("Job name does not exist: [{}]".format(job_name))
 
-        operation_name = job.register_new_operation_peer(
-            peer, message_queue, self.__operations_by_peer, self.__peer_message_queues)
+            operation_name = job.register_new_operation_peer(
+                peer, message_queue, self.__operations_by_peer, self.__peer_message_queues)
 
         return operation_name
 
@@ -141,7 +142,7 @@ class Scheduler:
         Raises:
             NotFoundError: If no operation with `operation_name` exists.
         """
-        with self.__delete_lock:
+        with self.__operation_lock:
             job = DataStore.get_job_by_operation(operation_name)
 
             if job is None:
@@ -275,7 +276,7 @@ class Scheduler:
         Raises:
             NotFoundError: If no operation with `operation_name` exists.
         """
-        with self.__delete_lock:
+        with self.__operation_lock:
             job = DataStore.get_job_by_operation(operation_name)
 
             if job is None:
@@ -415,7 +416,7 @@ class Scheduler:
         Raises:
             NotFoundError: If no job with `job_name` exists.
         """
-        with self.__delete_lock:
+        with self.__operation_lock:
             job = DataStore.get_job_by_name(job_name)
 
             if job is None:
