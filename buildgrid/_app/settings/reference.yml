@@ -93,11 +93,15 @@ instances:
         data-store:
           ##
           # Type of the data store to use. Supported types:
+          #  mem - In-Memory DataStore
+          #type: mem
+
           #  sql - SQL database with a driver supported by SQLAlchemy
           type: sql
-          ##
-          # URI for connecting to the SQL database.
+          # URI for connecting to a PostgreSQL database:
           connection_string: postgresql://bgd:insecure@database/bgd
+          # URI for connecting to an SQLite database:
+          #connection_string: sqlite:///./example.db
           ##
           # Whether or not to automatically run database migrations
           # when starting the server

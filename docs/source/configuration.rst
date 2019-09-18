@@ -118,9 +118,9 @@ A similar configuration block, using PostgreSQL:
       action-browser-url: http://localhost:8080
       data-store:
         type: sql
-        connection_string: postgresql://bgd:insecure@database/bgd
+        connection_string: postgresql://username:password@sql_server/database_name
         automigrate: yes
-
+ 
 With ``automigrate: no``, the migrations can be run by cloning the `git repository`_,
 modifying the ``sqlalchemy.url`` line in ``alembic.ini`` to match the
 ``connection_string`` in the configuration, and executing
@@ -129,8 +129,22 @@ modifying the ``sqlalchemy.url`` line in ``alembic.ini`` to match the
 
     tox -e venv -- alembic --config ./alembic.ini upgrade head
 
-in the root directory of the repository. Creating the initial empty database and
-user are left as an exercise to the reader, though the docker-compose files in the
+in the root directory of the repository. The docker-compose files in the
 `git repository`_ offer an example approach for PostgreSQL.
+
+.. hint::
+
+   For the creation of the database and depending on the permissions and database config,
+   you may need to create and initialize the database before Alembic can create all the
+   tables for you.
+
+   If Alembic fails to create the tables because it cannot read or create the ``alembic_version`` table,
+   you could use the following SQL command:
+
+   .. code-block:: sql
+
+       CREATE TABLE alembic_version (
+         version_num VARCHAR(32) NOT NULL,
+         CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))
 
 .. _git repository: https://gitlab.com/BuildGrid/buildgrid

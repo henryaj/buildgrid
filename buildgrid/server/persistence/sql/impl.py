@@ -44,14 +44,12 @@ class SQLDataStore(DataStoreInterface):
 
         self.automigrate = automigrate
         self.retry_limit = retry_limit
+
         self.engine = create_engine(connection_string, echo=False)
         Session.configure(bind=self.engine)
 
-        cfg = Config()
-        cfg.set_main_option("script_location",
-                            os.path.join(os.path.dirname(__file__), "alembic"))
-        cfg.set_main_option("sqlalchemy.url", connection_string)
-        self._create_db(cfg)
+        if self.automigrate:
+            self._create_or_migrate_db(connection_string)
 
     def activate_monitoring(self):
         # Don't do anything. This function needs to exist but there's no
@@ -63,13 +61,18 @@ class SQLDataStore(DataStoreInterface):
         # need to actually toggle monitoring in this implementation.
         pass
 
-    def _create_db(self, config):
+    def _create_or_migrate_db(self, connection_string):
+        self.__logger.warn("Will attempt migration to latest version if needed.")
+
+        config = Config()
+        config.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "alembic"))
+        config.set_main_option("sqlalchemy.url", connection_string)
+
         retries = 0
         while retries < self.retry_limit:
             try:
-                if self.automigrate:
-                    command.upgrade(config, "head")
-                    break
+                command.upgrade(config, "head")
+                break
             except OperationalError:
                 retries += 1
                 time.sleep(retries * 5)

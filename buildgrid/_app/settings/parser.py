@@ -300,10 +300,15 @@ class Execution(YamlFactory):
             DataStore.backend = implementation_class(storage, **data_store)
         except TypeError:
             spec = getfullargspec(implementation_class)
-            invalid_args = yaml.dump([arg for arg in data_store.keys()
-                                      if arg not in spec.kwonlyargs])
+            invalid_args = [arg for arg in data_store.keys()
+                            if arg not in spec.kwonlyargs]
+            # If we don't detect any invalid_args here, re-raise since it
+            # is probably some other type of TypeError
+            if not invalid_args:
+                raise
+
             click.echo("The following arguments are unsupported for a data store "
-                       "with type '%s':\n\n%s" % (store_type, invalid_args), err=True)
+                       "with type '%s':\n\n%s" % (store_type, yaml.dump(invalid_args)), err=True)
             sys.exit(-1)
 
         return ExecutionController(storage, action_cache, action_browser_url)
