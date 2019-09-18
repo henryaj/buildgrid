@@ -8,11 +8,9 @@ List of the persons with write/commit access:
 +-------------------------+------------------------------------------+
 | Full Name               | Email Address                            |
 +=========================+==========================================+
-| Carter Sande            | <carter.sande@duodecima.technology>      |
-+-------------------------+------------------------------------------+
 | Ed Baunton              | <edbaunton@gmail.com>                    |
 +-------------------------+------------------------------------------+
-| Laurence Urhegyi        | <laurence.urhegyi@codethink.co.uk>       |
+| Laurence Urhegyi        | <laurence.urhegyi@gmail.com>             |
 +-------------------------+------------------------------------------+
 | Finn Ball               | <finn.ball@codethink.co.uk>              |
 +-------------------------+------------------------------------------+
@@ -20,15 +18,23 @@ List of the persons with write/commit access:
 +-------------------------+------------------------------------------+
 | James Ennis             | <james.ennis@codethink.com>              |
 +-------------------------+------------------------------------------+
-| Jim MacArthur           | <jim.macarthur@codethink.co.uk>          |
-+-------------------------+------------------------------------------+
 | Juerg Billeter          | <juerg.billeter@codethink.co.uk>         |
-+-------------------------+------------------------------------------+
-| Martin Blanchard        | <martin.blanchard@codethink.co.uk>       |
 +-------------------------+------------------------------------------+
 | Marios Hadjimichael     | <mhadjimichae@bloomberg.net>             |
 +-------------------------+------------------------------------------+
 | Raoul Hidalgo Charman   | <raoul.hidalgocharman@codethink.co.uk>   |
 +-------------------------+------------------------------------------+
 | Rohit Kothur            |  <rkothur@bloomberg.net>                 |
++-------------------------+------------------------------------------+
+| Adam Coldrick           |  <adam.coldrick@codethink.co.uk>         |
++-------------------------+------------------------------------------+
+| Santiago Gil            |  <santiago.gil@codethink.co.uk>          |
++-------------------------+------------------------------------------+
+| Arber Xhindoli          |  <axhindoli@bloomberg.net>               |
++-------------------------+------------------------------------------+
+| Jeremiah Bonney         |  <jbonney4@bloomberg.net>                |
++-------------------------+------------------------------------------+
+| Richard Kennedy         |  <rkennedy76@bloomberg.net>              |
++-------------------------+------------------------------------------+
+| Frank Kolarek           |  <fkolarek@bloomberg.net>                |
 +-------------------------+------------------------------------------+
