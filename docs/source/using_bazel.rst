@@ -25,9 +25,8 @@ including:
 - ``--remote_executor``: remote execution endpoint's location, ``{host}:{port}``.
 - ``--remote_instance_name``: remote execution instance's name.
 - ``--spawn_strategy``: action execution method.
-- ``--genrule_strategy``: `genrules`_ execution method.
 
-Spawn and genrule strategies need to be set to ``remote`` for remote execution.
+Spawn strategies need to be set to ``remote`` for remote execution.
 
 As an example, in order to activate remote execution on the ``main`` instance of
 the remote execution server available at ``controller.grid.build`` on port
@@ -35,11 +34,10 @@ the remote execution server available at ``controller.grid.build`` on port
 
 .. code-block:: sh
 
-   build --spawn_strategy=remote --genrule_strategy=remote --remote_executor=grpc://controller.grid.build:50051 --remote_instance_name=main
+   build --spawn_strategy=remote --remote_executor=grpc://controller.grid.build:50051 --remote_instance_name=main
 
 .. _.bazelrc: https://docs.bazel.build/versions/master/user-manual.html#bazelrc
 .. _build options: https://docs.bazel.build/versions/master/command-line-reference.html#build-options
-.. _genrules: https://docs.bazel.build/versions/master/be/general.html#genrule
 
 
 .. _bazel-example:
@@ -108,7 +106,7 @@ file in the root directory:
 
 .. code-block:: sh
 
-   build --spawn_strategy=remote --genrule_strategy=remote --remote_executor=grpc://localhost:50051 --remote_instance_name=main
+   build --spawn_strategy=remote --remote_executor=grpc://localhost:50051 --remote_instance_name=main
 
 This activates Bazel's remote execution mode and points to the ``main`` remote
 execution server instance at ``localhost:50051``.
