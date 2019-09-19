@@ -15,43 +15,51 @@
 
 from contextlib import contextmanager
 import multiprocessing
+import os
 import signal
+import tempfile
 
 import pytest_cov
 
 from buildgrid._app.settings import parser
 from buildgrid.server.instance import Server
+from buildgrid.server._monitoring import MonitoringOutputType, MonitoringOutputFormat
 
 
 @contextmanager
-def serve(configuration):
-    server = TestServer(configuration)
+def serve(configuration, monitor=False):
+    _, path = tempfile.mkstemp()
     try:
-        yield server
+        server = TestServer(configuration, monitor, path)
+        yield server, path
     finally:
         server.quit()
+        os.remove(path)
 
 
 class TestServer:
 
-    def __init__(self, configuration):
+    def __init__(self, configuration, monitor=False, endpoint_location=None):
 
         self.configuration = configuration
 
         self.__queue = multiprocessing.Queue()
         self.__process = multiprocessing.Process(
             target=TestServer.serve,
-            args=(self.__queue, self.configuration))
+            args=(self.__queue, self.configuration, monitor, endpoint_location))
         self.__process.start()
 
         self.port = self.__queue.get()
         self.remote = 'localhost:{}'.format(self.port)
 
     @classmethod
-    def serve(cls, queue, configuration):
+    def serve(cls, queue, configuration, monitor, endpoint_location):
         pytest_cov.embed.cleanup_on_sigterm()
 
-        server = Server()
+        server = Server(monitor=monitor,
+                        mon_endpoint_type=MonitoringOutputType.FILE,
+                        mon_endpoint_location=endpoint_location,
+                        mon_serialisation_format=MonitoringOutputFormat.STATSD)
 
         def __signal_handler(signum, frame):
             server.stop()

@@ -13,8 +13,12 @@
 # limitations under the License.
 
 
-import grpc
+import time
 
+import grpc
+import pytest
+
+from buildgrid._enums import BotStatus
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2_grpc
 from buildgrid._protos.buildstream.v2 import buildstream_pb2
@@ -75,7 +79,8 @@ instances:
 """
 
 
-def test_create_server():
+@pytest.mark.parametrize("monitoring", [True, False])
+def test_create_server(monitoring):
     # Actual test function, to be run in a subprocess:
     def __test_create_server(queue, remote):
         # Open a channel to the remote server:
@@ -160,8 +165,12 @@ def test_create_server():
             queue.put(False)
 
         try:
+            session = bots_pb2.BotSession(leases=[],
+                                          bot_id="test-bot",
+                                          name="test-bot",
+                                          status=BotStatus.OK.value)
             stub = bots_pb2_grpc.BotsStub(channel)
-            request = bots_pb2.CreateBotSessionRequest()
+            request = bots_pb2.CreateBotSessionRequest(parent='main', bot_session=session)
             response = stub.CreateBotSession(request)
 
             assert response.DESCRIPTOR is bots_pb2.BotSession.DESCRIPTOR
@@ -172,7 +181,17 @@ def test_create_server():
         except AssertionError:
             queue.put(False)
 
+        # Sleep for 5 seconds to allow a useful number of metrics to get reported
+        time.sleep(5)
         queue.put(True)
 
-    with serve(CONFIGURATION) as server:
-        assert run_in_subprocess(__test_create_server, server.remote)
+    with serve(CONFIGURATION, monitoring) as (server, path):
+        assert run_in_subprocess(__test_create_server, server.remote, timeout=30)
+
+        if monitoring:
+            with open(path) as f:
+                metrics = [line.strip() for line in f.readlines()]
+            # There should be a bots-count record from before we connected the bot,
+            # and also one from after the bot had made its initial connection
+            assert "main.instance.bots-count:0|g" in metrics
+            assert "main.instance.bots-count:1|g" in metrics
