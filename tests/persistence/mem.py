@@ -98,6 +98,29 @@ def populate_datastore():
     )
     DataStore.queue_job("extra-job")
 
+    DataStore.create_job(Job(
+        True,
+        Digest(hash="chroot-action", size_bytes=50),
+        name="chroot-job",
+        priority=10,
+        stage=1,
+        operations=[
+        ],
+        platform_requirements={
+            "OSFamily": set(["aix"]),
+            "ChrootDigest": set(["space", "dead-beef"]),
+            "ISA": set(["x64", "x32"]),
+        }
+    ))
+    DataStore.create_operation(
+        operations_pb2.Operation(
+            name="chroot-operation",
+            done=False
+        ),
+        "chroot-job"
+    )
+    DataStore.queue_job("chroot-job")
+
 
 def test_deactivate_monitoring(datastore):
     populate_datastore()
@@ -110,7 +133,8 @@ def test_deactivate_monitoring(datastore):
 
     DataStore.create_operation(operation, "test-job")
     assert "test-operation-2" in DataStore.backend.jobs_by_operation
-    assert "test-job" in DataStore.backend.operations_by_stage[OperationStage(1)]
+    assert "test-job" in DataStore.backend.operations_by_stage[OperationStage(
+        1)]
 
     DataStore.deactivate_monitoring()
     assert DataStore.backend.operations_by_stage == {}
@@ -136,7 +160,8 @@ def test_assign_lease_for_next_job(datastore):
 
     # The highest priority runnable job with requirements matching these
     # capabilities is other-job, which is priority 5 and only requires linux
-    leases = DataStore.assign_lease_for_next_job({"OSFamily": set(["linux"])}, cb)
+    leases = DataStore.assign_lease_for_next_job(
+        {"OSFamily": set(["linux"])}, cb)
     assert len(leases) == 1
     assert leases[0].id == "other-job"
 
@@ -146,13 +171,60 @@ def test_assign_lease_for_next_job(datastore):
     # other-job, since priority 5 is more urgent than the priority 20 of
     # example-job. test-job has priority 1, but its requirements are not
     # fulfilled by these capabilities
-    leases = DataStore.assign_lease_for_next_job({"OSFamily": set(["linux"]), "generic": set(["requirement"])}, cb)
+    leases = DataStore.assign_lease_for_next_job(
+        {"OSFamily": set(["linux"]), "generic": set(["requirement"])}, cb)
     assert len(leases) == 1
     assert leases[0].id == "other-job"
 
     # The highest priority runnable job for this magical machine which has
     # multiple values for the `os` capability is test-job, since its requirements
     # are fulfilled and it has priority 1, compared with priority 5 for other-job
-    leases = DataStore.assign_lease_for_next_job({"OSFamily": set(["linux", "solaris"])}, cb)
+    leases = DataStore.assign_lease_for_next_job(
+        {"OSFamily": set(["linux", "solaris"])}, cb)
     assert len(leases) == 1
     assert leases[0].id == "test-job"
+
+    # Must have all properties or else job won't get matched with worker
+    leases = DataStore.assign_lease_for_next_job(
+        {"OSFamily": set(["aix"])}, cb)
+    assert len(leases) == 0
+
+    # Must match with all ISA properties
+    worker_capabilities = {
+        "OSFamily": set(["aix"]),
+        "ChrootDigest": set(["space", "dead-beef"]),
+        "ISA": set(["x64"]),
+    }
+    leases = DataStore.assign_lease_for_next_job(worker_capabilities, cb)
+    assert len(leases) == 0
+
+    # Digest doesn't match, should not match with any jobs
+    worker_capabilities = {
+        "OSFamily": set(["aix"]),
+        "ChrootDigest": set(["dead-beef"]),
+        "ISA": set(["x64", "x32"]),
+    }
+    leases = DataStore.assign_lease_for_next_job(worker_capabilities, cb)
+    assert len(leases) == 0
+
+    # All fields match, should match with chroot-job
+    worker_capabilities = {
+        "OSFamily": set(["aix"]),
+        "ChrootDigest": set(["dead-beef", "space"]),
+        "ISA": set(["x64", "x32"]),
+    }
+    leases = DataStore.assign_lease_for_next_job(worker_capabilities, cb)
+    assert len(leases) == 1
+    assert leases[0].id == "chroot-job"
+
+    DataStore.queue_job("chroot-job")
+
+    # All fields subset of worker's, should match with chroot-job
+    worker_capabilities = {
+        "OSFamily": set(["aix"]),
+        "ChrootDigest": set(["dead-beef", "space", "outer"]),
+        "ISA": set(["x64", "x32", "x16"]),
+    }
+    leases = DataStore.assign_lease_for_next_job(worker_capabilities, cb)
+    assert len(leases) == 1
+    assert leases[0].id == "chroot-job"

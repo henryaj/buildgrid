@@ -19,6 +19,7 @@ import os
 import queue
 import tempfile
 from unittest import mock
+from collections import namedtuple
 
 from google.protobuf import any_pb2
 import grpc
@@ -43,6 +44,8 @@ server = mock.create_autospec(grpc.server)
 instance_name = "blade"
 
 command = remote_execution_pb2.Command()
+command.platform.properties.add(name="OSFamily", value="linux")
+command.platform.properties.add(name="ISA", value="x86")
 command_digest = create_digest(command.SerializeToString())
 
 action = remote_execution_pb2.Action(command_digest=command_digest,

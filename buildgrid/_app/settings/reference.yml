@@ -86,6 +86,16 @@ instances:
         # Alias to an action-cache service.
         action-cache: *main-action
         ##
+        # Non-standard keys which buildgrid will allow job's to set
+        # Job's with non-standard keys, not in this list, will be rejected
+        property-keys:
+          ##
+          # buildgrid will match worker and jobs on foo, if set by job
+          - foo
+          ##
+          # Can specify multiple keys.
+          - bar
+        ##
         # Base URL for external build action (web) browser service.
         action-browser-url: http://localhost:8080
         ##

@@ -273,7 +273,7 @@ class Execution(YamlFactory):
 
     yaml_tag = u'!execution'
 
-    def __new__(cls, storage, action_cache=None, action_browser_url=None, data_store=None):
+    def __new__(cls, storage, action_cache=None, action_browser_url=None, data_store=None, property_keys=None):
         # If the configuration doesn't define a data store type, fallback to the
         # in-memory data store implementation from the old scheduler.
         if not data_store:
@@ -311,7 +311,7 @@ class Execution(YamlFactory):
                        "with type '%s':\n\n%s" % (store_type, yaml.dump(invalid_args)), err=True)
             sys.exit(-1)
 
-        return ExecutionController(storage, action_cache, action_browser_url)
+        return ExecutionController(storage, action_cache, action_browser_url, property_keys)
 
 
 class Action(YamlFactory):

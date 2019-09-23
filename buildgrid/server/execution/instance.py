@@ -28,12 +28,13 @@ from buildgrid.utils import get_hash_type
 
 class ExecutionInstance:
 
-    def __init__(self, scheduler, storage):
+    def __init__(self, scheduler, storage, property_keys):
         self.__logger = logging.getLogger(__name__)
 
         self._scheduler = scheduler
         self._instance_name = None
-
+        self._standard_keys = set(["ISA", "OSFamily"])
+        self._property_keys = set(property_keys) if property_keys else set()
         self.__storage = storage
 
     # --- Public API ---
@@ -74,13 +75,25 @@ class ExecutionInstance:
         command = self.__storage.get_message(action.command_digest, Command)
 
         if not command:
-            raise FailedPreconditionError("Could not get command from storage.")
+            raise FailedPreconditionError(
+                "Could not get command from storage.")
 
         platform_requirements = {}
         for platform_property in command.platform.properties:
+            if platform_property.name not in self._standard_keys:
+                if platform_property.name not in self._property_keys:
+                    raise FailedPreconditionError(
+                        "Unregistered platform property.")
+
+            elif platform_property.name == "OSFamily":
+                if platform_property.name in platform_requirements:
+                    raise FailedPreconditionError(
+                        "Multiple OSFamilies specified.")
+
             if platform_property.name not in platform_requirements:
                 platform_requirements[platform_property.name] = set()
-            platform_requirements[platform_property.name].add(platform_property.value)
+            platform_requirements[platform_property.name].add(
+                platform_property.value)
 
         return self._scheduler.queue_job_action(action, action_digest,
                                                 platform_requirements=platform_requirements,

@@ -302,10 +302,16 @@ class SQLDataStore(DataStoreInterface):
                 jobs = jobs.filter(or_(
                     ~Job.platform_requirements.any(),
                     ~Job.platform_requirements.any(PlatformRequirement.key == key),
-                    Job.platform_requirements.any(and_(
-                        PlatformRequirement.key == key,
-                        PlatformRequirement.value.in_(value)
-                    ))
+                    and_(
+                        ~Job.platform_requirements.any(and_(
+                            PlatformRequirement.key == key,
+                            ~PlatformRequirement.value.in_(value)
+                        )),
+                        Job.platform_requirements.any(and_(
+                            PlatformRequirement.key == key,
+                            PlatformRequirement.value.in_(value)
+                        ))
+                    )
                 ))
 
             jobs = jobs.order_by(Job.priority)
@@ -319,4 +325,4 @@ class SQLDataStore(DataStoreInterface):
                 for lease in leases:
                     self._create_lease(lease, session, job=internal_job)
                 return leases
-            return None
+            return []

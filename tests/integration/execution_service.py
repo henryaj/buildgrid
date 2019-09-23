@@ -45,6 +45,8 @@ from buildgrid.server.persistence.sql import models
 server = mock.create_autospec(grpc.server)
 
 command = remote_execution_pb2.Command()
+command.platform.properties.add(name="OSFamily", value="linux")
+command.platform.properties.add(name="ISA", value="x86")
 command_digest = create_digest(command.SerializeToString())
 
 action = remote_execution_pb2.Action(command_digest=command_digest,

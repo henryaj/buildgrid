@@ -176,6 +176,36 @@ def populate_database():
                         value="linux"
                     )
                 ]
+            ),
+            models.Job(
+                name="platform-job",
+                action_digest="platform-action/10",
+                priority=5,
+                stage=2,
+                leases=[models.Lease(
+                    status=0,
+                    state=1
+                )],
+                operations=[
+                    models.Operation(
+                        name="platform-operation",
+                        done=False
+                    )
+                ],
+                platform_requirements=[
+                    models.PlatformRequirement(
+                        key="os",
+                        value="aix"
+                    ),
+                    models.PlatformRequirement(
+                        key="generic",
+                        value="requirement"
+                    ),
+                    models.PlatformRequirement(
+                        key="generic",
+                        value="requirement2"
+                    )
+                ]
             )
         ])
 
@@ -235,7 +265,7 @@ def test_get_job_by_operation(database):
 def test_get_all_jobs(database):
     populate_database()
     jobs = DataStore.get_all_jobs()
-    assert len(jobs) == 3
+    assert len(jobs) == 4
 
 
 def test_create_job(database):
@@ -296,7 +326,7 @@ def test_get_operations_by_stage(database):
 def test_get_all_operations(database):
     populate_database()
     operations = DataStore.get_all_operations()
-    assert len(operations) == 5
+    assert len(operations) == 6
 
 
 def test_create_operation(database):
@@ -345,7 +375,7 @@ def test_update_operation(database):
 def test_get_leases_by_state(database):
     populate_database()
     leases = DataStore.get_leases_by_state(LeaseState(1))
-    assert len(leases) == 2
+    assert len(leases) == 3
 
 
 def test_create_lease(database):
@@ -427,6 +457,26 @@ def test_assign_lease_for_next_job(database):
     leases = DataStore.assign_lease_for_next_job({"os": ["linux", "solaris"]}, cb)
     assert len(leases) == 1
     assert leases[0].id == "test-job"
+
+    # Shouldn't match with platform-job, worker only has one of the two requirements
+    leases = DataStore.assign_lease_for_next_job({"os": ["aix"], "generic": ["requirement"]}, cb)
+    assert len(leases) == 0
+
+    # Should match with platform-job, has exact specification needed
+    leases = DataStore.assign_lease_for_next_job({"os": ["aix"], "generic": ["requirement", "requirement2"]}, cb)
+    assert len(leases) == 1
+    assert leases[0].id == "platform-job"
+
+    DataStore.queue_job("platform-job")
+
+    # Should match with platform-job, worker has superset of specifications
+    specifications = {
+        "os": ["aix", "andriod"],
+        "generic": ["requirement", "requirement2", "requirement3"]
+    }
+    leases = DataStore.assign_lease_for_next_job(specifications, cb)
+    assert len(leases) == 1
+    assert leases[0].id == "platform-job"
 
 
 def test_to_internal_job(database):

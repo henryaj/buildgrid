@@ -227,17 +227,7 @@ class MemoryDataStore(DataStoreInterface):
         if not job_requirements:
             return True
 
-        # OS:
-        worker_oses = worker_capabilities.get('OSFamily', set())
-        job_oses = job_requirements.get('OSFamily', set())
-        if job_oses and not (job_oses & worker_oses):
-            return False
-
-        # ISAs:
-        worker_isas = worker_capabilities.get('ISA', set())
-        job_isas = job_requirements.get('ISA', set())
-
-        if job_isas and not (job_isas & worker_isas):
-            return False
-
+        for req, matches in job_requirements.items():
+            if not matches <= worker_capabilities.get(req, set()):
+                return False
         return True
