@@ -35,9 +35,12 @@ Session = sessionmaker()
 
 class SQLDataStore(DataStoreInterface):
 
-    def __init__(self, storage, *, connection_string="sqlite:///", automigrate=False, retry_limit=10):
+    def __init__(self, storage, *, connection_string="sqlite:///", automigrate=False,
+                 retry_limit=10, **kwargs):
         self.__logger = logging.getLogger(__name__)
-        self.__logger.info("Using SQL data store interface")
+        self.__logger.info("Using SQL data store interface with: "
+                           "automigrate=[%s], retry_limit=[%s], kwargs=[%s]",
+                           automigrate, retry_limit, kwargs)
 
         self.storage = storage
         self.response_cache = {}
@@ -45,7 +48,16 @@ class SQLDataStore(DataStoreInterface):
         self.automigrate = automigrate
         self.retry_limit = retry_limit
 
-        self.engine = create_engine(connection_string, echo=False)
+        # Only pass the (known) kwargs that have been explicitly set by the user
+        available_options = set(['pool_size', 'max_overflow', 'pool_timeout'])
+        kwargs_keys = set(kwargs.keys())
+        if not kwargs_keys.issubset(available_options):
+            unknown_options = kwargs_keys - available_options
+            raise TypeError("Unknown keyword arguments: [%s]" % unknown_options)
+
+        self.__logger.debug("SQLAlchemy additional kwargs: [%s]", kwargs)
+
+        self.engine = create_engine(connection_string, echo=False, **kwargs)
         Session.configure(bind=self.engine)
 
         if self.automigrate:

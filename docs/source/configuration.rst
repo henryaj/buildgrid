@@ -120,6 +120,11 @@ A similar configuration block, using PostgreSQL:
         type: sql
         connection_string: postgresql://username:password@sql_server/database_name
         automigrate: yes
+        retry_limit: 10
+        #SQLAlchemy Pool Options
+        pool_size: 5
+        pool_timeout: 30
+        max_overflow: 10
  
 With ``automigrate: no``, the migrations can be run by cloning the `git repository`_,
 modifying the ``sqlalchemy.url`` line in ``alembic.ini`` to match the
