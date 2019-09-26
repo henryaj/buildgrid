@@ -48,7 +48,7 @@ class Scheduler:
         self._action_cache = action_cache
         self._action_browser_url = action_browser_url
 
-        self.__operation_lock = Lock()  # Lock protecting deletion, and addition of jobs
+        self.__operation_lock = Lock()  # Lock protecting deletion, addition  and updating of jobs
 
         self.__operations_by_peer = {}
         self.__peer_message_queues = {}
@@ -120,17 +120,18 @@ class Scheduler:
         Raises:
             NotFoundError: If no operation with `operation_name` exists.
         """
-        job = DataStore.get_job_by_operation(operation_name)
+        with self.__operation_lock:
+            job = DataStore.get_job_by_operation(operation_name)
 
-        if job is None:
-            raise NotFoundError("Operation name does not exist: [{}]"
-                                .format(operation_name))
+            if job is None:
+                raise NotFoundError("Operation name does not exist: [{}]"
+                                    .format(operation_name))
 
-        job.register_operation_peer(operation_name,
-                                    peer,
-                                    message_queue,
-                                    self.__operations_by_peer,
-                                    self.__peer_message_queues)
+            job.register_operation_peer(operation_name,
+                                        peer,
+                                        message_queue,
+                                        self.__operations_by_peer,
+                                        self.__peer_message_queues)
 
     def unregister_job_operation_peer(self, operation_name, peer):
         """Unsubscribes to one of the job's :class:`Operation` stage change.
@@ -510,45 +511,46 @@ class Scheduler:
             job_name (str): name of the job to query.
             operation_stage (OperationStage): the stage to transition to.
         """
-        job = DataStore.get_job_by_name(job_name)
+        with self.__operation_lock:
+            job = DataStore.get_job_by_name(job_name)
 
-        if operation_stage == OperationStage.CACHE_CHECK:
-            job.update_operation_stage(OperationStage.CACHE_CHECK,
-                                       self.__operations_by_peer,
-                                       self.__peer_message_queues)
+            if operation_stage == OperationStage.CACHE_CHECK:
+                job.update_operation_stage(OperationStage.CACHE_CHECK,
+                                           self.__operations_by_peer,
+                                           self.__peer_message_queues)
 
-        elif operation_stage == OperationStage.QUEUED:
-            job.update_operation_stage(OperationStage.QUEUED,
-                                       self.__operations_by_peer,
-                                       self.__peer_message_queues)
+            elif operation_stage == OperationStage.QUEUED:
+                job.update_operation_stage(OperationStage.QUEUED,
+                                           self.__operations_by_peer,
+                                           self.__peer_message_queues)
 
-        elif operation_stage == OperationStage.EXECUTING:
-            job.update_operation_stage(OperationStage.EXECUTING,
-                                       self.__operations_by_peer,
-                                       self.__peer_message_queues)
+            elif operation_stage == OperationStage.EXECUTING:
+                job.update_operation_stage(OperationStage.EXECUTING,
+                                           self.__operations_by_peer,
+                                           self.__peer_message_queues)
 
-        elif operation_stage == OperationStage.COMPLETED:
-            job.update_operation_stage(OperationStage.COMPLETED,
-                                       self.__operations_by_peer,
-                                       self.__peer_message_queues)
+            elif operation_stage == OperationStage.COMPLETED:
+                job.update_operation_stage(OperationStage.COMPLETED,
+                                           self.__operations_by_peer,
+                                           self.__peer_message_queues)
 
-            if self._is_instrumented:
-                average_order, average_time = self.__queue_time_average
+                if self._is_instrumented:
+                    average_order, average_time = self.__queue_time_average
 
-                average_order += 1
-                if average_order <= 1:
-                    average_time = job.query_queue_time()
-                else:
-                    queue_time = job.query_queue_time()
-                    average_time = average_time + ((queue_time - average_time) / average_order)
+                    average_order += 1
+                    if average_order <= 1:
+                        average_time = job.query_queue_time()
+                    else:
+                        queue_time = job.query_queue_time()
+                        average_time = average_time + ((queue_time - average_time) / average_order)
 
-                self.__queue_time_average = average_order, average_time
+                    self.__queue_time_average = average_order, average_time
 
-                if not job.holds_cached_result:
-                    execution_metadata = job.action_result.execution_metadata
-                    context_metadata = {'job-is': job.name}
+                    if not job.holds_cached_result:
+                        execution_metadata = job.action_result.execution_metadata
+                        context_metadata = {'job-is': job.name}
 
-                    message = (execution_metadata, context_metadata,)
+                        message = (execution_metadata, context_metadata,)
 
-                    for message_queue in self.__build_metadata_queues:
-                        message_queue.put(message)
+                        for message_queue in self.__build_metadata_queues:
+                            message_queue.put(message)
