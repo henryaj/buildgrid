@@ -29,19 +29,18 @@ that conforms to the above API protocols.
 What's Going On?
 ----------------
 
-Recently we merged support for making BuildGrid "bounceable" by storing its
-state in a configurable external SQL database (anything that SQLAlchemy supports
-**should** be supported, and it has been shown to work with PostgreSQL and
-SQLite).
+Recently BuildGrid's scheduler was made fully stateless (at least in terms of
+state that needs to be persisted), with the option to run totally in-memory or
+use an external database for all storage of persistent state. This gets us most
+of the way to being able to horizontally scale BuildGrid.
 
-Some work on improving performance by making bots long-poll instead of
-rapidly polling over and over was also done recently, along with support for
-outputting metrics in statsd format.
+We've also made numerous small improvements and bugfixes, and modified the
+platform property matching logic to be consistent with the spec.
 
-Next, we're looking at making it possible to horizontally scale BuildGrid
-deployments, by making use of the external database support recently added to
-share state between an arbitrary number of ExecutionService and BotsService
-instances.
+Next, we're finishing implementing the ability to horizontally scale BuildGrid
+deployments, by removing the internal communication between the ExecutionService
+and BotsService, which solves the problem of needing peers and bots for a
+specific job to all be connected to the same server.
 
 We're also working on implementing an indexed CAS server to faciliate a faster
 FindMissingBlobs() and CAS cleanup. See
