@@ -79,5 +79,5 @@ Resources
 .. _Bug tracking: https://gitlab.com/BuildGrid/buildgrid/boards
 .. _Mailing list: https://lists.buildgrid.build/cgi-bin/mailman/listinfo/buildgrid
 .. _Slack channel: https://buildteamworld.slack.com/messages/CC9MKC203
-.. _invite link: https://join.slack.com/t/buildteamworld/shared_invite/enQtMzkxNzE0MDMyMDY1LTRmZmM1OWE0OTFkMGE1YjU5Njc4ODEzYjc0MGMyOTM5ZTQ5MmE2YTQ1MzQwZDc5MWNhODY1ZmRkZTE4YjFhNjU
+.. _invite link: https://join.slack.com/t/buildteamworld/invite/enQtNzgwOTgwMDQwNDA1LTc4NmFkYjc3YTQyYTgzNzE1M2JhYzM1MmI4MGMxNWFlNjJlZGZmOTIxZDc3NzQ3MTdhNDk4M2VmOTRhZWEwMjc
 .. _FAQ: https://buildgrid.gitlab.io/buildgrid/faq.html
