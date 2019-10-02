@@ -282,7 +282,7 @@ class SQLDataStore(DataStoreInterface):
         start = time.time()
         while time.time() + 1 - start < timeout:
             leases = self._assign_job_leases(capabilities, callback)
-            if leases is not None:
+            if leases:
                 return leases
             time.sleep(0.5)
 
