@@ -1,6 +1,6 @@
-# Debian Stretch base image with python 3.5:
+# Debian Buster base image with python 3.5:
 #
-image: python:3.5-stretch
+image: python:3.5-buster
 
 stages:
   - test
