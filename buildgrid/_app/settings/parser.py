@@ -189,6 +189,24 @@ class S3(YamlFactory):
         return S3Storage(bucket, endpoint_url=endpoint, aws_access_key_id=access_key, aws_secret_access_key=secret_key)
 
 
+class Redis(YamlFactory):
+    """Generates :class:`buildgrid.server.cas.storage.redis.RedisStorage` using the tag ``!redis-storage``.
+
+    Args:
+        host (str): hostname of endpoint.
+        port (int): port on host.
+        password (str): redis database password
+        db (int) : db number
+    """
+
+    yaml_tag = u'!redis-storage'
+
+    def __new__(cls, host, port, password=None, db=None):
+        # Import here so there is no global buildgrid dependency on redis
+        from buildgrid.server.cas.storage.redis import RedisStorage
+        return RedisStorage(host=host, port=port, password=password, db=db)
+
+
 class Remote(YamlFactory):
     """Generates :class:`buildgrid.server.cas.storage.remote.RemoteStorage`
     using the tag ``!remote-storage``.
@@ -452,6 +470,7 @@ def get_parser():
     yaml.SafeLoader.add_constructor(Disk.yaml_tag, Disk.from_yaml)
     yaml.SafeLoader.add_constructor(LRU.yaml_tag, LRU.from_yaml)
     yaml.SafeLoader.add_constructor(S3.yaml_tag, S3.from_yaml)
+    yaml.SafeLoader.add_constructor(Redis.yaml_tag, Redis.from_yaml)
     yaml.SafeLoader.add_constructor(Remote.yaml_tag, Remote.from_yaml)
     yaml.SafeLoader.add_constructor(WithCache.yaml_tag, WithCache.from_yaml)
     yaml.SafeLoader.add_constructor(CAS.yaml_tag, CAS.from_yaml)

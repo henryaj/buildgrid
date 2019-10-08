@@ -105,6 +105,12 @@ if os.path.isfile('requirements.db.txt'):
     with open('requirements.db.txt') as requirements_file:
         db_requirements = requirements_file.read().splitlines()
 
+redis_requirements = []
+# Load 'redis' requirements from dedicated file:
+if os.path.isfile('requirements.redis.txt'):
+    with open('requirements.redis.txt') as requirements_file:
+        redis_requirements = requirements_file.read().splitlines()
+
 setup(
     name="BuildGrid",
     version=__version__,
@@ -121,6 +127,7 @@ setup(
     extras_require={
         'auth': auth_requirements,
         'database': db_requirements,
+        'redis': redis_requirements,
         'docs': docs_requirements,
         'tests': tests_requirements, },
     entry_points={

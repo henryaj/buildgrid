@@ -1,0 +1,2 @@
+redis
+hiredis # Faster parsing of redis response.

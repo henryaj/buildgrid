@@ -21,6 +21,8 @@ import boto3
 import grpc
 from moto import mock_s3
 import pytest
+import fakeredis
+from unittest.mock import patch
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid.server.cas.storage.remote import RemoteStorage
@@ -40,7 +42,7 @@ BLOBS_DIGESTS = [tuple([remote_execution_pb2.Digest(hash=HASH(blob).hexdigest(),
                  for blobs in BLOBS]
 
 
-@pytest.fixture(params=['lru', 'disk', 's3', 'lru_disk', 'disk_s3', 'remote'])
+@pytest.fixture(params=['lru', 'disk', 's3', 'lru_disk', 'disk_s3', 'remote', 'redis'])
 def any_storage(request):
     if request.param == 'lru':
         yield LRUMemoryCache(256)
@@ -69,6 +71,16 @@ def any_storage(request):
     elif request.param == 'remote':
         with serve_cas(['testing']) as server:
             yield server.remote
+    elif request.param == 'redis':
+        with patch('buildgrid.server.cas.storage.redis.redis.Redis', fakeredis.FakeRedis):
+            from buildgrid.server.cas.storage.redis import RedisStorage
+
+            input_dict = {
+                'host': "localhost",
+                'port': 8000,
+                'db': 0
+            }
+            yield RedisStorage(**input_dict)
 
 
 def write(storage, digest, blob):

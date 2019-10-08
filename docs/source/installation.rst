@@ -39,8 +39,6 @@ Main Python dependencies, automatically handled during installation, include:
 .. _protobuf: https://pypi.org/project/protobuf
 .. _protocol-buffers: https://developers.google.com/protocol-buffers
 .. _PyYAML: https://pypi.org/project/PyYAML
-
-
 .. _install-host-source-install:
 
 Install from sources
@@ -73,15 +71,23 @@ BuildGrid server with default configuration. Simply run:
 
 .. note::
 
-   The ``setup.py`` script defines three extra targets, ``auth``, ``docs`` and
-   ``tests``. They declare required dependency for, respectively, authentication
-   and authorization management, generating documentation and running
-   unit-tests. They can be use as helpers for setting up a development
+   The ``setup.py`` script defines extra targets, ``auth``, ``docs``,
+   ``tests``, ``db`` and ``redis``. They declare required dependency for, respectively, authentication
+   and authorization management, generating documentation, running
+   unit-tests and different storage implementations. They can be use as helpers for setting up a development
    environment. To use them run:
 
    .. code-block:: sh
 
       env/bin/python -m pip install --editable ".[auth,docs,tests]"
+
+.. TODO: split up other storage backends into their own requirements files
+
+   Similarly, if using a specific storage type, install the required dependencies. For example, if using a redis storage backend, install the redis client by:
+
+    .. code-block:: sh
+
+      env/bin/python -m pip install --editable ".[redis]"
 
 .. _virtual environment: https://docs.python.org/3/library/venv.html
 
