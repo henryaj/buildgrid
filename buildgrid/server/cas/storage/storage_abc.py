@@ -92,15 +92,25 @@ class StorageABC(abc.ABC):
                     write_session.write(data)
                     self.commit_write(digest, write_session)
                 except IOError as ex:
-                    result.append(Status(code=code_pb2.UNKNOWN, message=str(ex)))
+                    result.append(
+                        Status(code=code_pb2.UNKNOWN, message=str(ex)))
                 else:
                     result.append(Status(code=code_pb2.OK))
         return result
 
+    def bulk_read_blobs(self, digests):
+        """ Given an iterable container of digests, return a
+        {hash: file-like object} dictionary corresponding to the blobs
+        represented by the input digests.
+        """
+
+        return {digest.hash: self.get_blob(digest) for digest in digests}
+
     def put_message(self, message):
         """Store the given Protobuf message in CAS, returning its digest."""
         message_blob = message.SerializeToString()
-        digest = Digest(hash=HASH(message_blob).hexdigest(), size_bytes=len(message_blob))
+        digest = Digest(hash=HASH(message_blob).hexdigest(),
+                        size_bytes=len(message_blob))
         session = self.begin_write(digest)
         session.write(message_blob)
         self.commit_write(digest, session)

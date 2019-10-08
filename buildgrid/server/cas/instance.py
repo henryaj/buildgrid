@@ -100,13 +100,14 @@ class ContentAddressableStorageInstance:
                                        '({} > {} [byte])'.format(requested_bytes,
                                                                  max_batch_size))
 
+        blobs_read = storage.bulk_read_blobs(digests)
+
         for digest in digests:
             response_proto = response.responses.add()
             response_proto.digest.CopyFrom(digest)
 
-            blob = storage.get_blob(digest)
-            if blob:
-                response_proto.data = blob.read()
+            if digest.hash in blobs_read:
+                response_proto.data = blobs_read[digest.hash].read()
                 status_code = code_pb2.OK
             else:
                 status_code = code_pb2.NOT_FOUND
@@ -139,7 +140,8 @@ class ContentAddressableStorageInstance:
                 yield response
                 response = re_pb2.GetTreeResponse()
 
-            directory_from_digest = storage.get_message(node_digest, re_pb2.Directory)
+            directory_from_digest = storage.get_message(
+                node_digest, re_pb2.Directory)
             page_size -= 1
             response.directories.extend([directory_from_digest])
 
@@ -238,7 +240,8 @@ class ByteStreamInstance:
 
         # Check that the data matches the provided digest.
         if bytes_written != digest.size_bytes:
-            raise NotImplementedError("Cannot close stream before finishing write")
+            raise NotImplementedError(
+                "Cannot close stream before finishing write")
 
         elif computed_hash.hexdigest() != digest.hash:
             raise InvalidArgumentError("Data does not match hash")
