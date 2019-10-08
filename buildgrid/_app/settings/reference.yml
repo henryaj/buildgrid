@@ -86,6 +86,10 @@ instances:
         # Alias to an action-cache service.
         action-cache: *main-action
         ##
+        # BotSession Keepalive Timeout: The maximum time (in seconds)
+        # to wait to hear back from a bot before assuming they're unhealthy.
+        bot_session_keepalive_timeout: 120
+
         # Non-standard keys which buildgrid will allow job's to set
         # Job's with non-standard keys, not in this list, will be rejected
         property-keys:

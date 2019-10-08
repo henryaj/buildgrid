@@ -287,11 +287,17 @@ class Execution(YamlFactory):
     Args:
       storage(:class:`buildgrid.server.cas.storage.storage_abc.StorageABC`): Instance of storage to use.
       action_cache(:class:`Action`): Instance of action cache to use.
+      action_browser_url The base URL to use to generate Action Browser links to users
+      data_store The DataStore options (see class `DataStore(YamlFactory)` for options)
+      property_keys The allowed property keys for jobs
+      bot_session_keepalive_timeout: The longest time (in seconds) we'll wait for a bot to send an update
+    before it assumes it's dead. Defaults to 600s (10 minutes).
     """
 
     yaml_tag = u'!execution'
 
-    def __new__(cls, storage, action_cache=None, action_browser_url=None, data_store=None, property_keys=None):
+    def __new__(cls, storage, action_cache=None, action_browser_url=None, data_store=None,
+                property_keys=None, bot_session_keepalive_timeout=600):
         # If the configuration doesn't define a data store type, fallback to the
         # in-memory data store implementation from the old scheduler.
         if not data_store:
@@ -329,7 +335,9 @@ class Execution(YamlFactory):
                        "with type '%s':\n\n%s\n%s" % (store_type, yaml.dump(invalid_args), type_error), err=True)
             sys.exit(-1)
 
-        return ExecutionController(storage, action_cache, action_browser_url, property_keys)
+        return ExecutionController(storage=storage, action_cache=action_cache, action_browser_url=action_browser_url,
+                                   property_keys=property_keys,
+                                   bot_session_keepalive_timeout=bot_session_keepalive_timeout)
 
 
 class Action(YamlFactory):

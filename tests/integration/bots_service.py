@@ -16,9 +16,12 @@
 
 
 import os
+from datetime import datetime, timedelta
 import tempfile
+import time
 from unittest import mock
 
+import asyncio
 import grpc
 from grpc._server import _Context
 import pytest
@@ -30,6 +33,7 @@ from buildgrid.server.controller import ExecutionController
 from buildgrid.server.job import LeaseState, BotStatus
 from buildgrid.server.bots import service
 from buildgrid.server.bots.service import BotsService
+from buildgrid.server.bots.instance import BotsInterface
 from buildgrid.server.persistence import DataStore
 from buildgrid.server.persistence.mem.impl import MemoryDataStore
 from buildgrid.server.persistence.sql.impl import SQLDataStore
@@ -53,9 +57,12 @@ def bot_session():
     yield bot
 
 
-@pytest.fixture
-def controller():
-    yield ExecutionController()
+BOT_SESSION_KEEPALIVE_TIMEOUT_OPTIONS = [None, 1, 2]
+
+
+@pytest.fixture(params=BOT_SESSION_KEEPALIVE_TIMEOUT_OPTIONS)
+def controller(request):
+    yield ExecutionController(bot_session_keepalive_timeout=request.param)
 
 
 # Instance to test
@@ -81,13 +88,31 @@ def instance(controller, request):
                 os.remove(db)
 
 
+def check_bot_session_request_response_and_assigned_expiry(instance, request, response, request_time):
+    assert isinstance(response, bots_pb2.BotSession)
+
+    bot_session_keepalive_timeout = instance._instances[""]._bot_session_keepalive_timeout
+
+    assert request.bot_id == response.bot_id
+
+    if bot_session_keepalive_timeout:
+        # See if expiry time was set (when enabled)
+        assert response.expire_time.IsInitialized()
+        # See if it was set to an expected time
+        earliest_expire_time = request_time + timedelta(seconds=bot_session_keepalive_timeout)
+        # We don't want to do strict comparisons because we are not looking for
+        # exact time precision (e.g. in ms/ns)
+        response_expire_time = response.expire_time.ToDatetime()
+        assert response_expire_time >= earliest_expire_time
+
+
 def test_create_bot_session(bot_session, context, instance):
+    request_time = datetime.utcnow()
     request = bots_pb2.CreateBotSessionRequest(bot_session=bot_session)
 
     response = instance.CreateBotSession(request, context)
 
-    assert isinstance(response, bots_pb2.BotSession)
-    assert bot_session.bot_id == response.bot_id
+    check_bot_session_request_response_and_assigned_expiry(instance, bot_session, response, request_time)
 
 
 def test_create_bot_session_bot_id_fail(context, instance):
@@ -105,13 +130,61 @@ def test_update_bot_session(bot_session, context, instance):
     request = bots_pb2.CreateBotSessionRequest(bot_session=bot_session)
     bot = instance.CreateBotSession(request, context)
 
+    request_time = datetime.utcnow()
     request = bots_pb2.UpdateBotSessionRequest(name=bot.name,
                                                bot_session=bot)
 
     response = instance.UpdateBotSession(request, context)
 
-    assert isinstance(response, bots_pb2.BotSession)
-    assert bot == response
+    check_bot_session_request_response_and_assigned_expiry(instance, bot_session, response, request_time)
+
+
+@pytest.mark.parametrize("sleep_duration", [1, 2])
+def test_update_bot_session_and_wait_for_expiry(bot_session, context, instance, sleep_duration):
+    bots_interface = instance._get_instance("")
+    bot_session_keepalive_timeout = bots_interface._bot_session_keepalive_timeout
+
+    with mock.patch.object(bots_interface, '_close_bot_session', autospec=True) as close_botsession_fn:
+        request = bots_pb2.CreateBotSessionRequest(bot_session=bot_session)
+        bot = instance.CreateBotSession(request, context)
+
+        request_time = datetime.utcnow()
+        request = bots_pb2.UpdateBotSessionRequest(name=bot.name,
+                                                   bot_session=bot)
+
+        response = instance.UpdateBotSession(request, context)
+
+        check_bot_session_request_response_and_assigned_expiry(instance, bot_session, response, request_time)
+
+        if bot_session_keepalive_timeout:
+            assert bots_interface._next_expire_time_occurs_in() >= 0
+
+        time.sleep(sleep_duration)
+        bots_interface._reap_next_expired_session()
+
+        # Call this manually since the asyncio event loop isn't running
+        if bot_session_keepalive_timeout and bot_session_keepalive_timeout <= sleep_duration:
+            # the BotSession should have expired after sleeping `sleep_duration`
+            assert close_botsession_fn.call_count == 1
+        else:
+            # no timeout, or timeout > 1, shouldn't see any expiries yet.
+            assert close_botsession_fn.call_count == 0
+
+
+@pytest.mark.parametrize("bot_session_keepalive_timeout", BOT_SESSION_KEEPALIVE_TIMEOUT_OPTIONS)
+def test_bots_instance_sets_up_reaper_loop(bot_session_keepalive_timeout):
+    scheduler = mock.Mock()
+    main_loop = asyncio.get_event_loop()
+    with mock.patch.object(main_loop, 'create_task', autospec=True) as loop_create_task_fn:
+        with mock.patch.object(BotsInterface, '_reap_expired_sessions_loop', autospec=True):
+            # Just instantiate and see whether the __init__ sets up the reaper loop when needed
+            my_instance = BotsInterface(scheduler, bot_session_keepalive_timeout=bot_session_keepalive_timeout)
+
+            # If the timeout was set, the reaper task should have been created, otherwise it shouldn't
+            if bot_session_keepalive_timeout:
+                assert loop_create_task_fn.call_count == 1
+            else:
+                assert loop_create_task_fn.call_count == 0
 
 
 def test_update_bot_session_zombie(bot_session, context, instance):

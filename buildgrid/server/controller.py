@@ -36,13 +36,14 @@ from .operations.instance import OperationsInstance
 
 class ExecutionController:
 
-    def __init__(self, storage=None, action_cache=None, action_browser_url=None, property_keys=None):
+    def __init__(self, *, storage=None, action_cache=None, action_browser_url=None,
+                 property_keys=None, bot_session_keepalive_timeout=None):
         self.__logger = logging.getLogger(__name__)
 
         scheduler = Scheduler(action_cache, action_browser_url=action_browser_url)
 
         self._execution_instance = ExecutionInstance(scheduler, storage, property_keys)
-        self._bots_interface = BotsInterface(scheduler)
+        self._bots_interface = BotsInterface(scheduler, bot_session_keepalive_timeout=bot_session_keepalive_timeout)
         self._operations_instance = OperationsInstance(scheduler)
 
     def register_instance_with_server(self, instance_name, server):
