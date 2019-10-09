@@ -106,7 +106,7 @@ class ContentAddressableStorageInstance:
             response_proto = response.responses.add()
             response_proto.digest.CopyFrom(digest)
 
-            if digest.hash in blobs_read:
+            if digest.hash in blobs_read and blobs_read[digest.hash] is not None:
                 response_proto.data = blobs_read[digest.hash].read()
                 status_code = code_pb2.OK
             else:

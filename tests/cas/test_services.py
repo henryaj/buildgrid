@@ -23,6 +23,7 @@ from grpc._server import _Context
 import pytest
 
 from buildgrid._protos.google.bytestream import bytestream_pb2
+from buildgrid._protos.google.rpc import code_pb2
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2 as re_pb2
 from buildgrid.server.cas.storage.storage_abc import StorageABC
 from buildgrid.server.cas.instance import ByteStreamInstance, ContentAddressableStorageInstance
@@ -84,7 +85,8 @@ def test_bytestream_read(mocked, data_to_read, instance):
     request = bytestream_pb2.ReadRequest()
     if instance != "":
         request.resource_name = instance + "/"
-    request.resource_name += "blobs/{}/{}".format(HASH(data_to_read).hexdigest(), len(data_to_read))
+    request.resource_name += "blobs/{}/{}".format(
+        HASH(data_to_read).hexdigest(), len(data_to_read))
 
     data = b""
     for response in servicer.Read(request, context):
@@ -106,7 +108,8 @@ def test_bytestream_read_many(mocked, instance):
     request = bytestream_pb2.ReadRequest()
     if instance != "":
         request.resource_name = instance + "/"
-    request.resource_name += "blobs/{}/{}".format(HASH(data_to_read).hexdigest(), len(data_to_read))
+    request.resource_name += "blobs/{}/{}".format(
+        HASH(data_to_read).hexdigest(), len(data_to_read))
 
     data = b""
     for response in servicer.Read(request, context):
@@ -132,7 +135,8 @@ def test_bytestream_write(mocked, instance, extra_data):
     resource_name += extra_data
     requests = [
         bytestream_pb2.WriteRequest(resource_name=resource_name, data=b'abc'),
-        bytestream_pb2.WriteRequest(data=b'def', write_offset=3, finish_write=True)
+        bytestream_pb2.WriteRequest(
+            data=b'def', write_offset=3, finish_write=True)
     ]
 
     response = servicer.Write(iter(requests), context)
@@ -154,7 +158,8 @@ def test_bytestream_write_rejects_wrong_hash(mocked):
     wrong_hash = HASH(b'incorrect').hexdigest()
     resource_name = "uploads/UUID-HERE/blobs/{}/9".format(wrong_hash)
     requests = [
-        bytestream_pb2.WriteRequest(resource_name=resource_name, data=data, finish_write=True)
+        bytestream_pb2.WriteRequest(
+            resource_name=resource_name, data=data, finish_write=True)
     ]
 
     servicer.Write(iter(requests), context)
@@ -175,7 +180,8 @@ def test_cas_find_missing_blobs(mocked, instance):
         re_pb2.Digest(hash=HASH(b'def').hexdigest(), size_bytes=3),
         re_pb2.Digest(hash=HASH(b'ghij').hexdigest(), size_bytes=4)
     ]
-    request = re_pb2.FindMissingBlobsRequest(instance_name=instance, blob_digests=digests)
+    request = re_pb2.FindMissingBlobsRequest(
+        instance_name=instance, blob_digests=digests)
     response = servicer.FindMissingBlobs(request, context)
     assert len(response.missing_blob_digests) == 1
     assert response.missing_blob_digests[0] == digests[1]
@@ -198,7 +204,8 @@ def test_cas_batch_update_blobs(mocked, instance):
             data=b'wrong data')
     ]
 
-    request = re_pb2.BatchUpdateBlobsRequest(instance_name=instance, requests=update_requests)
+    request = re_pb2.BatchUpdateBlobsRequest(
+        instance_name=instance, requests=update_requests)
     response = servicer.BatchUpdateBlobs(request, context)
     assert len(response.responses) == 2
 
@@ -215,3 +222,44 @@ def test_cas_batch_update_blobs(mocked, instance):
     assert len(storage.data) == 1
     assert (update_requests[0].digest.hash, 3) in storage.data
     assert storage.data[(update_requests[0].digest.hash, 3)] == b'abc'
+
+
+@pytest.mark.parametrize("instance", instances)
+@mock.patch.object(service, 'remote_execution_pb2_grpc', autospec=True)
+def test_cas_batch_read_blobs(mocked, instance):
+    data = set([b'abc', b'defg', b'hij', b'klmnop'])
+    storage = SimpleStorage(data)
+
+    cas_instance = ContentAddressableStorageInstance(storage)
+    servicer = ContentAddressableStorageService(server)
+    servicer.add_instance(instance, cas_instance)
+
+    bloblists_to_request = [
+        [b'abc', b'defg'],
+        [b'defg', b'missing_blob'],
+        [b'missing_blob']
+    ]
+
+    digest_lists = [
+        [
+            re_pb2.Digest(hash=HASH(blob).hexdigest(), size_bytes=len(blob))
+            for blob in bloblist
+        ]
+        for bloblist in bloblists_to_request
+    ]
+
+    read_requests = [
+        re_pb2.BatchReadBlobsRequest(
+            instance_name=instance, digests=digest_list
+        )
+        for digest_list in digest_lists
+    ]
+
+    for request, bloblist in zip(read_requests, bloblists_to_request):
+        batched_responses = servicer.BatchReadBlobs(request, context)
+        for response, blob in zip(batched_responses.responses, bloblist):
+            if blob in data:
+                assert response.status.code == code_pb2.OK
+                assert response.data == blob
+            else:
+                assert response.status.code == code_pb2.NOT_FOUND
