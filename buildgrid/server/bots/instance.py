@@ -387,7 +387,14 @@ class BotsInterface:
                                       "has expired.", next_botsession_name_to_expire,
                                       self._bot_ids.get(next_botsession_name_to_expire),
                                       next_botsession_expire_time)
-                self._close_bot_session(next_botsession_name_to_expire, reason="expired")
+                try:
+                    self._close_bot_session(next_botsession_name_to_expire, reason="expired")
+                except InvalidArgumentError:
+                    self.__logger.warning("Expired BotSession name=[%s] for bot=[%s] with deadline=[%s] "
+                                          "was already closed.", next_botsession_name_to_expire,
+                                          self._bot_ids.get(next_botsession_name_to_expire),
+                                          next_botsession_expire_time)
+                    pass
 
                 self._update_next_expire_time()
 
