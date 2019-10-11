@@ -186,7 +186,7 @@ def test_create_server(monitoring):
         queue.put(True)
 
     with serve(CONFIGURATION, monitoring) as (server, path):
-        assert run_in_subprocess(__test_create_server, server.remote, timeout=30)
+        assert run_in_subprocess(__test_create_server, server.remote)
 
         if monitoring:
             with open(path) as f:

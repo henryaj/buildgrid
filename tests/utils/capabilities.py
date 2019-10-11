@@ -55,7 +55,7 @@ class TestServer:
             args=(self.__queue, self.instances, cas_instance, action_cache_instance, execution_instance))
         self.__process.start()
 
-        self.port = self.__queue.get(timeout=1)
+        self.port = self.__queue.get()
         self.remote = 'localhost:{}'.format(self.port)
 
     @staticmethod

@@ -76,13 +76,13 @@ class TestServer:
         queue.put(port)
         signal.pause()
 
-    def get_bot_session(self, timeout=1):
+    def get_bot_session(self):
         bot_session = bots_pb2.BotSession()
-        bot_session.ParseFromString(self.__bot_session_queue.get(timeout=timeout))
+        bot_session.ParseFromString(self.__bot_session_queue.get())
         return bot_session
 
     # Injects leases
-    def inject_work(self, lease=None, timeout=1):
+    def inject_work(self, lease=None):
         if not lease:
             lease = bots_pb2.Lease()
             lease.state = LeaseState.PENDING.value

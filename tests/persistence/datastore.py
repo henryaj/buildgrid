@@ -19,6 +19,8 @@ from buildgrid.server.persistence import DataStore
 
 
 def test_unconfigured_api():
+    assert DataStore.backend is None
+
     jobs = DataStore.load_unfinished_jobs()
     assert jobs == []
 

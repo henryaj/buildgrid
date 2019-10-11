@@ -15,12 +15,9 @@ variables:
   PYTHON: "${CI_PROJECT_DIR}/env/bin/python"
   TOOLS: "${CI_PROJECT_DIR}/env/bin"
 
-.build-template:
+.venv-template:
   before_script: &install-base
-    - apt-get update && apt-get install -y python3 python3-venv python3-pip graphviz
     - python3 -m venv env  # Creates a virtual environment
-    - ${PYTHON} -m pip --cache-dir=.pip install --upgrade setuptools pip wheel
-    - ${PYTHON} -m pip --cache-dir=.pip install --editable ".[auth,docs,tests]"
   cache:
     paths:
       - .pip
@@ -30,8 +27,9 @@ variables:
 #
 unit-tests:
   stage: test
-  extends: .build-template
+  extends: .venv-template
   script:
+    - ${PYTHON} -m pip --cache-dir=.pip install --editable ".[auth,tests]"
     - ${PYTHON} setup.py test
   after_script:
     - mkdir -p coverage/
@@ -44,8 +42,9 @@ unit-tests:
 
 dummy-tests:
   stage: test
-  extends: .build-template
+  extends: .venv-template
   script:
+    - ${PYTHON} -m pip --cache-dir=.pip install --editable "."
     - ${BGD} server start data/config/default.conf &
     - sleep 5  # Allows server to boot
     - ${BGD} bot dummy &
@@ -62,9 +61,12 @@ e2e-tests:
 # Post-build stage, documentation, coverage report...
 #
 documentation:
-  stage: post
-  extends: .build-template
+  stage: test
+  interruptible: true
+  extends: .venv-template
   script:
+    - ${PYTHON} -m pip --cache-dir=.pip install --editable ".[docs]"
+    - apt-get update  && apt-get install -y graphviz
     - PATH="${PATH}:${TOOLS}" make -C docs html
   after_script:
     - mkdir -p documentation/
@@ -75,11 +77,12 @@ documentation:
 
 coverage:
   stage: post
-  extends: .build-template
+  extends: .venv-template
   dependencies:
     - unit-tests
   coverage: '/TOTAL +\d+ +\d+ +(\d+\.\d+)%/'
   script:
+    - ${PYTHON} -m pip --cache-dir=.pip install coverage
     - cd coverage/ && ls -l .
     - ${PYTHON} -m coverage combine --rcfile=../.coveragerc --append coverage.*
     - ${PYTHON} -m coverage html --rcfile=../.coveragerc --directory .

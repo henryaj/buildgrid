@@ -40,7 +40,7 @@ def read_file(file_path, text_mode=False):
         return in_file.read()
 
 
-def run_in_subprocess(function, *arguments, timeout=1):
+def run_in_subprocess(function, *arguments):
     queue = multiprocessing.Queue()
     # Use subprocess to avoid creation of gRPC threads in main process
     # See https://github.com/grpc/grpc/blob/master/doc/fork_support.md
@@ -49,7 +49,7 @@ def run_in_subprocess(function, *arguments, timeout=1):
 
     try:
         process.start()
-        result = queue.get(timeout=timeout)
+        result = queue.get()
         process.join()
 
     except KeyboardInterrupt:
