@@ -38,7 +38,7 @@ class Device:
         """
 
         self.__properties = {}
-        self.__property_keys = ['os', 'has-docker']
+        self.__property_keys = ['OSFamily', 'has-docker']
         self.__name = str(uuid.uuid4())
 
         if properties:

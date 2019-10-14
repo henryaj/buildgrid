@@ -25,7 +25,7 @@ from buildgrid.bot.hardware.worker import Worker
 
 CONFIGURATIONS_WORKER = [{'DockerImage': ['Blade']}, {'DockerImage': ['Sheep', 'Snake']}]
 PROPERTIES_WORKER = [{'pool': ['Blade']}, {'pool': ['Sheep', 'Snake']}]
-PROPERTIES_DEVICE = [{'os': ['Blade']}, {'has-docker': ['Sheep', 'Snake']}]
+PROPERTIES_DEVICE = [{'OSFamily': ['Blade']}, {'has-docker': ['Sheep', 'Snake']}]
 
 
 def test_create_hardware():
