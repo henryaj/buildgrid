@@ -20,6 +20,7 @@ An instance of the Remote Execution Service.
 """
 
 import logging
+import queue
 
 from buildgrid._exceptions import FailedPreconditionError, InvalidArgumentError, NotFoundError
 from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 import Action, Command
@@ -125,17 +126,24 @@ class ExecutionInstance:
             # Operation already unregistered due to being finished/cancelled
             pass
 
-    def stream_operation_updates(self, message_queue):
-        error, operation = message_queue.get()
+    def get_next_operation_update(self, message_queue, timeout):
+        error, operation = message_queue.get(timeout=timeout)
         if error is not None:
             raise error
+        return operation
 
-        while not operation.done:
-            yield operation
+    def stream_operation_updates_while_context_is_active(self, message_queue, context, timeout=5):
+        while context.is_active():
+            try:
+                operation = self.get_next_operation_update(message_queue, timeout)
+                while not operation.done:
+                    yield operation
+                    operation = self.get_next_operation_update(message_queue, timeout)
+                    if not context.is_active():
+                        return  # Raises StopIteration
 
-            error, operation = message_queue.get()
-            if error is not None:
-                error.last_response = operation
-                raise error
+                yield operation
 
-        yield operation
+                return  # Raises StopIteration
+            except queue.Empty:
+                pass

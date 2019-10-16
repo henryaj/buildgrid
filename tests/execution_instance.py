@@ -15,9 +15,13 @@
 from unittest import mock
 from collections import namedtuple
 import pytest
+import queue
+
+from grpc._server import _Context
 
 from buildgrid.server.execution.instance import ExecutionInstance
 from buildgrid._exceptions import FailedPreconditionError
+from buildgrid._protos.google.longrunning import operations_pb2
 
 
 class MockScheduler:
@@ -106,3 +110,162 @@ def test_execute_platform_matching_no_job_req():
     exec_instance = ExecutionInstance(
         MockScheduler(), MockStorage(pairs), ["ChrootDigest"])
     assert exec_instance.execute("fake", False) == "queued"
+
+
+@pytest.fixture
+def mock_exec_instance():
+    return ExecutionInstance(
+        MockScheduler(), MockStorage([]), [])
+
+
+@pytest.fixture
+def mock_active_context():
+    cxt = mock.MagicMock(spec=_Context)
+    yield cxt
+
+
+@pytest.fixture
+def mock_operation():
+    operation = mock.Mock(spec=operations_pb2.Operation)
+    operation.done = False
+    return operation
+
+
+@pytest.fixture
+def mock_operation_done():
+    operation = mock.Mock(spec=operations_pb2.Operation)
+    operation.done = True
+    return operation
+
+
+@pytest.fixture(params=[0, 1, 2])
+def operation_updates_message_seq(mock_operation, request):
+    seq = []
+    for i in range(request.param):
+        seq.append((None, mock_operation))
+
+    return (request.param, seq)
+
+
+@pytest.fixture(params=[0, 1, 2])
+def operation_updates_completing_message_seq(mock_operation, mock_operation_done, request):
+    seq = []
+    for i in range(request.param):
+        seq.append((None, mock_operation))
+
+    seq.append((None, mock_operation_done))
+
+    # Add sentinel operation update: this should never be dequeued
+    # since we should stop once the operation completed (above)
+    seq.append((ValueError, mock_operation))
+    return (request.param, seq)
+
+
+@pytest.fixture(params=[0, 1, 2])
+def operation_updates_ending_with_error_seq(mock_operation, mock_operation_done, request):
+    seq = []
+    for i in range(request.param):
+        seq.append((None, mock_operation))
+
+    seq.append((RuntimeError, mock_operation))
+
+    # Add sentinel operation update: this should never be dequeued
+    # since we should stop once we encounter the first error
+    seq.append((ValueError, mock_operation))
+    return (request.param, seq)
+
+
+def test_stream_operation_updates_stopsiteration_when_operation_done(operation_updates_completing_message_seq,
+                                                                     mock_exec_instance, mock_active_context):
+    """
+        Make sure that `stream_operation_updates_while_context_is_active` raises
+        a StopIteration once the operation has completed
+    """
+    n, msg_seq = operation_updates_completing_message_seq
+    message_queue = queue.Queue()
+    for msg_err, msg_operation in msg_seq:
+        message_queue.put((msg_err, msg_operation))
+
+    generator = mock_exec_instance.stream_operation_updates_while_context_is_active(
+        message_queue, mock_active_context, timeout=0)
+
+    for i in range(n):
+        seq_error, seq_operation = msg_seq[i]
+        operation = next(generator)
+
+        assert seq_operation == operation
+        assert not operation.done
+
+    # Operation completion
+    seq_error, seq_operation = msg_seq[n]
+    operation = next(generator)
+
+    assert seq_operation == operation
+    assert operation.done
+
+    # After operation completion
+    with pytest.raises(StopIteration):
+        next(generator)
+
+
+@pytest.fixture(params=[0, 1, 2, 3])
+def n_0_to_3_inclusive(request):
+    return request.param
+
+
+def test_stream_operation_updates_stopsiteration_when_context_becomes_inactive(mock_operation,
+                                                                               mock_exec_instance, mock_active_context,
+                                                                               n_0_to_3_inclusive):
+    """
+        Make sure that `stream_operation_updates_while_context_is_active` raises a StopIteration
+        once the context closes even when there are more updates
+    """
+    numberOfYieldsBeforeContextClose = n_0_to_3_inclusive
+
+    # Add more items than we'll yield before the context closes
+    message_queue = queue.Queue()
+    for i in range(numberOfYieldsBeforeContextClose * 2):
+        message_queue.put((None, mock_operation))
+
+    generator = mock_exec_instance.stream_operation_updates_while_context_is_active(
+        message_queue, mock_active_context, timeout=0)
+
+    # get first n
+    for i in range(numberOfYieldsBeforeContextClose):
+        operation = next(generator)
+        assert operation == mock_operation
+
+    # "Close" the context...
+    mock_active_context.is_active = mock.MagicMock(return_value=False)
+
+    # see that we get StopIteration right after closing the context
+    with pytest.raises(StopIteration):
+        next(generator)
+
+
+def test_stream_operation_raises_and_stopsiteration_on_operation_errors(operation_updates_ending_with_error_seq,
+                                                                        mock_exec_instance, mock_active_context):
+    """
+        Make sure that `stream_operation_updates_while_context_is_active` raises
+        operation update errors and then ends (raises StopIteration)
+    """
+    n, msg_seq = operation_updates_ending_with_error_seq
+    message_queue = queue.Queue()
+    for msg_err, msg_operation in msg_seq:
+        message_queue.put((msg_err, msg_operation))
+
+    generator = mock_exec_instance.stream_operation_updates_while_context_is_active(
+        message_queue, mock_active_context, timeout=0)
+
+    for i in range(n):
+        seq_error, seq_operation = msg_seq[i]
+        operation = next(generator)
+
+        assert seq_operation == operation
+        assert not operation.done
+
+    with pytest.raises(RuntimeError):
+        operation = next(generator)
+
+    with pytest.raises(StopIteration):
+        operation = next(generator)

@@ -125,9 +125,16 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
             self.__logger.info("Operation [%s] created for job [%s]",
                                operation_full_name, job_name)
 
-            for operation in instance.stream_operation_updates(message_queue):
+            for operation in instance.stream_operation_updates_while_context_is_active(message_queue, context):
                 operation.name = operation_full_name
                 yield operation
+
+            if not context.is_active():
+                self.__logger.info("Peer peer_uid=[%s] was holding up a thread for "
+                                   " `stream_operation_updates()` for instance_name=[%s],"
+                                   " operation_name=[%s], but the rpc context is not active anymore;"
+                                   " releasing thread.",
+                                   peer_uid, instance_name, operation_name)
 
         except InvalidArgumentError as e:
             self.__logger.error(e)
@@ -182,9 +189,16 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
 
             operation_full_name = "{}/{}".format(instance_name, operation_name)
 
-            for operation in instance.stream_operation_updates(message_queue):
+            for operation in instance.stream_operation_updates_while_context_is_active(message_queue, context):
                 operation.name = operation_full_name
                 yield operation
+
+            if not context.is_active():
+                self.__logger.info("Peer peer_uid=[%s] was holding up a thread for "
+                                   " `stream_operation_updates()` for instance_name=[%s],"
+                                   " operation_name=[%s], but the rpc context is not active anymore;"
+                                   " releasing thread.",
+                                   peer, instance_name, operation_name)
 
         except InvalidArgumentError as e:
             self.__logger.error(e)
@@ -220,6 +234,9 @@ class ExecutionService(remote_execution_pb2_grpc.ExecutionServicer):
     # --- Private API ---
 
     def _rpc_termination_callback(self, peer_uid, instance_name, operation_name):
+        self.__logger.debug("RPC terminated for peer_uid=[%s], instance_name=[%s], operation_name=[%s]",
+                            peer_uid, instance_name, operation_name)
+
         instance = self._get_instance(instance_name)
 
         instance.unregister_operation_peer(operation_name, peer_uid)
