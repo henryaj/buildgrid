@@ -325,41 +325,11 @@ class Execution(YamlFactory):
         # If the configuration doesn't define a data store type, fallback to the
         # in-memory data store implementation from the old scheduler.
         if not data_store:
-            data_store = {"type": "mem"}
+            data_store = MemoryDataStore(storage)
 
-        try:
-            store_type = data_store.pop('type')
-        except KeyError:
-            click.echo("Data store definition must have a 'type' key.", err=True)
-            sys.exit(-1)
+        click.echo("Using %s to store state" % data_store)
 
-        try:
-            store_type = DataStoreType(store_type.lower())
-        except ValueError:
-            click.echo("Backend type '%s' doesn't exist" % store_type, err=True)
-            sys.exit(-1)
-
-        if store_type == DataStoreType.SQL:
-            implementation_class = SQLDataStore
-        elif store_type == DataStoreType.MEM:
-            implementation_class = MemoryDataStore
-
-        try:
-            data_store_instance = implementation_class(storage, **data_store)
-        except TypeError as type_error:
-            spec = getfullargspec(implementation_class)
-            invalid_args = [arg for arg in data_store.keys()
-                            if arg not in spec.kwonlyargs]
-            # If we don't detect any invalid_args here, re-raise since it
-            # is probably some other type of TypeError
-            if not invalid_args:
-                raise
-
-            click.echo("The following argument combination is unsupported for a data store "
-                       "with type '%s':\n\n%s\n%s" % (store_type, yaml.dump(invalid_args), type_error), err=True)
-            sys.exit(-1)
-
-        return ExecutionController(data_store_instance, storage=storage, action_cache=action_cache,
+        return ExecutionController(data_store, storage=storage, action_cache=action_cache,
                                    action_browser_url=action_browser_url, property_keys=property_keys,
                                    bot_session_keepalive_timeout=bot_session_keepalive_timeout)
 

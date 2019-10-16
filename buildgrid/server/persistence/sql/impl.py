@@ -38,7 +38,7 @@ class SQLDataStore(DataStoreInterface):
     def __init__(self, storage, *, connection_string="sqlite:///", automigrate=False,
                  retry_limit=10, **kwargs):
         self.__logger = logging.getLogger(__name__)
-        self.__logger.info("Using SQL data store interface with: "
+        self.__logger.info("Creating SQL data store interface with: "
                            "automigrate=[%s], retry_limit=[%s], kwargs=[%s]",
                            automigrate, retry_limit, kwargs)
 
@@ -62,6 +62,9 @@ class SQLDataStore(DataStoreInterface):
 
         if self.automigrate:
             self._create_or_migrate_db(connection_string)
+
+    def __repr__(self):
+        return "SQL data store interface for `%s`" % repr(self.engine.url)
 
     def activate_monitoring(self):
         # Don't do anything. This function needs to exist but there's no

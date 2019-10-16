@@ -28,7 +28,7 @@ class MemoryDataStore(DataStoreInterface):
 
     def __init__(self, storage):
         self.logger = logging.getLogger(__file__)
-        self.logger.info("Using in-memory data store interface")
+        self.logger.info("Creating in-memory data store interface")
 
         self.queue = []
         self.queue_lock = Lock()
@@ -41,6 +41,9 @@ class MemoryDataStore(DataStoreInterface):
         self.operations_by_stage = {}
         self.leases_by_state = {}
         self.is_instrumented = False
+
+    def __repr__(self):
+        return "In-memory data store interface"
 
     def activate_monitoring(self):
         if self.is_instrumented:
