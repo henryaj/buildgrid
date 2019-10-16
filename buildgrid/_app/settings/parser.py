@@ -279,6 +279,23 @@ class WithCache(YamlFactory):
         return WithCacheStorage(cache, fallback)
 
 
+class SQLDataStoreConfig(YamlFactory):
+
+    yaml_tag = u'!sql-data-store'
+
+    def __new__(cls, storage, connection_string="sqlite:///", automigrate=False,
+                retry_limit=10, **kwargs):
+        try:
+            return SQLDataStore(storage,
+                                connection_string=connection_string,
+                                automigrate=automigrate,
+                                retry_limit=retry_limit,
+                                **kwargs)
+        except TypeError as type_error:
+            click.echo(type_error, err=True)
+            sys.exit(-1)
+
+
 class Execution(YamlFactory):
     """Generates :class:`buildgrid.server.execution.service.ExecutionService`
     using the tag ``!execution``.
@@ -482,5 +499,6 @@ def get_parser():
     yaml.SafeLoader.add_constructor(WithCache.yaml_tag, WithCache.from_yaml)
     yaml.SafeLoader.add_constructor(CAS.yaml_tag, CAS.from_yaml)
     yaml.SafeLoader.add_constructor(ByteStream.yaml_tag, ByteStream.from_yaml)
+    yaml.SafeLoader.add_constructor(SQLDataStoreConfig.yaml_tag, SQLDataStoreConfig.from_yaml)
 
     return yaml
