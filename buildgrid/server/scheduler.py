@@ -27,7 +27,6 @@ from threading import Lock
 from buildgrid._enums import LeaseState, OperationStage
 from buildgrid._exceptions import NotFoundError
 from buildgrid.server.job import Job
-from buildgrid.server.persistence import DataStore
 from buildgrid.utils import BrowserURL
 
 
@@ -35,7 +34,7 @@ class Scheduler:
 
     MAX_N_TRIES = 5
 
-    def __init__(self, action_cache=None, action_browser_url=False, monitor=False):
+    def __init__(self, data_store, action_cache=None, action_browser_url=False, monitor=False):
         self.__logger = logging.getLogger(__name__)
 
         self._instance_name = None
@@ -53,6 +52,8 @@ class Scheduler:
         self.__operations_by_peer = {}
         self.__peer_message_queues = {}
 
+        self.data_store = data_store
+
         self._is_instrumented = False
         if monitor:
             self.activate_monitoring()
@@ -69,12 +70,12 @@ class Scheduler:
 
     def list_current_jobs(self):
         """Returns a list of the :class:`Job` names currently managed."""
-        jobs = DataStore.get_all_jobs()
+        jobs = self.data_store.get_all_jobs()
         return [job.name for job in jobs]
 
     def list_job_operations(self, job_name):
         """Returns a list of :class:`Operation` names for a :class:`Job`."""
-        job = DataStore.get_job_by_name(job_name)
+        job = self.data_store.get_job_by_name(job_name)
         if job is not None:
             return job.list_operations()
         return []
@@ -96,7 +97,7 @@ class Scheduler:
             NotFoundError: If no job with `job_name` exists.
         """
         with self.__operation_lock:
-            job = DataStore.get_job_by_name(job_name)
+            job = self.data_store.get_job_by_name(job_name)
 
             if job is None:
                 raise NotFoundError("Job name does not exist: [{}]".format(job_name))
@@ -121,7 +122,7 @@ class Scheduler:
             NotFoundError: If no operation with `operation_name` exists.
         """
         with self.__operation_lock:
-            job = DataStore.get_job_by_operation(operation_name)
+            job = self.data_store.get_job_by_operation(operation_name)
 
             if job is None:
                 raise NotFoundError("Operation name does not exist: [{}]"
@@ -144,7 +145,7 @@ class Scheduler:
             NotFoundError: If no operation with `operation_name` exists.
         """
         with self.__operation_lock:
-            job = DataStore.get_job_by_operation(operation_name)
+            job = self.data_store.get_job_by_operation(operation_name)
 
             if job is None:
                 raise NotFoundError("Operation name does not exist: [{}]"
@@ -155,10 +156,10 @@ class Scheduler:
             self.__peer_message_queues[peer].pop(operation_name)
 
             if not job.n_peers_for_operation(operation_name, self.__operations_by_peer):
-                DataStore.delete_operation(operation_name)
+                self.data_store.delete_operation(operation_name)
 
             if not job.n_peers(self.__operations_by_peer) and job.done and not job.lease:
-                DataStore.delete_job(job.name)
+                self.data_store.delete_job(job.name)
 
     def queue_job_action(self, action, action_digest, platform_requirements=None,
                          priority=0, skip_cache_lookup=False):
@@ -181,7 +182,7 @@ class Scheduler:
         Returns:
             str: the newly created job's name.
         """
-        job = DataStore.get_job_by_action(action_digest)
+        job = self.data_store.get_job_by_action(action_digest)
         if job is not None and not action.do_not_cache:
             # If existing job has been cancelled or isn't
             # cacheable, create a new one.
@@ -191,16 +192,17 @@ class Scheduler:
                     job.priority = priority
 
                     if job.operation_stage == OperationStage.QUEUED:
-                        DataStore.queue_job(job.name)
+                        self.data_store.queue_job(job.name)
 
                 self.__logger.debug("Job deduplicated for action [%s]: [%s]",
                                     action_digest.hash[:8], job.name)
 
                 return job.name
 
-        job = Job(action.do_not_cache, action_digest,
+        job = Job(self.data_store, action.do_not_cache, action_digest,
                   platform_requirements=platform_requirements,
                   priority=priority)
+        self.data_store.create_job(job)
 
         if self._action_browser_url:
             job.set_action_url(
@@ -223,11 +225,11 @@ class Scheduler:
 
             except NotFoundError:
                 operation_stage = OperationStage.QUEUED
-                DataStore.queue_job(job.name)
+                self.data_store.queue_job(job.name)
 
         else:
             operation_stage = OperationStage.QUEUED
-            DataStore.queue_job(job.name)
+            self.data_store.queue_job(job.name)
 
         self._update_job_operation_stage(job.name, operation_stage)
 
@@ -242,7 +244,7 @@ class Scheduler:
         Raises:
             NotFoundError: If no operation with `operation_name` exists.
         """
-        job = DataStore.get_job_by_operation(operation_name)
+        job = self.data_store.get_job_by_operation(operation_name)
 
         if job is None:
             raise NotFoundError("Operation name does not exist: [{}]"
@@ -259,7 +261,7 @@ class Scheduler:
         Raises:
             NotFoundError: If no operation with `operation_name` exists.
         """
-        job = DataStore.get_job_by_operation(operation_name)
+        job = self.data_store.get_job_by_operation(operation_name)
 
         if job is None:
             raise NotFoundError("Operation name does not exist: [{}]"
@@ -278,13 +280,13 @@ class Scheduler:
             NotFoundError: If no operation with `operation_name` exists.
         """
         with self.__operation_lock:
-            job = DataStore.get_job_by_operation(operation_name)
+            job = self.data_store.get_job_by_operation(operation_name)
 
             if job is None:
                 raise NotFoundError("Operation name does not exist: [{}]"
                                     .format(operation_name))
             if not job.n_peers(self.__operations_by_peer) and job.done and not job.lease:
-                DataStore.delete_job(job.name)
+                self.data_store.delete_job(job.name)
 
     # --- Public API: RWAPI ---
 
@@ -313,7 +315,7 @@ class Scheduler:
                 return [lease]
             return []
 
-        return DataStore.assign_lease_for_next_job(
+        return self.data_store.assign_lease_for_next_job(
             worker_capabilities, assign_lease, timeout=timeout)
 
     def update_job_lease_state(self, job_name, lease):
@@ -329,7 +331,7 @@ class Scheduler:
         Raises:
             NotFoundError: If no job with `job_name` exists.
         """
-        job = DataStore.get_job_by_name(job_name)
+        job = self.data_store.get_job_by_name(job_name)
 
         if job is None:
             raise NotFoundError("Job name does not exist: [{}]".format(job_name))
@@ -352,7 +354,7 @@ class Scheduler:
             if (self._action_cache is not None and
                     self._action_cache.allow_updates and not job.do_not_cache):
                 self._action_cache.update_action_result(job.action_digest, job.action_result)
-            DataStore.store_response(job)
+            self.data_store.store_response(job)
 
             operation_stage = OperationStage.COMPLETED
 
@@ -370,7 +372,7 @@ class Scheduler:
         Raises:
             NotFoundError: If no job with `job_name` exists.
         """
-        job = DataStore.get_job_by_name(job_name)
+        job = self.data_store.get_job_by_name(job_name)
 
         if job is None:
             raise NotFoundError("Job name does not exist: [{}]".format(job_name))
@@ -383,7 +385,7 @@ class Scheduler:
 
         else:
             operation_stage = OperationStage.QUEUED
-            DataStore.queue_job(job.name)
+            self.data_store.queue_job(job.name)
 
             job.update_lease_state(LeaseState.PENDING)
 
@@ -401,7 +403,7 @@ class Scheduler:
         Raises:
             NotFoundError: If no job with `job_name` exists.
         """
-        job = DataStore.get_job_by_name(job_name)
+        job = self.data_store.get_job_by_name(job_name)
 
         if job is None:
             raise NotFoundError("Job name does not exist: [{}]".format(job_name))
@@ -418,7 +420,7 @@ class Scheduler:
             NotFoundError: If no job with `job_name` exists.
         """
         with self.__operation_lock:
-            job = DataStore.get_job_by_name(job_name)
+            job = self.data_store.get_job_by_name(job_name)
 
             if job is None:
                 raise NotFoundError("Job name does not exist: [{}]".format(job_name))
@@ -426,7 +428,7 @@ class Scheduler:
             job.delete_lease()
 
             if not job.n_peers(self.__operations_by_peer) and job.done:
-                DataStore.delete_job(job.name)
+                self.data_store.delete_job(job.name)
 
     def get_job_lease_cancelled(self, job_name):
         """Returns true if the lease is cancelled.
@@ -437,7 +439,7 @@ class Scheduler:
         Raises:
             NotFoundError: If no job with `job_name` exists.
         """
-        job = DataStore.get_job_by_name(job_name)
+        job = self.data_store.get_job_by_name(job_name)
 
         if job is None:
             raise NotFoundError("Job name does not exist: [{}]".format(job_name))
@@ -479,20 +481,20 @@ class Scheduler:
             self.__build_metadata_queues.append(message_queue)
 
     def query_n_jobs(self):
-        return len(DataStore.get_all_jobs())
+        return len(self.data_store.get_all_jobs())
 
     def query_n_operations(self):
         # For now n_operations == n_jobs:
-        return len(DataStore.get_all_operations())
+        return len(self.data_store.get_all_operations())
 
     def query_n_operations_by_stage(self, operation_stage):
-        return len(DataStore.get_operations_by_stage(operation_stage))
+        return len(self.data_store.get_operations_by_stage(operation_stage))
 
     def query_n_leases(self):
-        return len(DataStore.get_all_jobs())
+        return len(self.data_store.get_all_jobs())
 
     def query_n_leases_by_state(self, lease_state):
-        return len(DataStore.get_leases_by_state(lease_state))
+        return len(self.data_store.get_leases_by_state(lease_state))
 
     def query_n_retries(self):
         return self.__retries_count
@@ -512,7 +514,7 @@ class Scheduler:
             operation_stage (OperationStage): the stage to transition to.
         """
         with self.__operation_lock:
-            job = DataStore.get_job_by_name(job_name)
+            job = self.data_store.get_job_by_name(job_name)
 
             if operation_stage == OperationStage.CACHE_CHECK:
                 job.update_operation_stage(OperationStage.CACHE_CHECK,

@@ -34,7 +34,6 @@ from buildgrid.server.cas.storage import lru_memory_cache
 from buildgrid.server.controller import ExecutionController
 from buildgrid.server.operations import service
 from buildgrid.server.operations.service import OperationsService
-from buildgrid.server.persistence import DataStore
 from buildgrid.server.persistence.mem.impl import MemoryDataStore
 from buildgrid.server.persistence.sql.impl import SQLDataStore
 from buildgrid.utils import create_digest
@@ -67,8 +66,8 @@ def execute_request():
                                               skip_cache_lookup=True)
 
 
-@pytest.fixture
-def controller():
+@pytest.fixture(params=["mem", "sql"])
+def controller(request):
     storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
 
     write_session = storage.begin_write(command_digest)
@@ -79,49 +78,37 @@ def controller():
     write_session.write(action.SerializeToString())
     storage.commit_write(action_digest, write_session)
 
-    yield ExecutionController(storage=storage)
+    if request.param == "sql":
+        _, db = tempfile.mkstemp()
+        data_store = SQLDataStore(storage, connection_string="sqlite:///%s" % db, automigrate=True)
+    elif request.param == "mem":
+        data_store = MemoryDataStore(storage)
+    try:
+        yield ExecutionController(data_store, storage=storage)
+    finally:
+        if request.param == "sql":
+            if os.path.exists(db):
+                os.remove(db)
 
 
 # Instance to test
-@pytest.fixture(params=["mem", "sql"])
-def instance(controller, request):
-    storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
-    if request.param == "sql":
-        _, db = tempfile.mkstemp()
-        DataStore.backend = SQLDataStore(storage, connection_string="sqlite:///%s" % db, automigrate=True)
-    elif request.param == "mem":
-        DataStore.backend = MemoryDataStore(storage)
+@pytest.fixture
+def instance(controller):
     with mock.patch.object(service, 'operations_pb2_grpc'):
         operation_service = OperationsService(server)
         operation_service.add_instance(instance_name, controller.operations_instance)
 
         yield operation_service
-    if request.param == "sql":
-        DataStore.backend = None
-        if os.path.exists(db):
-            os.remove(db)
 
 
 # Blank instance
-@pytest.fixture(params=["mem", "sql"])
+@pytest.fixture
 def blank_instance(controller, request):
-    storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
-    if request.param == "sql":
-        _, db = tempfile.mkstemp()
-        DataStore.backend = SQLDataStore(storage, connection_string="sqlite:///%s" % db, automigrate=True)
-    elif request.param == "mem":
-        DataStore.backend = MemoryDataStore(storage)
-    try:
-        with mock.patch.object(service, 'operations_pb2_grpc'):
-            operation_service = OperationsService(server)
-            operation_service.add_instance('', controller.operations_instance)
+    with mock.patch.object(service, 'operations_pb2_grpc'):
+        operation_service = OperationsService(server)
+        operation_service.add_instance('', controller.operations_instance)
 
-            yield operation_service
-    finally:
-        if request.param == "sql":
-            DataStore.backend = None
-            if os.path.exists(db):
-                os.remove(db)
+        yield operation_service
 
 
 # Queue an execution, get operation corresponding to that request

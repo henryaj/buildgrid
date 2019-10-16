@@ -32,7 +32,6 @@ from buildgrid.server.cas.storage.lru_memory_cache import LRUMemoryCache
 from buildgrid.server.cas.storage.remote import RemoteStorage
 from buildgrid.server.cas.storage.s3 import S3Storage
 from buildgrid.server.cas.storage.with_cache import WithCacheStorage
-from buildgrid.server.persistence import DataStore
 from buildgrid.server.persistence.mem.impl import MemoryDataStore
 from buildgrid.server.persistence.sql.impl import SQLDataStore
 
@@ -321,7 +320,7 @@ class Execution(YamlFactory):
             implementation_class = MemoryDataStore
 
         try:
-            DataStore.backend = implementation_class(storage, **data_store)
+            data_store_instance = implementation_class(storage, **data_store)
         except TypeError as type_error:
             spec = getfullargspec(implementation_class)
             invalid_args = [arg for arg in data_store.keys()
@@ -335,8 +334,8 @@ class Execution(YamlFactory):
                        "with type '%s':\n\n%s\n%s" % (store_type, yaml.dump(invalid_args), type_error), err=True)
             sys.exit(-1)
 
-        return ExecutionController(storage=storage, action_cache=action_cache, action_browser_url=action_browser_url,
-                                   property_keys=property_keys,
+        return ExecutionController(data_store_instance, storage=storage, action_cache=action_cache,
+                                   action_browser_url=action_browser_url, property_keys=property_keys,
                                    bot_session_keepalive_timeout=bot_session_keepalive_timeout)
 
 

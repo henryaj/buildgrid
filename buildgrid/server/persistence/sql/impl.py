@@ -115,23 +115,23 @@ class SQLDataStore(DataStoreInterface):
             job = jobs.first()
             if not job:
                 return None
-            return job.to_internal_job(self.storage, self.response_cache)
+            return job.to_internal_job(self)
 
     def get_job_by_name(self, name):
         with self.session() as session:
             job = self._get_job(name, session)
-            return job.to_internal_job(self.storage, self.response_cache)
+            return job.to_internal_job(self)
 
     def get_job_by_operation(self, operation_name):
         with self.session() as session:
             operation = self._get_operation(operation_name, session)
             job = operation.job
-            return job.to_internal_job(self.storage, self.response_cache)
+            return job.to_internal_job(self)
 
     def get_all_jobs(self):
         with self.session() as session:
             jobs = session.query(Job).filter(Job.stage != OperationStage.COMPLETED.value)
-            return [j.to_internal_job(self.storage, self.response_cache) for j in jobs]
+            return [j.to_internal_job(self) for j in jobs]
 
     def create_job(self, job):
         with self.session() as session:
@@ -226,7 +226,7 @@ class SQLDataStore(DataStoreInterface):
     def _create_lease(self, lease, session, job=None):
         if job is None:
             job = self._get_job(lease.id, session)
-            job = job.to_internal_job(self.storage, self.response_cache)
+            job = job.to_internal_job(self)
         session.add(Lease(
             job_name=lease.id,
             state=lease.state,
@@ -249,7 +249,7 @@ class SQLDataStore(DataStoreInterface):
             jobs = session.query(Job)
             jobs = jobs.filter(Job.stage != OperationStage.COMPLETED.value)
             jobs = jobs.order_by(Job.priority)
-            return [j.to_internal_job(self.storage, self.response_cache) for j in jobs.all()]
+            return [j.to_internal_job(self) for j in jobs.all()]
 
     def assign_lease_for_next_job(self, capabilities, callback, timeout=None):
         """Return a list of leases for the highest priority jobs that can be run by a worker.
@@ -329,7 +329,7 @@ class SQLDataStore(DataStoreInterface):
             jobs = jobs.order_by(Job.priority)
             job = jobs.first()
             if job:
-                internal_job = job.to_internal_job(self.storage, self.response_cache)
+                internal_job = job.to_internal_job(self)
                 leases = callback(internal_job)
                 if leases:
                     job.assigned = True

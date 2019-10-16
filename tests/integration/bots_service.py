@@ -34,7 +34,6 @@ from buildgrid.server.job import LeaseState, BotStatus
 from buildgrid.server.bots import service
 from buildgrid.server.bots.service import BotsService
 from buildgrid.server.bots.instance import BotsInterface
-from buildgrid.server.persistence import DataStore
 from buildgrid.server.persistence.mem.impl import MemoryDataStore
 from buildgrid.server.persistence.sql.impl import SQLDataStore
 
@@ -58,34 +57,39 @@ def bot_session():
 
 
 BOT_SESSION_KEEPALIVE_TIMEOUT_OPTIONS = [None, 1, 2]
+DATA_STORE_IMPLS = ["sql", "mem"]
+
+PARAMS = [(impl, timeout)
+          for timeout in BOT_SESSION_KEEPALIVE_TIMEOUT_OPTIONS
+          for impl in DATA_STORE_IMPLS]
 
 
-@pytest.fixture(params=BOT_SESSION_KEEPALIVE_TIMEOUT_OPTIONS)
+@pytest.fixture(params=PARAMS)
 def controller(request):
-    yield ExecutionController(bot_session_keepalive_timeout=request.param)
+    storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
+    impl, timeout = request.param
+    if impl == "sql":
+        _, db = tempfile.mkstemp()
+        data_store = SQLDataStore(storage, connection_string="sqlite:///%s" % db, automigrate=True)
+    elif impl == "mem":
+        data_store = MemoryDataStore(storage)
+    try:
+        yield ExecutionController(data_store, bot_session_keepalive_timeout=timeout)
+    finally:
+        if impl == "sql":
+            if os.path.exists(db):
+                os.remove(db)
 
 
 # Instance to test
-@pytest.fixture(params=["mem", "sql"])
+@pytest.fixture
 def instance(controller, request):
-    storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
-    if request.param == "sql":
-        _, db = tempfile.mkstemp()
-        DataStore.backend = SQLDataStore(storage, connection_string="sqlite:///%s" % db, automigrate=True)
-    elif request.param == "mem":
-        DataStore.backend = MemoryDataStore(storage)
-    try:
-        instances = {"": controller.bots_interface}
-        with mock.patch.object(service, 'bots_pb2_grpc'):
-            bots_service = BotsService(server)
-            for k, v in instances.items():
-                bots_service.add_instance(k, v)
-            yield bots_service
-    finally:
-        if request.param == "sql":
-            DataStore.backend = None
-            if os.path.exists(db):
-                os.remove(db)
+    instances = {"": controller.bots_interface}
+    with mock.patch.object(service, 'bots_pb2_grpc'):
+        bots_service = BotsService(server)
+        for k, v in instances.items():
+            bots_service.add_instance(k, v)
+        yield bots_service
 
 
 def check_bot_session_request_response_and_assigned_expiry(instance, request, response, request_time):

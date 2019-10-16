@@ -19,7 +19,6 @@ import copy
 import os
 import queue
 import tempfile
-import uuid
 from unittest import mock
 
 import grpc
@@ -28,19 +27,15 @@ import pytest
 
 from buildgrid._enums import LeaseState, OperationStage
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
-from buildgrid._protos.google.longrunning import operations_pb2
 
 from buildgrid.utils import create_digest
-from buildgrid.server import job
 from buildgrid.server.controller import ExecutionController
 from buildgrid.server.cas.storage import lru_memory_cache
 from buildgrid.server.actioncache.instance import ActionCache
 from buildgrid.server.execution import service
 from buildgrid.server.execution.service import ExecutionService
-from buildgrid.server.persistence import DataStore
 from buildgrid.server.persistence.mem.impl import MemoryDataStore
 from buildgrid.server.persistence.sql.impl import SQLDataStore
-from buildgrid.server.persistence.sql import models
 
 
 server = mock.create_autospec(grpc.server)
@@ -59,8 +54,13 @@ def context():
     yield cxt
 
 
-@pytest.fixture(params=["action-cache", "no-action-cache"])
+PARAMS = [(impl, use_cache) for impl in ["sql", "mem"]
+          for use_cache in ["action-cache", "no-action-cache"]]
+
+
+@pytest.fixture(params=PARAMS)
 def controller(request):
+    impl, use_cache = request.param
     storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
 
     write_session = storage.begin_write(command_digest)
@@ -71,32 +71,30 @@ def controller(request):
     write_session.write(action.SerializeToString())
     storage.commit_write(action_digest, write_session)
 
-    if request.param == "action-cache":
-        cache = ActionCache(storage, 50)
-        yield ExecutionController(storage=storage, action_cache=cache)
-    else:
-        yield ExecutionController(storage=storage)
+    if impl == "sql":
+        _, db = tempfile.mkstemp()
+        data_store = SQLDataStore(storage, connection_string="sqlite:///%s" % db, automigrate=True)
+    elif impl == "mem":
+        data_store = MemoryDataStore(storage)
+    try:
+        if use_cache == "action-cache":
+            cache = ActionCache(storage, 50)
+            yield ExecutionController(data_store, storage=storage, action_cache=cache)
+        else:
+            yield ExecutionController(data_store, storage=storage)
+    finally:
+        if impl == "sql":
+            if os.path.exists(db):
+                os.remove(db)
 
 
 # Instance to test
 @pytest.fixture(params=["mem", "sql"])
 def instance(controller, request):
-    storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
-    if request.param == "sql":
-        _, db = tempfile.mkstemp()
-        DataStore.backend = SQLDataStore(storage, connection_string="sqlite:///%s" % db, automigrate=True)
-    elif request.param == "mem":
-        DataStore.backend = MemoryDataStore(storage)
-    try:
-        with mock.patch.object(service, 'remote_execution_pb2_grpc'):
-            execution_service = ExecutionService(server)
-            execution_service.add_instance("", controller.execution_instance)
-            yield execution_service
-    finally:
-        if request.param == "sql":
-            DataStore.backend = None
-            if os.path.exists(db):
-                os.remove(db)
+    with mock.patch.object(service, 'remote_execution_pb2_grpc'):
+        execution_service = ExecutionService(server)
+        execution_service.add_instance("", controller.execution_instance)
+        yield execution_service
 
 
 def test_unregister_operation_peer(instance, controller, context):
@@ -110,7 +108,7 @@ def test_unregister_operation_peer(instance, controller, context):
     assert operation_name in scheduler._Scheduler__operations_by_peer[context.peer()]
 
     controller.execution_instance.unregister_operation_peer(operation_name, context.peer())
-    job = DataStore.get_job_by_name(job_name)
+    job = scheduler.data_store.get_job_by_name(job_name)
     assert not scheduler._Scheduler__operations_by_peer[context.peer()]
     assert job is not None
 
@@ -119,10 +117,10 @@ def test_unregister_operation_peer(instance, controller, context):
                                                                      message_queue)
     scheduler._update_job_operation_stage(job_name, OperationStage.COMPLETED)
     controller.execution_instance.unregister_operation_peer(operation_name, context.peer())
-    if isinstance(DataStore.backend, MemoryDataStore):
-        assert DataStore.get_job_by_name(job_name) is None
-    elif isinstance(DataStore.backend, SQLDataStore):
-        assert job_name not in DataStore.backend.response_cache
+    if isinstance(scheduler.data_store, MemoryDataStore):
+        assert scheduler.data_store.get_job_by_name(job_name) is None
+    elif isinstance(scheduler.data_store, SQLDataStore):
+        assert job_name not in scheduler.data_store.response_cache
 
 
 @pytest.mark.parametrize("monitoring", [True, False])
@@ -133,23 +131,23 @@ def test_update_lease_state(instance, controller, context, monitoring):
 
     job_name = scheduler.queue_job_action(action, action_digest, skip_cache_lookup=True)
 
-    job = DataStore.get_job_by_name(job_name)
+    job = scheduler.data_store.get_job_by_name(job_name)
     job_lease = job.create_lease("test-suite")
-    if isinstance(DataStore.backend, SQLDataStore):
-        DataStore.create_lease(job_lease)
+    if isinstance(scheduler.data_store, SQLDataStore):
+        scheduler.data_store.create_lease(job_lease)
 
     lease = copy.deepcopy(job_lease)
     scheduler.update_job_lease_state(job_name, lease)
 
     lease.state = LeaseState.ACTIVE.value
     scheduler.update_job_lease_state(job_name, lease)
-    job = DataStore.get_job_by_name(job_name)
+    job = scheduler.data_store.get_job_by_name(job_name)
     assert lease.state == job._lease.state
 
     lease.state = LeaseState.COMPLETED.value
     scheduler.update_job_lease_state(job_name, lease)
-    job = DataStore.get_job_by_name(job_name)
-    if not isinstance(DataStore.backend, SQLDataStore):
+    job = scheduler.data_store.get_job_by_name(job_name)
+    if not isinstance(scheduler.data_store, SQLDataStore):
         assert lease.state == job._lease.state
     else:
         assert job._lease is None
@@ -166,19 +164,19 @@ def test_retry_job_lease(instance, controller, context):
     job_name = scheduler.queue_job_action(action, action_digest, skip_cache_lookup=True)
     scheduler._update_job_operation_stage(job_name, OperationStage.EXECUTING)
 
-    job = DataStore.get_job_by_name(job_name)
+    job = scheduler.data_store.get_job_by_name(job_name)
 
     job_lease = job.create_lease("test-suite")
-    if isinstance(DataStore.backend, SQLDataStore):
-        DataStore.create_lease(job_lease)
+    if isinstance(scheduler.data_store, SQLDataStore):
+        scheduler.data_store.create_lease(job_lease)
 
     scheduler.retry_job_lease(job_name)
 
-    job = DataStore.get_job_by_name(job_name)
+    job = scheduler.data_store.get_job_by_name(job_name)
     assert job.n_tries == 2
 
     scheduler.retry_job_lease(job_name)
 
-    job = DataStore.get_job_by_name(job_name)
+    job = scheduler.data_store.get_job_by_name(job_name)
     assert job.n_tries == 2
     assert job.operation_stage == OperationStage.COMPLETED

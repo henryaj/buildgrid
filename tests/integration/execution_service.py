@@ -36,7 +36,6 @@ from buildgrid.server.cas.storage import lru_memory_cache
 from buildgrid.server.actioncache.instance import ActionCache
 from buildgrid.server.execution import service
 from buildgrid.server.execution.service import ExecutionService
-from buildgrid.server.persistence import DataStore
 from buildgrid.server.persistence.mem.impl import MemoryDataStore
 from buildgrid.server.persistence.sql.impl import SQLDataStore
 from buildgrid.server.persistence.sql import models
@@ -60,8 +59,13 @@ def context():
     yield cxt
 
 
-@pytest.fixture(params=["action-cache", "no-action-cache"])
+PARAMS = [(impl, use_cache) for impl in ["sql", "mem"]
+          for use_cache in ["action-cache", "no-action-cache"]]
+
+
+@pytest.fixture(params=PARAMS)
 def controller(request):
+    impl, use_cache = request.param
     storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
 
     write_session = storage.begin_write(command_digest)
@@ -72,32 +76,30 @@ def controller(request):
     write_session.write(action.SerializeToString())
     storage.commit_write(action_digest, write_session)
 
-    if request.param == "action-cache":
-        cache = ActionCache(storage, 50)
-        yield ExecutionController(storage=storage, action_cache=cache)
-    else:
-        yield ExecutionController(storage=storage)
+    if impl == "sql":
+        _, db = tempfile.mkstemp()
+        data_store = SQLDataStore(storage, connection_string="sqlite:///%s" % db, automigrate=True)
+    elif impl == "mem":
+        data_store = MemoryDataStore(storage)
+    try:
+        if use_cache == "action-cache":
+            cache = ActionCache(storage, 50)
+            yield ExecutionController(data_store, storage=storage, action_cache=cache)
+        else:
+            yield ExecutionController(data_store, storage=storage)
+    finally:
+        if impl == "sql":
+            if os.path.exists(db):
+                os.remove(db)
 
 
 # Instance to test
 @pytest.fixture(params=["mem", "sql"])
 def instance(controller, request):
-    storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
-    if request.param == "sql":
-        _, db = tempfile.mkstemp()
-        DataStore.backend = SQLDataStore(storage, connection_string="sqlite:///%s" % db, automigrate=True)
-    elif request.param == "mem":
-        DataStore.backend = MemoryDataStore(storage)
-    try:
-        with mock.patch.object(service, 'remote_execution_pb2_grpc'):
-            execution_service = ExecutionService(server)
-            execution_service.add_instance("", controller.execution_instance)
-            yield execution_service
-    finally:
-        if request.param == "sql":
-            DataStore.backend = None
-            if os.path.exists(db):
-                os.remove(db)
+    with mock.patch.object(service, 'remote_execution_pb2_grpc'):
+        execution_service = ExecutionService(server)
+        execution_service.add_instance("", controller.execution_instance)
+        yield execution_service
 
 
 @pytest.mark.parametrize("skip_cache_lookup", [True, False])
@@ -135,17 +137,16 @@ def test_no_action_digest_in_storage(instance, context):
 
 
 def test_wait_execution(instance, controller, context):
-    job_name = controller.execution_instance._scheduler.queue_job_action(action,
-                                                                         action_digest,
-                                                                         skip_cache_lookup=True)
+    scheduler = controller.execution_instance._scheduler
+
+    job_name = scheduler.queue_job_action(action, action_digest, skip_cache_lookup=True)
 
     message_queue = queue.Queue()
     operation_name = controller.execution_instance.register_job_peer(job_name,
                                                                      context.peer(),
                                                                      message_queue)
 
-    controller.execution_instance._scheduler._update_job_operation_stage(job_name,
-                                                                         OperationStage.COMPLETED)
+    scheduler._update_job_operation_stage(job_name, OperationStage.COMPLETED)
 
     request = remote_execution_pb2.WaitExecutionRequest(name=operation_name)
 
@@ -159,8 +160,8 @@ def test_wait_execution(instance, controller, context):
     assert metadata.stage == job.OperationStage.COMPLETED.value
     assert result.done is True
 
-    if isinstance(DataStore.backend, SQLDataStore):
-        with DataStore.backend.session() as session:
+    if isinstance(scheduler.data_store, SQLDataStore):
+        with scheduler.data_store.session() as session:
             record = session.query(models.Job).filter_by(name=job_name).first()
             assert record is not None
             assert record.stage == job.OperationStage.COMPLETED.value
@@ -176,22 +177,20 @@ def test_wrong_instance_wait_execution(instance, context):
 
 
 def test_job_deduplication_in_scheduling(instance, controller, context):
+    scheduler = controller.execution_instance._scheduler
+
     action = remote_execution_pb2.Action(command_digest=command_digest,
                                          do_not_cache=False)
     action_digest = create_digest(action.SerializeToString())
 
-    job_name1 = controller.execution_instance._scheduler.queue_job_action(action,
-                                                                          action_digest,
-                                                                          skip_cache_lookup=True)
+    job_name1 = scheduler.queue_job_action(action, action_digest, skip_cache_lookup=True)
 
     message_queue = queue.Queue()
     operation_name1 = controller.execution_instance.register_job_peer(job_name1,
                                                                       context.peer(),
                                                                       message_queue)
 
-    job_name2 = controller.execution_instance._scheduler.queue_job_action(action,
-                                                                          action_digest,
-                                                                          skip_cache_lookup=True)
+    job_name2 = scheduler.queue_job_action(action, action_digest, skip_cache_lookup=True)
 
     operation_name2 = controller.execution_instance.register_job_peer(job_name2,
                                                                       context.peer(),
@@ -200,8 +199,8 @@ def test_job_deduplication_in_scheduling(instance, controller, context):
     assert job_name1 == job_name2
     assert operation_name1 != operation_name2
 
-    if isinstance(DataStore.backend, SQLDataStore):
-        with DataStore.backend.session() as session:
+    if isinstance(scheduler.data_store, SQLDataStore):
+        with scheduler.data_store.session() as session:
             query = session.query(models.Job)
             job_count = query.filter_by(name=job_name1).count()
             assert job_count == 1
@@ -211,33 +210,31 @@ def test_job_deduplication_in_scheduling(instance, controller, context):
 
 
 def test_job_reprioritisation(instance, controller, context):
+    scheduler = controller.execution_instance._scheduler
+
     action = remote_execution_pb2.Action(command_digest=command_digest)
     action_digest = create_digest(action.SerializeToString())
 
-    job_name1 = controller.execution_instance._scheduler.queue_job_action(action,
-                                                                          action_digest,
-                                                                          skip_cache_lookup=True,
-                                                                          priority=10)
+    job_name1 = scheduler.queue_job_action(
+        action, action_digest, skip_cache_lookup=True, priority=10)
 
-    job = DataStore.get_job_by_name(job_name1)
+    job = scheduler.data_store.get_job_by_name(job_name1)
     assert job.priority == 10
 
-    job_name2 = controller.execution_instance._scheduler.queue_job_action(action,
-                                                                          action_digest,
-                                                                          skip_cache_lookup=True,
-                                                                          priority=1)
+    job_name2 = scheduler.queue_job_action(
+        action, action_digest, skip_cache_lookup=True, priority=1)
 
     assert job_name1 == job_name2
-    job = DataStore.get_job_by_name(job_name1)
+    job = scheduler.data_store.get_job_by_name(job_name1)
     assert job.priority == 1
 
 
 @pytest.mark.parametrize("do_not_cache", [True, False])
 def test_do_not_cache_no_deduplication(do_not_cache, instance, controller, context):
+    scheduler = controller.execution_instance._scheduler
+
     # The default action already has do_not_cache set, so use that
-    job_name1 = controller.execution_instance._scheduler.queue_job_action(action,
-                                                                          action_digest,
-                                                                          skip_cache_lookup=True)
+    job_name1 = scheduler.queue_job_action(action, action_digest, skip_cache_lookup=True)
 
     message_queue = queue.Queue()
     operation_name1 = controller.execution_instance.register_job_peer(job_name1,
@@ -248,9 +245,7 @@ def test_do_not_cache_no_deduplication(do_not_cache, instance, controller, conte
                                           do_not_cache=do_not_cache)
 
     action_digest2 = create_digest(action2.SerializeToString())
-    job_name2 = controller.execution_instance._scheduler.queue_job_action(action2,
-                                                                          action_digest2,
-                                                                          skip_cache_lookup=True)
+    job_name2 = scheduler.queue_job_action(action2, action_digest2, skip_cache_lookup=True)
 
     operation_name2 = controller.execution_instance.register_job_peer(job_name2,
                                                                       context.peer(),
@@ -260,8 +255,8 @@ def test_do_not_cache_no_deduplication(do_not_cache, instance, controller, conte
     assert job_name1 != job_name2
     assert operation_name1 != operation_name2
 
-    if isinstance(DataStore.backend, SQLDataStore):
-        with DataStore.backend.session() as session:
+    if isinstance(scheduler.data_store, SQLDataStore):
+        with scheduler.data_store.session() as session:
             job_count = session.query(models.Job).count()
             assert job_count == 2
 

@@ -26,12 +26,11 @@ from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_p
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 from buildgrid._protos.google.rpc import code_pb2
-from buildgrid.server.persistence import DataStore
 
 
 class Job:
 
-    def __init__(self, do_not_cache, action_digest, platform_requirements=None, priority=0,
+    def __init__(self, data_store, do_not_cache, action_digest, platform_requirements=None, priority=0,
                  name=None, operations=(), cancelled_operations=set(), lease=None,
                  stage=OperationStage.UNKNOWN.value, cancelled=False,
                  queued_timestamp=None, queued_time_duration=None,
@@ -81,7 +80,7 @@ class Job:
         self._done = done
         self.worker_name = worker_name
 
-        DataStore.create_job(self)
+        self.data_store = data_store
 
     def __lt__(self, other):
         try:
@@ -132,8 +131,7 @@ class Job:
     @priority.setter
     def priority(self, new_priority):
         self._priority = new_priority
-        changes = {'priority': new_priority}
-        DataStore.update_job(self.name, changes)
+        self.data_store.update_job(self.name, {'priority': new_priority})
 
     @property
     def done(self):
@@ -258,7 +256,7 @@ class Job:
         else:
             peer_message_queues[peer] = {new_operation.name: message_queue}
 
-        DataStore.create_operation(new_operation, self._name)
+        self.data_store.create_operation(new_operation, self._name)
 
         self._send_operations_updates(peers=[peer],
                                       operations_by_peer=operations_by_peer,
@@ -370,7 +368,7 @@ class Job:
         elif self.__operation_metadata.stage == OperationStage.COMPLETED.value:
             self._done = True
 
-        DataStore.update_job(self.name, changes)
+        self.data_store.update_job(self.name, changes)
 
         self._send_operations_updates(operations_by_peer=operations_by_peer,
                                       peer_message_queues=peer_message_queues)
@@ -408,7 +406,7 @@ class Job:
                 "stage": OperationStage.COMPLETED.value,
                 "cancelled": True
             }
-            DataStore.update_job(self.name, changes)
+            self.data_store.update_job(self.name, changes)
             if self._lease is not None:
                 self.cancel_lease()
 
@@ -539,9 +537,9 @@ class Job:
             self.__execute_response.cached_result = False
             self.__execute_response.status.CopyFrom(status)
 
-        DataStore.update_job(self.name, job_changes)
+        self.data_store.update_job(self.name, job_changes)
         if not skip_lease_persistence:
-            DataStore.update_lease(self.name, lease_changes)
+            self.data_store.update_lease(self.name, lease_changes)
 
     def cancel_lease(self):
         """Triggers a job's :class:`Lease` cancellation.
@@ -601,7 +599,7 @@ class Job:
 
         operation.done = done
         changes = {"done": done}
-        DataStore.update_operation(operation.name, changes)
+        self.data_store.update_operation(operation.name, changes)
 
     def _update_cancelled_operation(self, operation, operation_metadata, execute_response=None):
         """Forges a cancelled :class:`Operation` message given input data."""
@@ -621,7 +619,7 @@ class Job:
 
         operation.done = True
         changes = {"done": True, "cancelled": True}
-        DataStore.update_operation(operation.name, changes)
+        self.data_store.update_operation(operation.name, changes)
 
     def _send_operations_updates(self, peers=None, notify_cancelled=False,
                                  operations_by_peer=None, peer_message_queues=None):

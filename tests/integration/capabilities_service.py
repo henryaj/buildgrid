@@ -24,6 +24,7 @@ from buildgrid.server.controller import ExecutionController
 from buildgrid.server.actioncache.instance import ActionCache
 from buildgrid.server.cas.instance import ContentAddressableStorageInstance
 from buildgrid.server.cas.storage.lru_memory_cache import LRUMemoryCache
+from buildgrid.server.persistence.mem.impl import MemoryDataStore
 
 from ..utils.utils import run_in_subprocess
 from ..utils.capabilities import serve_capabilities_service
@@ -68,7 +69,9 @@ def test_execution_not_available_capabilities(instance):
 
 @pytest.mark.parametrize('instance', INSTANCES)
 def test_execution_available_capabilities(instance):
-    controller = ExecutionController()
+    storage = LRUMemoryCache(1024 * 1024)
+    data_store = MemoryDataStore(storage)
+    controller = ExecutionController(data_store, storage=storage)
 
     with serve_capabilities_service([instance],
                                     execution_instance=controller.execution_instance) as server:

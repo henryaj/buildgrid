@@ -27,21 +27,20 @@ from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
 from buildgrid._protos.google.longrunning import operations_pb2
 from buildgrid.server.cas.storage import lru_memory_cache
 from buildgrid.server.job import Job
-from buildgrid.server.persistence import DataStore
 from buildgrid.server.persistence.mem.impl import MemoryDataStore
 
 
 @pytest.fixture()
 def datastore():
     storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
-    DataStore.backend = MemoryDataStore(storage)
-    DataStore.activate_monitoring()
-    yield
-    DataStore.backend = None
+    data_store = MemoryDataStore(storage)
+    data_store.activate_monitoring()
+    yield data_store
 
 
-def populate_datastore():
-    DataStore.create_job(Job(
+def populate_datastore(datastore):
+    datastore.create_job(Job(
+        datastore,
         True,
         Digest(hash="test-action", size_bytes=100),
         name="test-job",
@@ -51,16 +50,17 @@ def populate_datastore():
         ],
         platform_requirements={"OSFamily": set(["solaris"])}
     ))
-    DataStore.create_operation(
+    datastore.create_operation(
         operations_pb2.Operation(
             name="test-operation",
             done=False
         ),
         "test-job"
     )
-    DataStore.queue_job("test-job")
+    datastore.queue_job("test-job")
 
-    DataStore.create_job(Job(
+    datastore.create_job(Job(
+        datastore,
         True,
         Digest(hash="other-action", size_bytes=10),
         name="other-job",
@@ -70,16 +70,17 @@ def populate_datastore():
         ],
         platform_requirements={"OSFamily": set(["linux"])}
     ))
-    DataStore.create_operation(
+    datastore.create_operation(
         operations_pb2.Operation(
             name="other-operation",
             done=False
         ),
         "other-job"
     )
-    DataStore.queue_job("other-job")
+    datastore.queue_job("other-job")
 
-    DataStore.create_job(Job(
+    datastore.create_job(Job(
+        datastore,
         True,
         Digest(hash="extra-action", size_bytes=50),
         name="extra-job",
@@ -89,16 +90,17 @@ def populate_datastore():
         ],
         platform_requirements={"OSFamily": set(["linux"])}
     ))
-    DataStore.create_operation(
+    datastore.create_operation(
         operations_pb2.Operation(
             name="extra-operation",
             done=False
         ),
         "extra-job"
     )
-    DataStore.queue_job("extra-job")
+    datastore.queue_job("extra-job")
 
-    DataStore.create_job(Job(
+    datastore.create_job(Job(
+        datastore,
         True,
         Digest(hash="chroot-action", size_bytes=50),
         name="chroot-job",
@@ -112,42 +114,42 @@ def populate_datastore():
             "ISA": set(["x64", "x32"]),
         }
     ))
-    DataStore.create_operation(
+    datastore.create_operation(
         operations_pb2.Operation(
             name="chroot-operation",
             done=False
         ),
         "chroot-job"
     )
-    DataStore.queue_job("chroot-job")
+    datastore.queue_job("chroot-job")
 
 
 def test_deactivate_monitoring(datastore):
-    populate_datastore()
-    assert DataStore.backend.is_instrumented
+    populate_datastore(datastore)
+    assert datastore.is_instrumented
 
     operation = operations_pb2.Operation(
         name="test-operation-2",
         done=False
     )
 
-    DataStore.create_operation(operation, "test-job")
-    assert "test-operation-2" in DataStore.backend.jobs_by_operation
-    assert "test-job" in DataStore.backend.operations_by_stage[OperationStage(
+    datastore.create_operation(operation, "test-job")
+    assert "test-operation-2" in datastore.jobs_by_operation
+    assert "test-job" in datastore.operations_by_stage[OperationStage(
         1)]
 
-    DataStore.deactivate_monitoring()
-    assert DataStore.backend.operations_by_stage == {}
+    datastore.deactivate_monitoring()
+    assert datastore.operations_by_stage == {}
 
 
 def test_delete_job(datastore):
-    populate_datastore()
-    DataStore.delete_job("test-job")
-    assert "test-job" not in DataStore.backend.jobs_by_name
+    populate_datastore(datastore)
+    datastore.delete_job("test-job")
+    assert "test-job" not in datastore.jobs_by_name
 
 
 def test_assign_lease_for_next_job(datastore):
-    populate_datastore()
+    populate_datastore(datastore)
 
     def cb(j):
         lease = j.lease
@@ -160,18 +162,18 @@ def test_assign_lease_for_next_job(datastore):
 
     # The highest priority runnable job with requirements matching these
     # capabilities is other-job, which is priority 5 and only requires linux
-    leases = DataStore.assign_lease_for_next_job(
+    leases = datastore.assign_lease_for_next_job(
         {"OSFamily": set(["linux"])}, cb)
     assert len(leases) == 1
     assert leases[0].id == "other-job"
 
-    DataStore.queue_job("other-job")
+    datastore.queue_job("other-job")
 
     # The highest priority runnable job for these capabilities is still
     # other-job, since priority 5 is more urgent than the priority 20 of
     # example-job. test-job has priority 1, but its requirements are not
     # fulfilled by these capabilities
-    leases = DataStore.assign_lease_for_next_job(
+    leases = datastore.assign_lease_for_next_job(
         {"OSFamily": set(["linux"]), "generic": set(["requirement"])}, cb)
     assert len(leases) == 1
     assert leases[0].id == "other-job"
@@ -179,13 +181,13 @@ def test_assign_lease_for_next_job(datastore):
     # The highest priority runnable job for this magical machine which has
     # multiple values for the `os` capability is test-job, since its requirements
     # are fulfilled and it has priority 1, compared with priority 5 for other-job
-    leases = DataStore.assign_lease_for_next_job(
+    leases = datastore.assign_lease_for_next_job(
         {"OSFamily": set(["linux", "solaris"])}, cb)
     assert len(leases) == 1
     assert leases[0].id == "test-job"
 
     # Must have all properties or else job won't get matched with worker
-    leases = DataStore.assign_lease_for_next_job(
+    leases = datastore.assign_lease_for_next_job(
         {"OSFamily": set(["aix"])}, cb)
     assert len(leases) == 0
 
@@ -195,7 +197,7 @@ def test_assign_lease_for_next_job(datastore):
         "ChrootDigest": set(["space", "dead-beef"]),
         "ISA": set(["x64"]),
     }
-    leases = DataStore.assign_lease_for_next_job(worker_capabilities, cb)
+    leases = datastore.assign_lease_for_next_job(worker_capabilities, cb)
     assert len(leases) == 0
 
     # Digest doesn't match, should not match with any jobs
@@ -204,7 +206,7 @@ def test_assign_lease_for_next_job(datastore):
         "ChrootDigest": set(["dead-beef"]),
         "ISA": set(["x64", "x32"]),
     }
-    leases = DataStore.assign_lease_for_next_job(worker_capabilities, cb)
+    leases = datastore.assign_lease_for_next_job(worker_capabilities, cb)
     assert len(leases) == 0
 
     # All fields match, should match with chroot-job
@@ -213,11 +215,11 @@ def test_assign_lease_for_next_job(datastore):
         "ChrootDigest": set(["dead-beef", "space"]),
         "ISA": set(["x64", "x32"]),
     }
-    leases = DataStore.assign_lease_for_next_job(worker_capabilities, cb)
+    leases = datastore.assign_lease_for_next_job(worker_capabilities, cb)
     assert len(leases) == 1
     assert leases[0].id == "chroot-job"
 
-    DataStore.queue_job("chroot-job")
+    datastore.queue_job("chroot-job")
 
     # All fields subset of worker's, should match with chroot-job
     worker_capabilities = {
@@ -225,6 +227,6 @@ def test_assign_lease_for_next_job(datastore):
         "ChrootDigest": set(["dead-beef", "space", "outer"]),
         "ISA": set(["x64", "x32", "x16"]),
     }
-    leases = DataStore.assign_lease_for_next_job(worker_capabilities, cb)
+    leases = datastore.assign_lease_for_next_job(worker_capabilities, cb)
     assert len(leases) == 1
     assert leases[0].id == "chroot-job"
