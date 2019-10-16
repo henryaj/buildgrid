@@ -296,6 +296,14 @@ class SQLDataStoreConfig(YamlFactory):
             sys.exit(-1)
 
 
+class MemoryDataStoreConfig(YamlFactory):
+
+    yaml_tag = u'!memory-data-store'
+
+    def __new__(cls, storage):
+        return MemoryDataStore(storage)
+
+
 class Execution(YamlFactory):
     """Generates :class:`buildgrid.server.execution.service.ExecutionService`
     using the tag ``!execution``.
@@ -500,5 +508,6 @@ def get_parser():
     yaml.SafeLoader.add_constructor(CAS.yaml_tag, CAS.from_yaml)
     yaml.SafeLoader.add_constructor(ByteStream.yaml_tag, ByteStream.from_yaml)
     yaml.SafeLoader.add_constructor(SQLDataStoreConfig.yaml_tag, SQLDataStoreConfig.from_yaml)
+    yaml.SafeLoader.add_constructor(MemoryDataStoreConfig.yaml_tag, MemoryDataStoreConfig.from_yaml)
 
     return yaml
