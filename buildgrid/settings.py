@@ -51,7 +51,7 @@ MAX_REQUEST_COUNT = 500
 BATCH_REQUEST_SIZE_THRESHOLD = 0.25
 
 # String format for log records:
-LOG_RECORD_FORMAT = '%(asctime)s:[%(name)36.36s][%(levelname)5.5s]: %(message)s'
+LOG_RECORD_FORMAT = '%(asctime)s:[%(name)36.36s][%(levelname)5.5s][%(threadName)s]: %(message)s'
 # The different log record attributes are documented here:
 # https://docs.python.org/3/library/logging.html#logrecord-attributes
 
