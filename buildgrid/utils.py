@@ -124,8 +124,8 @@ def get_hash_type():
     """Returns the hash type."""
     hash_name = HASH().name
     if hash_name == "sha256":
-        return remote_execution_pb2.SHA256
-    return remote_execution_pb2.UNKNOWN
+        return remote_execution_pb2.DigestFunction.SHA256
+    return remote_execution_pb2.DigestFunction.UNKNOWN
 
 
 def create_digest(bytes_to_digest):

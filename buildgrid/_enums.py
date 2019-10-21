@@ -54,15 +54,15 @@ class LeaseState(Enum):
 
 class OperationStage(Enum):
     # Initially unknown stage.
-    UNKNOWN = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('UNKNOWN')
+    UNKNOWN = remote_execution_pb2.ExecutionStage.Value.Value('UNKNOWN')
     # Checking the result against the cache.
-    CACHE_CHECK = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('CACHE_CHECK')
+    CACHE_CHECK = remote_execution_pb2.ExecutionStage.Value.Value('CACHE_CHECK')
     # Currently idle, awaiting a free machine to execute.
-    QUEUED = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('QUEUED')
+    QUEUED = remote_execution_pb2.ExecutionStage.Value.Value('QUEUED')
     # Currently being executed by a worker.
-    EXECUTING = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('EXECUTING')
+    EXECUTING = remote_execution_pb2.ExecutionStage.Value.Value('EXECUTING')
     # Finished execution.
-    COMPLETED = remote_execution_pb2.ExecuteOperationMetadata.Stage.Value('COMPLETED')
+    COMPLETED = remote_execution_pb2.ExecutionStage.Value.Value('COMPLETED')
 
 
 # Internal enumerations

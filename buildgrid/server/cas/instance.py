@@ -63,7 +63,7 @@ class ContentAddressableStorageInstance:
     def symlink_absolute_path_strategy(self):
         # Currently this strategy is hardcoded into BuildGrid
         # With no setting to reference
-        return re_pb2.CacheCapabilities().DISALLOWED
+        return re_pb2.SymlinkAbsolutePathStrategy.DISALLOWED
 
     def find_missing_blobs(self, blob_digests):
         storage = self.__storage

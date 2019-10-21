@@ -156,10 +156,7 @@ class ActionCacheStub(object):
 
   The lifetime of entries in the action cache is implementation-specific, but
   the server SHOULD assume that more recently used entries are more likely to
-  be used again. Additionally, action cache implementations SHOULD ensure that
-  any blobs referenced in the
-  [ContentAddressableStorage][build.bazel.remote.execution.v2.ContentAddressableStorage]
-  are still valid when returning a result.
+  be used again.
 
   As with other services in the Remote Execution API, any call may return an
   error with a [RetryInfo][google.rpc.RetryInfo] error detail providing
@@ -196,10 +193,7 @@ class ActionCacheServicer(object):
 
   The lifetime of entries in the action cache is implementation-specific, but
   the server SHOULD assume that more recently used entries are more likely to
-  be used again. Additionally, action cache implementations SHOULD ensure that
-  any blobs referenced in the
-  [ContentAddressableStorage][build.bazel.remote.execution.v2.ContentAddressableStorage]
-  are still valid when returning a result.
+  be used again.
 
   As with other services in the Remote Execution API, any call may return an
   error with a [RetryInfo][google.rpc.RetryInfo] error detail providing
@@ -209,6 +203,13 @@ class ActionCacheServicer(object):
 
   def GetActionResult(self, request, context):
     """Retrieve a cached execution result.
+
+    Implementations SHOULD ensure that any blobs referenced from the
+    [ContentAddressableStorage][build.bazel.remote.execution.v2.ContentAddressableStorage]
+    are available at the time of returning the
+    [ActionResult][build.bazel.remote.execution.v2.ActionResult] and will be
+    for some period of time afterwards. The TTLs of the referenced blobs SHOULD be increased
+    if necessary and applicable.
 
     Errors:
 
@@ -518,6 +519,8 @@ class ContentAddressableStorageServicer(object):
     If part of the tree is missing from the CAS, the server will return the
     portion present and omit the rest.
 
+    Errors:
+
     * `NOT_FOUND`: The requested tree root is not present in the CAS.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -585,7 +588,14 @@ class CapabilitiesServicer(object):
   """
 
   def GetCapabilities(self, request, context):
-    """GetCapabilities returns the server capabilities configuration.
+    """GetCapabilities returns the server capabilities configuration of the
+    remote endpoint.
+    Only the capabilities of the services supported by the endpoint will
+    be returned:
+    * Execution + CAS + Action Cache endpoints should return both
+    CacheCapabilities and ExecutionCapabilities.
+    * Execution only endpoints should return ExecutionCapabilities.
+    * CAS + Action Cache only endpoints should return CacheCapabilities.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')

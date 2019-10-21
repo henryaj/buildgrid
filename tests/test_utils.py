@@ -56,7 +56,7 @@ def test_create_digest(blob, digest_hash, digest_size):
     # Generate a Digest message from given blob:
     blob_digest = create_digest(blob)
 
-    assert get_hash_type() == remote_execution_pb2.SHA256
+    assert get_hash_type() == remote_execution_pb2.DigestFunction.SHA256
 
     assert hasattr(blob_digest, 'DESCRIPTOR')
     assert blob_digest.DESCRIPTOR == remote_execution_pb2.Digest.DESCRIPTOR
@@ -69,7 +69,7 @@ def test_parse_digest(string, digest_hash, digest_size, validity):
     # Generate a Digest message from given string:
     string_digest = parse_digest(string)
 
-    assert get_hash_type() == remote_execution_pb2.SHA256
+    assert get_hash_type() == remote_execution_pb2.DigestFunction.SHA256
 
     if validity:
         assert hasattr(string_digest, 'DESCRIPTOR')
