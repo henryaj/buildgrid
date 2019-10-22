@@ -23,7 +23,6 @@ from datetime import datetime, timedelta
 from collections import OrderedDict
 import asyncio
 import logging
-import math
 import uuid
 
 from buildgrid._exceptions import InvalidArgumentError, NotFoundError
@@ -49,20 +48,27 @@ class BotsInterface:
         self._setup_bot_session_reaper_loop()
 
         # Ordered mapping of bot_session_name: string -> last_expire_time_we_assigned: datetime
-        # This works because the bot_session_keepalive_timeout is the same for all bots
+        #   NOTE: This works because the bot_session_keepalive_timeout is the same for all bots
         # and thus always increases with time (e.g. inserting at the end keeps them sorted because
         # of this property, otherwise we may have had to insert 'in the middle')
         self._ordered_expire_times_by_botsession = OrderedDict()
         # The "minimum" expire_time we have coming up
         self._next_expire_time = None
-        # The Event to set when we learn about a new expire time that is closer in the
+        #   The Event to set when we learn about a new expire time that is at a different point in the
         # future than what we knew (e.g. whenever we reset the value of self._next_expire_time)
+        #   This is mostly useful when we end up with a `next_expire_time` closer to the future than we
+        # initially thought (e.g. tracking the first BotSession expiry since all BotSessions are assigned
+        # the same keepalive_timeout).
+        # NOTE: asyncio.Event() is NOT thread-safe.
+        #   However, here we .set() it from the ThreadPool threads handling RPC requests
+        # and only clearing it from the asyncio event loop which the `reaper_loop`.
         self._deadline_event = asyncio.Event()
 
-        # Remembering the last n evicted_bot_sessions so that we can present the appropriate
-        # messages if they ever get back
+        #   Remembering the last n evicted_bot_sessions so that we can present the appropriate
+        # messages if they ever get back. (See additional notes in `_close_bot_session`).
         self._remember_last_n_evicted_bot_sessions = 1000
-        # maps bot_session_name: string to (eviction_time: datetime, reason: string)
+        #   Maps bot_session_name: string to (eviction_time: datetime, reason: string), with a maximum size
+        # of approx `_remeber_last_n_evicted_bot_sessions`.
         self._evicted_bot_sessions = OrderedDict()
 
     # --- Public API ---
@@ -295,9 +301,10 @@ class BotsInterface:
                 pass
 
         # Make the botsession reaper thread look at the current new_deadline
+        # (if it's nearer in the future) compared to the previously known `next_expire_time`.
         if updated_next_expire_time:
-            self._update_next_expire_time()
-            self._deadline_event.set()
+            if self._update_next_expire_time(compare_to=new_deadline):
+                self._deadline_event.set()
 
     def _check_assigned_leases(self, bot_session):
         session_lease_ids = []
@@ -337,7 +344,19 @@ class BotsInterface:
         self._untrack_deadline_for_botsession(name)
 
         # Make sure we're only keeping the last N evicted sessions
-        if len(self._evicted_bot_sessions) > self._remember_last_n_evicted_bot_sessions:
+        # NOTE: there could be some rare race conditions when the length of the OrderedDict is
+        # only 1 below the limit; Multiple threads could check the size simultaneously before
+        # they get to add their items in the OrderedDict, resulting in a size bigger than initially intented
+        # (with a very unlikely upper bound of:
+        #   O(n) = `remember_last_n_evicted_bot_sessions`
+        #             + min(number_of_threads, number_of_concurrent_threads_cpu_can_handle)).
+        #   The size being only 1 below the limit could also happen when the OrderedDict contains
+        # exactly `n` items and a thread trying to insert sees the limit has been reached and makes
+        # just enough space to add its own item.
+        #   The cost of locking vs using a bit more memory for a few more items in-memory is high, thus
+        # we opt for the unlikely event of the OrderedDict growing a bit more and
+        # make the next thread which tries to to insert an item, clean up `while len > n`.
+        while len(self._evicted_bot_sessions) > self._remember_last_n_evicted_bot_sessions:
             self._evicted_bot_sessions.popitem()
         # Record this eviction
         self._evicted_bot_sessions[name] = (datetime.utcnow(), reason)
@@ -346,18 +365,53 @@ class BotsInterface:
         self._bot_ids.pop(name)
         self.__logger.info("Closed bot [%s] with name: [%s]", bot_id, name)
 
-    def _update_next_expire_time(self):
-        # If we don't have any more bot_session deadlines, clear out this variable
-        # to avoid busy-waiting. Otherwise, populate it with the next known expiry time
-        _, next_expire_time = self._get_next_botsession_expiry()
-        self._next_expire_time = next_expire_time
+    def _update_next_expire_time(self, compare_to=None):
+        """
+             If we don't have any more bot_session deadlines, clear out this variable
+         to avoid busy-waiting. Otherwise, populate it with the next known expiry time
+         either from the queue or by comparing to the optional argument `compare_to`.
+             This method returns True/False indicating whether the `next_expire_time`
+        was updated.
+        """
+        if compare_to:
+            # If we pass in a time earlier than the already known `next_expire_time`
+            # or this is the first expire time we know of... set it to `compare_to`
+
+            # NOTE: We could end up in a race condition here, where threads could
+            # update the `_next_expire_time` to their own value of `compare_to`
+            # if at the time they checked that their time was "earlier" than the
+            # shared `_next_expire_time`.
+            #   For the purpose this is used, this is an OK behavior since:
+            #     1. If this method is called around the same time on different threads,
+            #      the expiry time should be very close (`delta`).
+            #     2. We may end up waiting for an additional `delta` time to expire the first
+            #      session in the OrderedDict, and then rapidly close all the subsequent
+            #      sessions with expire_time < now.
+            #   This approach allows for potentially "lazy session expiry" (after an additional minimal `delta`),
+            # giving priority to all the other work buildgrid needs to do, instead of using the overhead of
+            # locking this and blocking up multiple threads to update this with each rpc.
+            # TL;DR Approximation of the `next_expire_time` here is good enough for this purpose.
+            if not self._next_expire_time or compare_to < self._next_expire_time:
+                self._next_expire_time = compare_to
+                return True
+        else:
+            _, next_expire_time_in_queue = self._get_next_botsession_expiry()
+            # It is likely that the expire time we knew of is no longer in the OrderedDict
+            # (e.g. we assigned a new one to that BotSession), thus this could be either
+            # before or after the previously known `next_expire_time`
+            if self._next_expire_time != next_expire_time_in_queue:
+                self._next_expire_time = next_expire_time_in_queue
+                return True
+
+        return False
 
     def _next_expire_time_occurs_in(self):
         if self._next_expire_time:
-            next_expire_time = math.ceil((self._next_expire_time -
-                                          datetime.utcnow()).total_seconds())
-            # Pad this with 1 second so that the expiry actually happens
-            return max(0, next_expire_time + 1)
+            next_expire_time = round((self._next_expire_time -
+                                      datetime.utcnow()).total_seconds(), 3)
+            # Pad this with 0.1 second so that the expiry actually happens
+            # Also make sure it is >= 0 (negative numbers means expiry happened already!)
+            return max(0, next_expire_time + 0.1)
 
         return None
 
@@ -365,7 +419,19 @@ class BotsInterface:
         botsession_name = None
         expire_time = None
         if self._ordered_expire_times_by_botsession:
-            botsession_name = next(iter(self._ordered_expire_times_by_botsession.keys()))
+
+            # We want to `peek` the first entry of the OrderedDict here
+            # We do this by:
+            #     1. Popping the first item
+            #     2. Inserting that key-value pair again (goes to the end with the OrderedDict)
+            #     3. Moving that newly re-inserted entry to the beginning (to preserve the order)
+            #   This should work exactly as a `peek` since we only pop the first item in the asyncio event loop,
+            # and we know that all other items we add in this OrderedDict must be >= the current first in
+            # terms of expiry (Thus re-adding it and moving it to first should still maintain the sorted order).
+            botsession_name, expire_time = self._ordered_expire_times_by_botsession.popitem(last=False)
+            self._ordered_expire_times_by_botsession[botsession_name] = expire_time
+            self._ordered_expire_times_by_botsession.move_to_end(botsession_name, last=False)
+
             expire_time = self._ordered_expire_times_by_botsession[botsession_name]
 
         return (botsession_name, expire_time)
