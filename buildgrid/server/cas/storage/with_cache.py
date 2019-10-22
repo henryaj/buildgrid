@@ -136,6 +136,10 @@ class WithCacheStorage(StorageABC):
             return None
         return _CachingTee(fallback_result, digest, self._cache)
 
+    def delete_blob(self, digest):
+        self._fallback.delete_blob(digest)
+        self._cache.delete_blob(digest)
+
     def begin_write(self, digest):
         return _OutputTee(self._cache.begin_write(digest), self._fallback.begin_write(digest))
 

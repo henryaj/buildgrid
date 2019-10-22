@@ -55,6 +55,10 @@ class SimpleStorage(StorageABC):
         key = (digest.hash, digest.size_bytes)
         return io.BytesIO(self.data[key]) if key in self.data else None
 
+    def delete_blob(self, digest):
+        key = (digest.hash, digest.size_bytes)
+        self.data.pop(key, None)
+
     def begin_write(self, digest):
         result = io.BytesIO()
         result.digest = digest

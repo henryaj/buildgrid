@@ -45,6 +45,10 @@ class StorageABC(abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
+    def delete_blob(self, digest):
+        """Delete the blob from storage if it's present."""
+
+    @abc.abstractmethod
     def begin_write(self, digest):
         """Return a file-like object to which a blob's contents could be
         written.

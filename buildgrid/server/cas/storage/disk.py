@@ -45,18 +45,28 @@ class DiskStorage(StorageABC):
         os.makedirs(self.temp_path, exist_ok=True)
 
     def has_blob(self, digest):
+        self.__logger.debug("Checking for blob: [{}]".format(digest))
         return os.path.exists(self._get_object_path(digest))
 
     def get_blob(self, digest):
+        self.__logger.debug("Getting blob: [{}]".format(digest))
         try:
             return open(self._get_object_path(digest), 'rb')
         except FileNotFoundError:
             return None
 
+    def delete_blob(self, digest):
+        self.__logger.debug("Deleting blob: [{}]".format(digest))
+        try:
+            os.remove(self._get_object_path(digest))
+        except OSError:
+            pass
+
     def begin_write(self, digest):
         return tempfile.NamedTemporaryFile("wb", dir=self.temp_path)
 
     def commit_write(self, digest, write_session):
+        self.__logger.debug("Writing blob: [{}]".format(digest))
         object_path = self._get_object_path(digest)
 
         try:

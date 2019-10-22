@@ -25,6 +25,7 @@ import fakeredis
 from unittest.mock import patch
 
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
+from buildgrid.server.cas.storage.storage_abc import StorageABC
 from buildgrid.server.cas.storage.remote import RemoteStorage
 from buildgrid.server.cas.storage.lru_memory_cache import LRUMemoryCache
 from buildgrid.server.cas.storage.disk import DiskStorage
@@ -165,6 +166,46 @@ def test_basic_write_read(any_storage, blobs_digests):
                                  any_storage, blobs, serialized_digests)
     else:
         __test_basic_write_read(any_storage, blobs, digests)
+
+
+@pytest.mark.parametrize('blobs_digests', zip(BLOBS, BLOBS_DIGESTS))
+def test_deletes(any_storage, blobs_digests):
+    """ Test the functionality of deletes.
+
+    Deleting a blob should cause has_blob to return False and
+    get_blob to return None.
+    """
+    blobs, digests = blobs_digests
+    # any_storage returns a string for remote storage. Since deletes
+    # are not supported with remote storage, we ignore those
+    if isinstance(any_storage, StorageABC):
+        for blob, digest in zip(blobs, digests):
+            write(any_storage, digest, blob)
+
+        for blob, digest in zip(blobs, digests):
+            assert any_storage.has_blob(digest)
+            assert any_storage.get_blob(digest).read() == blob
+
+        first_digest, *_ = digests
+
+        any_storage.delete_blob(first_digest)
+
+        for blob, digest in zip(blobs, digests):
+            if digest != first_digest:
+                assert any_storage.has_blob(digest)
+                assert any_storage.get_blob(digest).read() == blob
+            else:
+                assert not any_storage.has_blob(digest)
+                assert any_storage.get_blob(digest) is None
+
+        # There shouldn't be any issue with deleting a blob that isn't there
+        missing_digest = remote_execution_pb2.Digest(hash=HASH(b'missing_blob').hexdigest(),
+                                                     size_bytes=len(b'missing_blob'))
+        assert not any_storage.has_blob(missing_digest)
+        assert any_storage.get_blob(missing_digest) is None
+        any_storage.delete_blob(missing_digest)
+        assert not any_storage.has_blob(missing_digest)
+        assert any_storage.get_blob(missing_digest) is None
 
 
 @pytest.mark.parametrize('blobs_digests', zip(BLOBS, BLOBS_DIGESTS))

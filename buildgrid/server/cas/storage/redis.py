@@ -64,6 +64,11 @@ class RedisStorage(StorageABC):
         return None if blob is None else io.BytesIO(blob)
 
     @redis_client_exception_wrapper
+    def delete_blob(self, digest):
+        self._logger.debug("Deleting blob: [{}]".format(digest))
+        blob = self._client.delete(digest.hash + '_' + str(digest.size_bytes))
+
+    @redis_client_exception_wrapper
     def begin_write(self, digest) -> io.BytesIO:
         return io.BytesIO()
 

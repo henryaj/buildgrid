@@ -43,11 +43,13 @@ class RemoteStorage(StorageABC):
         self._stub_cas = remote_execution_pb2_grpc.ContentAddressableStorageStub(channel)
 
     def has_blob(self, digest):
+        self.__logger.debug("Checking for blob: [{}]".format(digest))
         if not self.missing_blobs([digest]):
             return True
         return False
 
     def get_blob(self, digest):
+        self.__logger.debug("Getting blob: [{}]".format(digest))
         with download(self.channel, instance=self.instance_name) as downloader:
             blob = downloader.get_blob(digest)
             if blob is not None:
@@ -55,14 +57,27 @@ class RemoteStorage(StorageABC):
             else:
                 return None
 
+    def delete_blob(self, digest):
+        """ The REAPI doesn't have a deletion method, so we can't support
+        deletion for remote storage.
+        """
+        raise NotImplementedError(
+            "Deletion is not supported for remote storage!")
+
     def begin_write(self, digest):
         return io.BytesIO()
 
     def commit_write(self, digest, write_session):
+        self.__logger.debug("Writing blob: [{}]".format(digest))
         with upload(self.channel, instance=self.instance_name) as uploader:
             uploader.put_blob(write_session.getvalue())
 
     def missing_blobs(self, blobs):
+        if len(blobs) > 100:
+            self.__logger.debug(
+                "Missing blobs request for: {} (truncated)".format(blobs[:100]))
+        else:
+            self.__logger.debug("Missing blobs request for: {}".format(blobs))
         request = remote_execution_pb2.FindMissingBlobsRequest(instance_name=self.instance_name)
 
         for blob in blobs:

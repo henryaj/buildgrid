@@ -41,6 +41,7 @@ class S3Storage(StorageABC):
         return self._bucket_template.format(digest=digest)
 
     def has_blob(self, digest):
+        self.__logger.debug("Checking for blob: [{}]".format(digest))
         try:
             self._s3.Object(self._get_bucket_name(digest.hash),
                             digest.hash + '_' + str(digest.size_bytes)).load()
@@ -51,6 +52,7 @@ class S3Storage(StorageABC):
         return True
 
     def get_blob(self, digest):
+        self.__logger.debug("Getting blob: [{}]".format(digest))
         try:
             obj = self._s3.Object(self._get_bucket_name(digest.hash),
                                   digest.hash + '_' + str(digest.size_bytes))
@@ -60,11 +62,21 @@ class S3Storage(StorageABC):
                 raise
             return None
 
+    def delete_blob(self, digest):
+        self.__logger.debug("Deleting blob: [{}]".format(digest))
+        try:
+            self._s3.Object(self._get_bucket_name(digest.hash),
+                            digest.hash + '_' + str(digest.size_bytes)).delete()
+        except ClientError as e:
+            if e.response['Error']['Code'] not in ['404', 'NoSuchKey']:
+                raise
+
     def begin_write(self, _digest):
         # TODO use multipart API for large blobs?
         return io.BytesIO()
 
     def commit_write(self, digest, write_session):
+        self.__logger.debug("Writing blob: [{}]".format(digest))
         write_session.seek(0)
         self._s3.Bucket(self._get_bucket_name(digest.hash)) \
                 .upload_fileobj(write_session,

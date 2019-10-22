@@ -52,6 +52,7 @@ class LRUMemoryCache(StorageABC):
         self.logger = logging.getLogger(__name__)
 
     def has_blob(self, digest):
+        self.__logger.debug("Checking for blob: [{}]".format(digest))
         with self._lock:
             key = (digest.hash, digest.size_bytes)
             result = key in self._storage
@@ -60,12 +61,18 @@ class LRUMemoryCache(StorageABC):
             return result
 
     def get_blob(self, digest):
+        self.__logger.debug("Getting blob: [{}]".format(digest))
         with self._lock:
             key = (digest.hash, digest.size_bytes)
             if key in self._storage:
                 self._storage.move_to_end(key)
                 return io.BytesIO(self._storage[key])
             return None
+
+    def delete_blob(self, digest):
+        self.__logger.debug("Deleting blob: [{}]".format(digest))
+        key = (digest.hash, digest.size_bytes)
+        self._storage.pop(key, None)
 
     def begin_write(self, digest):
         if digest.size_bytes > self._limit:
@@ -74,6 +81,7 @@ class LRUMemoryCache(StorageABC):
         return io.BytesIO()
 
     def commit_write(self, digest, write_session):
+        self.__logger.debug("Writing blob: [{}]".format(digest))
         if isinstance(write_session, _NullBytesIO):
             # We can't cache this object, so return without doing anything.
             return
