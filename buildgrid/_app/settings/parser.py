@@ -283,13 +283,12 @@ class SQLDataStoreConfig(YamlFactory):
 
     yaml_tag = u'!sql-data-store'
 
-    def __new__(cls, storage, connection_string="sqlite:///", automigrate=False,
-                retry_limit=10, **kwargs):
+    def __new__(cls, storage, connection_string=None, automigrate=False,
+                **kwargs):
         try:
             return SQLDataStore(storage,
                                 connection_string=connection_string,
                                 automigrate=automigrate,
-                                retry_limit=retry_limit,
                                 **kwargs)
         except TypeError as type_error:
             click.echo(type_error, err=True)

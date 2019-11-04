@@ -95,36 +95,64 @@ There are database migrations provided, and BuildGrid can be configured to
 automatically run them when connecting to the database. Alternatively, this can
 be disabled and the migrations can be executed manually using Alembic.
 
-An example execution service configuration block, using SQLite:
+When using the SQL Data Store with the default configuration (e.g. no `connection_string`),
+a temporary SQLite database will be created for the lifetime of BuildGrid's execution.
+
+.. hint::
+
+  **SQLite in-memory databases are not supported** by BuildGrid to ensure multiple threads
+  can share the same state database without any issues (using SQLAlchemy's `StaticPool`).
+
+SQLite Configuration Block Example
+**********************************
 
 .. code-block:: yaml
 
-    - !execution
-      storage: *data-store
-      action-cache: *build-cache
-      action-browser-url: http://localhost:8080
-      data-store:
-        type: sql
-        connection_string: sqlite:///./example.db
-        automigrate: yes
+  instances:
+    - name: ''
+  
+      storages:
+        - !lru-storage &cas-storage
+          size: 2048M
+  
+      data-stores:
+        - !sql-data-store &state-database
+          storage: *cas-storage
+          connection_string: sqlite:////path/to/sqlite.db
+          # ... or don't specify the connection_string and BuildGrid will create a tempfile
+  
+      services:
+        - !execution
+          storage: *cas-storage
+          data-store: *state-database
 
-A similar configuration block, using PostgreSQL:
+
+PostgreSQL Configuration Block Example
+**************************************
 
 .. code-block:: yaml
 
-    - !execution
-      storage: *data-store
-      action-cache: *build-cache
-      action-browser-url: http://localhost:8080
-      data-store:
-        type: sql
-        connection_string: postgresql://username:password@sql_server/database_name
-        automigrate: yes
-        retry_limit: 10
-        #SQLAlchemy Pool Options
-        pool_size: 5
-        pool_timeout: 30
-        max_overflow: 10
+  instances:
+    - name: ''
+  
+      storages:
+        - !lru-storage &cas-storage
+          size: 2048M
+  
+      data-stores:
+        - !sql-data-store &state-database
+          storage: *cas-storage
+          connection_string: postgresql://username:password@sql_server/database_name
+          # SQLAlchemy Pool Options
+          pool_size: 5
+          pool_timeout: 30
+          max_overflow: 10
+
+      services:
+        - !execution
+          storage: *cas-storage
+          data-store: *state-database
+
  
 With ``automigrate: no``, the migrations can be run by cloning the `git repository`_,
 modifying the ``sqlalchemy.url`` line in ``alembic.ini`` to match the

@@ -20,6 +20,8 @@ import os
 import tempfile
 
 import pytest
+from unittest import mock
+from sqlalchemy.pool.impl import StaticPool
 
 from buildgrid._enums import LeaseState, OperationStage
 from buildgrid._protos.google.devtools.remoteworkers.v1test2 import bots_pb2
@@ -208,6 +210,36 @@ def populate_database(database):
                 ]
             )
         ])
+
+
+@pytest.mark.parametrize("conn_str", ["sqlite:///file:memdb1?option=value&cache=shared&mode=memory",
+                                      "sqlite:///file:memdb1?mode=memory&cache=shared",
+                                      "sqlite:///file:memdb1?cache=shared&mode=memory",
+                                      "sqlite:///file::memory:?cache=shared",
+                                      "sqlite:///file::memory:",
+                                      "sqlite:///:memory:",
+                                      "sqlite:///",
+                                      "sqlite://"])
+def test_is_sqlite_inmemory_connection_string(conn_str):
+    with pytest.raises(ValueError):
+        # Should raise ValueError when trying to instantiate
+        database = SQLDataStore(None, connection_string=conn_str)
+
+
+@pytest.mark.parametrize("conn_str", ["sqlite:///../../myfile.db",
+                                      "sqlite:///./myfile.db",
+                                      "sqlite:////myfile.db"])
+def test_file_based_sqlite_db(conn_str):
+    # Those should be OK and not raise anything during instantiation
+    with mock.patch('buildgrid.server.persistence.sql.impl.create_engine') as create_engine:
+        database = SQLDataStore(None, connection_string=conn_str)
+        assert create_engine.call_count == 1
+        call_args, call_kwargs = create_engine.call_args
+
+        # Let's make sure that sqlite will behave OK with multiple threads
+        assert call_kwargs['poolclass'] == StaticPool
+        assert isinstance(call_kwargs['connect_args']['check_same_thread'], bool)
+        assert not call_kwargs['connect_args']['check_same_thread']
 
 
 def test_rollback(database):
