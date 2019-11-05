@@ -120,7 +120,6 @@ instances:
           # Whether or not to automatically run database migrations
           # when starting the server
           automigrate: yes
-          retry_limit: 10
           # SQLAlchemy Pool Options
           pool_size: 5
           pool_timeout: 30
