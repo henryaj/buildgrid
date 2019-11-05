@@ -25,6 +25,7 @@ import yaml
 from buildgrid.server.controller import ExecutionController
 from buildgrid.server.actioncache.instance import ActionCache
 from buildgrid.server.actioncache.remote import RemoteActionCache
+from buildgrid.server.actioncache.s3storage import S3ActionCache
 from buildgrid.server.referencestorage.storage import ReferenceCache
 from buildgrid.server.cas.instance import ByteStreamInstance, ContentAddressableStorageInstance
 from buildgrid.server.cas.storage.disk import DiskStorage
@@ -350,6 +351,29 @@ class Action(YamlFactory):
         return ActionCache(storage, max_cached_refs, allow_updates, cache_failed_actions)
 
 
+class S3Action(YamlFactory):
+    """Generates :class:`buildgrid.server.actioncache.service.S3ActionCache`
+    using the tag ``!s3-action-cache``.
+
+    Args:
+      storage(:class:`buildgrid.server.cas.storage.storage_abc.StorageABC`): Instance of storage to use.
+      allow_updates(bool): Allow updates pushed to CAS. Defaults to ``True``.
+      cache_failed_actions(bool): Whether to store failed (non-zero exit code) actions. Default to ``True``.
+      bucket (str): Name of bucket
+      endpoint (str): URL of endpoint.
+      access-key (str): S3-ACCESS-KEY
+      secret-key (str): S3-SECRET-KEY
+
+    """
+
+    yaml_tag = u'!s3action-cache'
+
+    def __new__(cls, storage, allow_updates=True, cache_failed_actions=True,
+                bucket=None, endpoint=None, access_key=None, secret_key=None):
+        return S3ActionCache(storage, allow_updates=allow_updates, cache_failed_actions=cache_failed_actions,
+                             bucket=bucket, endpoint=endpoint, access_key=access_key, secret_key=secret_key)
+
+
 class RemoteAction(YamlFactory):
     """Generates :class:`buildgrid.server.actioncache.remote.RemoteActionCache`
     using the tag ``!remote-action-cache``.
@@ -467,6 +491,7 @@ def get_parser():
     yaml.SafeLoader.add_constructor(Execution.yaml_tag, Execution.from_yaml)
     yaml.SafeLoader.add_constructor(Action.yaml_tag, Action.from_yaml)
     yaml.SafeLoader.add_constructor(RemoteAction.yaml_tag, RemoteAction.from_yaml)
+    yaml.SafeLoader.add_constructor(S3Action.yaml_tag, S3Action.from_yaml)
     yaml.SafeLoader.add_constructor(Reference.yaml_tag, Reference.from_yaml)
     yaml.SafeLoader.add_constructor(Disk.yaml_tag, Disk.from_yaml)
     yaml.SafeLoader.add_constructor(LRU.yaml_tag, LRU.from_yaml)

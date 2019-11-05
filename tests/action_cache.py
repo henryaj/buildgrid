@@ -15,6 +15,7 @@
 # pylint: disable=redefined-outer-name
 
 
+import boto3
 import grpc
 import pytest
 
@@ -22,7 +23,9 @@ from buildgrid._exceptions import NotFoundError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
 from buildgrid.server.actioncache.instance import ActionCache
 from buildgrid.server.actioncache.remote import RemoteActionCache
+from buildgrid.server.actioncache.s3storage import S3ActionCache
 from buildgrid.server.cas.storage import lru_memory_cache
+from moto import mock_s3
 
 from .utils.action_cache import serve_cache
 from .utils.utils import run_in_subprocess
@@ -67,8 +70,17 @@ def test_expiry(cas):
     assert cache.get_action_result(action_digest3) is not None
 
 
-def test_checks_cas(cas):
-    cache = ActionCache(cas, 50)
+@pytest.mark.parametrize('acType', ['memory', 's3'])
+@mock_s3
+def test_checks_cas(acType, cas):
+    if acType == 'memory':
+        cache = ActionCache(cas, 50)
+    elif acType == 's3':
+        auth_args = {"aws_access_key_id": "access_key",
+                     "aws_secret_access_key": "secret_key"}
+        boto3.resource('s3', **auth_args).create_bucket(Bucket='cachebucket')
+        cache = S3ActionCache(cas, allow_updates=True, cache_failed_actions=True, bucket='cachebucket',
+                              access_key="access_key", secret_key="secret_key")
 
     action_digest1 = remote_execution_pb2.Digest(hash='alpha', size_bytes=4)
     action_digest2 = remote_execution_pb2.Digest(hash='bravo', size_bytes=4)
