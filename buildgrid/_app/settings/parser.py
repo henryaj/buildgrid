@@ -33,6 +33,7 @@ from buildgrid.server.cas.storage.lru_memory_cache import LRUMemoryCache
 from buildgrid.server.cas.storage.remote import RemoteStorage
 from buildgrid.server.cas.storage.s3 import S3Storage
 from buildgrid.server.cas.storage.with_cache import WithCacheStorage
+from buildgrid.server.cas.storage.index.sql import SQLIndex
 from buildgrid.server.persistence.mem.impl import MemoryDataStore
 from buildgrid.server.persistence.sql.impl import SQLDataStore
 
@@ -304,6 +305,34 @@ class MemoryDataStoreConfig(YamlFactory):
         return MemoryDataStore(storage)
 
 
+class SQL_Index(YamlFactory):
+    """Generates :class:`buildgrid.server.cas.storage.index.sql.SQLIndex`
+    using the tag ``!sql-index``.
+
+    Args:
+      storage(:class:`buildgrid.server.cas.storage.storage_abc.StorageABC`): Instance of storage to use.
+      connection_string (str): SQLAlchemy connection string
+      automigrate (bool): Attempt to automatically upgrade an existing DB schema to the newest version.
+      window_size (uint): Maximum number of blobs to fetch in one SQL operation (larger resultsets will
+        be automatically split into multiple queries)
+      inclause_limit (int): If nonnegative, overrides the default number of variables permitted per "in"
+        clause. See the buildgrid.server.cas.storage.index.sql.SQLIndex comments for more details.
+      fallback_on_get (bool): By default, the SQL Index only fetches blobs from the underlying storage
+        if they're present in the index on get_blob/bulk_read_blobs requests to minimize interactions
+        with the storage. If this is set, the index instead checks the underlying storage directly on
+        get_blob/bulk_read_blobs requests, then loads all blobs found into the index.
+    """
+
+    yaml_tag = u'!sql-index'
+
+    def __new__(cls, storage, connection_string, automigrate=False,
+                window_size=1000, inclause_limit=-1, fallback_on_get=False, **kwargs):
+        return SQLIndex(storage=storage, connection_string=connection_string,
+                        automigrate=automigrate, window_size=window_size,
+                        inclause_limit=inclause_limit,
+                        fallback_on_get=fallback_on_get, **kwargs)
+
+
 class Execution(YamlFactory):
     """Generates :class:`buildgrid.server.execution.service.ExecutionService`
     using the tag ``!execution``.
@@ -499,6 +528,7 @@ def get_parser():
     yaml.SafeLoader.add_constructor(Redis.yaml_tag, Redis.from_yaml)
     yaml.SafeLoader.add_constructor(Remote.yaml_tag, Remote.from_yaml)
     yaml.SafeLoader.add_constructor(WithCache.yaml_tag, WithCache.from_yaml)
+    yaml.SafeLoader.add_constructor(SQL_Index.yaml_tag, SQL_Index.from_yaml)
     yaml.SafeLoader.add_constructor(CAS.yaml_tag, CAS.from_yaml)
     yaml.SafeLoader.add_constructor(ByteStream.yaml_tag, ByteStream.from_yaml)
     yaml.SafeLoader.add_constructor(SQLDataStoreConfig.yaml_tag, SQLDataStoreConfig.from_yaml)

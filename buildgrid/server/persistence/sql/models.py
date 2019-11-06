@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from datetime import datetime
 
 from google.protobuf.duration_pb2 import Duration
 from google.protobuf.timestamp_pb2 import Timestamp
@@ -176,6 +177,14 @@ class Operation(Base):
             stage=self.job.stage,
             action_digest=string_to_digest(self.job.action_digest)))
         return operation
+
+
+class IndexEntry(Base):
+    __tablename__ = 'index'
+
+    digest_hash = Column(String, nullable=False, primary_key=True)
+    digest_size_bytes = Column(Integer, nullable=False)
+    accessed_timestamp = Column(DateTime, nullable=False)
 
 
 def digest_to_string(digest):

@@ -31,6 +31,7 @@ from buildgrid.server.cas.storage.lru_memory_cache import LRUMemoryCache
 from buildgrid.server.cas.storage.disk import DiskStorage
 from buildgrid.server.cas.storage.s3 import S3Storage
 from buildgrid.server.cas.storage.with_cache import WithCacheStorage
+from buildgrid.server.cas.storage.index.sql import SQLIndex
 from buildgrid.settings import HASH
 
 from ..utils.cas import serve_cas
@@ -43,7 +44,7 @@ BLOBS_DIGESTS = [tuple([remote_execution_pb2.Digest(hash=HASH(blob).hexdigest(),
                  for blobs in BLOBS]
 
 
-@pytest.fixture(params=['lru', 'disk', 's3', 'lru_disk', 'disk_s3', 'remote', 'redis'])
+@pytest.fixture(params=['lru', 'disk', 's3', 'lru_disk', 'disk_s3', 'remote', 'redis', 'sql_index'])
 def any_storage(request):
     if request.param == 'lru':
         yield LRUMemoryCache(256)
@@ -82,6 +83,13 @@ def any_storage(request):
                 'db': 0
             }
             yield RedisStorage(**input_dict)
+    elif request.param == 'sql_index':
+        storage = LRUMemoryCache(256)
+        with tempfile.NamedTemporaryFile() as db:
+            yield SQLIndex(
+                storage=storage,
+                connection_string="sqlite:///%s" % db.name,
+                automigrate=True)
 
 
 def write(storage, digest, blob):
