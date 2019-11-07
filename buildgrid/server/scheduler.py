@@ -312,6 +312,7 @@ class Scheduler:
 
             if lease:
                 job.mark_worker_started()
+                self._update_job_operation_stage(job.name, OperationStage.EXECUTING)
                 return [lease]
             return []
 
