@@ -452,7 +452,7 @@ class Job:
     def n_tries(self):
         return self._n_tries
 
-    def create_lease(self, worker_name):
+    def create_lease(self, worker_name, bot_id=None):
         """Emits a new :class:`Lease` for the job.
 
         Only one :class:`Lease` can be emitted for a given job. This method
@@ -460,6 +460,7 @@ class Job:
 
         Args:
             worker_name (string): The name of the worker this lease is for.
+            bot_id (string): The name of the corresponding bot for this job's worker.
         """
         if self._lease is not None:
             return self._lease
@@ -471,8 +472,10 @@ class Job:
         self._lease.payload.Pack(self.__operation_metadata.action_digest)
         self._lease.state = LeaseState.UNSPECIFIED.value
 
-        self.__logger.debug("Lease created for job [%s]: [%s]",
-                            self._name, self._lease.id)
+        if bot_id is None:
+            bot_id = "UNKNOWN"
+        self.__logger.debug("Lease created for job [%s]: [%s] (assigned to bot [%s])",
+                            self._name, self._lease.id, bot_id)
 
         self.update_lease_state(LeaseState.PENDING, skip_lease_persistence=True)
 

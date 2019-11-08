@@ -194,7 +194,8 @@ class BotsInterface:
             leases = self._scheduler.request_job_leases(
                 worker_capabilities,
                 timeout=deadline,
-                worker_name=name)
+                worker_name=name,
+                bot_id=self._bot_ids.get(name))
 
             if leases:
                 for lease in leases:
