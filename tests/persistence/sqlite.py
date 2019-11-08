@@ -236,11 +236,6 @@ def test_file_based_sqlite_db(conn_str):
         assert create_engine.call_count == 1
         call_args, call_kwargs = create_engine.call_args
 
-        # Let's make sure that sqlite will behave OK with multiple threads
-        assert call_kwargs['poolclass'] == StaticPool
-        assert isinstance(call_kwargs['connect_args']['check_same_thread'], bool)
-        assert not call_kwargs['connect_args']['check_same_thread']
-
 
 def test_rollback(database):
     job_name = "test-job"

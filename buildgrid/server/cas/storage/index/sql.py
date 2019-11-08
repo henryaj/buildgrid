@@ -34,7 +34,7 @@ from typing import Any, BinaryIO, ContextManager, Dict, Iterable, List, Optional
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import and_, create_engine, func, text, Column
+from sqlalchemy import and_, create_engine, event, func, text, Column
 from sqlalchemy.sql import select
 from sqlalchemy.sql.elements import BinaryExpression as SQLExpression
 from sqlalchemy.exc import IntegrityError, OperationalError
@@ -50,6 +50,7 @@ from buildgrid._protos.build.bazel.remote.execution.v2.remote_execution_pb2 impo
 from buildgrid._protos.google.rpc import code_pb2
 from buildgrid._protos.google.rpc.status_pb2 import Status
 import buildgrid.server.persistence.sql as sql_module
+from buildgrid.server.persistence.sql.impl import sqlite_on_connect
 from buildgrid.server.persistence.sql.models import IndexEntry
 
 
@@ -150,33 +151,16 @@ class SQLIndex(IndexABC):
     def _create_sqlalchemy_engine(self, connection_string, automigrate, **kwargs):
         self.automigrate = automigrate
 
+        # Disallow sqlite in-memory because multi-threaded access to it is
+        # complex and potentially problematic at best
+        # ref: https://docs.sqlalchemy.org/en/13/dialects/sqlite.html#threading-pooling-behavior
         if self._is_sqlite_inmemory_connection_string(connection_string):
             raise ValueError("Cannot use SQLite in-memory with BuildGrid (connection_string=[%s]). "
                              "Use a file or leave the connection_string empty for a tempfile." %
                              connection_string)
 
-        # When using SQLite, make sure to set the appropriate options
-        # to make this work with multiple threads
-        # ref: https://docs.sqlalchemy.org/en/13/dialects/sqlite.html#threading-pooling-behavior
-        if self._is_sqlite_connection_string(connection_string):
-            # Disallow sqlite in-memory because multi-threaded access to it
-            # could cause problems
-            # Disable 'check_same_thread' to share this among all threads
-            if 'connect_args' not in kwargs:
-                kwargs['connect_args'] = dict()
-            try:
-                kwargs['connect_args']['check_same_thread'] = False
-            except:
-                raise TypeError("Expected SQLDataStore 'connect_args' to be a dict, got "
-                                "[connect_args=%s]" % kwargs['connect_args'])
-
-            # Use the 'StaticPool' to make sure SQLite usage is always exclusive
-            kwargs['poolclass'] = StaticPool
-            self.__logger.debug("Automatically setting up SQLAlchemy with SQLite specific options.")
-
         # Only pass the (known) kwargs that have been explicitly set by the user
-        available_options = set(['pool_size', 'max_overflow', 'pool_timeout',
-                                'poolclass', 'connect_args'])
+        available_options = set(['pool_size', 'max_overflow', 'pool_timeout', 'connect_args'])
         kwargs_keys = set(kwargs.keys())
         if not kwargs_keys.issubset(available_options):
             unknown_options = kwargs_keys - available_options
@@ -189,6 +173,9 @@ class SQLIndex(IndexABC):
         self.__logger.info("Using SQL backend for index at connection [%s] "
                            "using additional SQL options %s",
                            repr(self._engine.url), kwargs)
+
+        if self._engine.dialect.name == "sqlite":
+            event.listen(self._engine, "connect", sqlite_on_connect)
 
         if self.automigrate:
             self._create_or_migrate_db(connection_string)
