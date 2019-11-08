@@ -58,7 +58,12 @@ PARAMS = [(impl, use_cache) for impl in ["sql", "mem"]
           for use_cache in ["action-cache", "no-action-cache"]]
 
 
-@pytest.fixture(params=PARAMS)
+# Return informative test ids for tests using the controller fixture
+def idfn(params_value):
+    return "{}-{}".format(params_value[0], params_value[1])
+
+
+@pytest.fixture(params=PARAMS, ids=idfn)
 def controller(request):
     impl, use_cache = request.param
     storage = lru_memory_cache.LRUMemoryCache(1024 * 1024)
@@ -88,16 +93,7 @@ def controller(request):
                 os.remove(db)
 
 
-# Instance to test
-@pytest.fixture(params=["mem", "sql"])
-def instance(controller, request):
-    with mock.patch.object(service, 'remote_execution_pb2_grpc'):
-        execution_service = ExecutionService(server)
-        execution_service.add_instance("", controller.execution_instance)
-        yield execution_service
-
-
-def test_unregister_operation_peer(instance, controller, context):
+def test_unregister_operation_peer(controller, context):
     scheduler = controller.execution_instance._scheduler
     job_name = scheduler.queue_job_action(action, action_digest, skip_cache_lookup=True)
 
@@ -124,7 +120,7 @@ def test_unregister_operation_peer(instance, controller, context):
 
 
 @pytest.mark.parametrize("monitoring", [True, False])
-def test_update_lease_state(instance, controller, context, monitoring):
+def test_update_lease_state(controller, context, monitoring):
     scheduler = controller.execution_instance._scheduler
     if monitoring:
         scheduler.activate_monitoring()
@@ -157,7 +153,7 @@ def test_update_lease_state(instance, controller, context, monitoring):
         scheduler.deactivate_monitoring()
 
 
-def test_retry_job_lease(instance, controller, context):
+def test_retry_job_lease(controller, context):
     scheduler = controller.execution_instance._scheduler
     scheduler.MAX_N_TRIES = 2
 
@@ -180,3 +176,36 @@ def test_retry_job_lease(instance, controller, context):
     job = scheduler.data_store.get_job_by_name(job_name)
     assert job.n_tries == 2
     assert job.operation_stage == OperationStage.COMPLETED
+
+
+def test_requeue_queued_job(controller, context):
+    scheduler = controller.execution_instance._scheduler
+
+    job_name = scheduler.queue_job_action(action, action_digest, skip_cache_lookup=True)
+
+    job = scheduler.data_store.get_job_by_name(job_name)
+
+    job_lease = job.create_lease("test-suite")
+    if isinstance(scheduler.data_store, SQLDataStore):
+        scheduler.data_store.create_lease(job_lease)
+
+    leases = scheduler.request_job_leases({})
+    assert len(leases) == 1
+
+    job = scheduler.data_store.get_job_by_name(job_name)
+    assert job.lease in leases
+    assert job.operation_stage == OperationStage.EXECUTING
+
+    # Make sure that retrying a job that was assigned but
+    # not marked as in progress properly re-queues
+
+    scheduler.retry_job_lease(job_name)
+    job = scheduler.data_store.get_job_by_name(job_name)
+    assert job.operation_stage == OperationStage.QUEUED
+
+    leases = scheduler.request_job_leases({})
+    assert len(leases) == 1
+
+    job = scheduler.data_store.get_job_by_name(job_name)
+    assert job.lease in leases
+    assert job.operation_stage == OperationStage.EXECUTING
