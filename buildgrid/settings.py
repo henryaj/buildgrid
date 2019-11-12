@@ -39,8 +39,8 @@ AUTH_CACHE_SIZE = 200
 # Period, in seconds, for the monitoring cycle:
 MONITORING_PERIOD = 5.0
 
-# Maximum size for a single gRPC request:
-MAX_REQUEST_SIZE = 2 * 1024 * 1024
+# Maximum size for a single gRPC request, minus a small delta:
+MAX_REQUEST_SIZE = 4 * 1024 * 1024 - 1024
 
 # Maximum number of elements per gRPC request:
 MAX_REQUEST_COUNT = 500
