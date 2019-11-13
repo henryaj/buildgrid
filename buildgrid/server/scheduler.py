@@ -312,12 +312,17 @@ class Scheduler:
 
             if lease:
                 job.mark_worker_started()
-                self._update_job_operation_stage(job.name, OperationStage.EXECUTING)
                 return [lease]
             return []
 
-        return self.data_store.assign_lease_for_next_job(
+        leases = self.data_store.assign_lease_for_next_job(
             worker_capabilities, assign_lease, timeout=timeout)
+        if leases:
+            # Update the leases outside of the callback to avoid nested data_store operations
+            for lease in leases:
+                # The lease id and job names are the same, so use that as the job name
+                self._update_job_operation_stage(lease.id, OperationStage.EXECUTING)
+        return leases
 
     def update_job_lease_state(self, job_name, lease):
         """Requests a state transition for a job's current :class:Lease.
