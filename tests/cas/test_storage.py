@@ -241,6 +241,11 @@ def test_bulk_write_read(any_storage, blobs_digests):
         assert len(missing_digests) == 1
         assert missing_digests[0] == digests[-1]
 
+        blobmap = any_storage.bulk_read_blobs(digests)
+        for blob, digest in zip(blobs[:-1], digests[:-1]):
+            assert blobmap[digest.hash].read() == blob
+        assert digests[-1].hash not in blobmap
+
     # Helper test function for remote storage, to be run in a subprocess:
     def __test_remote_bulk_write_read(queue, remote, blobs, serialized_digests):
         channel = grpc.insecure_channel(remote)

@@ -108,7 +108,12 @@ class StorageABC(abc.ABC):
         represented by the input digests.
         """
 
-        return {digest.hash: self.get_blob(digest) for digest in digests}
+        blobmap = {}
+        for digest in digests:
+            blob = self.get_blob(digest)
+            if blob is not None:
+                blobmap[digest.hash] = blob
+        return blobmap
 
     def put_message(self, message):
         """Store the given Protobuf message in CAS, returning its digest."""

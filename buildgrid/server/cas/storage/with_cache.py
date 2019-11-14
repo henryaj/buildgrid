@@ -154,3 +154,13 @@ class WithCacheStorage(StorageABC):
     def bulk_update_blobs(self, blobs):
         self._cache.bulk_update_blobs(blobs)
         return self._fallback.bulk_update_blobs(blobs)
+
+    def bulk_read_blobs(self, digests):
+        cache_blobs = self._cache.bulk_read_blobs(digests)
+        uncached_digests = filter(
+            lambda digest: cache_blobs.get(digest.hash, None) is None,
+            digests
+        )
+        fallback_blobs = self._fallback.bulk_read_blobs(uncached_digests)
+        cache_blobs.update(fallback_blobs)
+        return cache_blobs
