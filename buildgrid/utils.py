@@ -88,6 +88,7 @@ class Condition(threading.Condition):
 
     def __exit__(self, *args):
         self.thread_count -= 1
+        self.notify()
         return super().__exit__(*args)
 
     def wait(self, timeout=None):
