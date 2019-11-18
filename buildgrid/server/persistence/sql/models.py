@@ -120,7 +120,6 @@ class Job(Base):
             result = None
 
         return job.Job(
-            data_store,
             self.do_not_cache,
             string_to_digest(self.action_digest),
             platform_requirements=requirements,

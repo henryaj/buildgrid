@@ -40,7 +40,6 @@ def datastore():
 
 def populate_datastore(datastore):
     datastore.create_job(Job(
-        datastore,
         True,
         Digest(hash="test-action", size_bytes=100),
         name="test-job",
@@ -60,7 +59,6 @@ def populate_datastore(datastore):
     datastore.queue_job("test-job")
 
     datastore.create_job(Job(
-        datastore,
         True,
         Digest(hash="other-action", size_bytes=10),
         name="other-job",
@@ -80,7 +78,6 @@ def populate_datastore(datastore):
     datastore.queue_job("other-job")
 
     datastore.create_job(Job(
-        datastore,
         True,
         Digest(hash="extra-action", size_bytes=50),
         name="extra-job",
@@ -100,7 +97,6 @@ def populate_datastore(datastore):
     datastore.queue_job("extra-job")
 
     datastore.create_job(Job(
-        datastore,
         True,
         Digest(hash="chroot-action", size_bytes=50),
         name="chroot-job",
@@ -154,7 +150,7 @@ def test_assign_lease_for_next_job(datastore):
     def cb(j):
         lease = j.lease
         if not lease:
-            lease = j.create_lease("test-suite")
+            lease = j.create_lease("test-suite", data_store=datastore)
         if lease:
             j.mark_worker_started()
             return [lease]

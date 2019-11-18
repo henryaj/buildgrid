@@ -30,7 +30,7 @@ from buildgrid._protos.google.rpc import code_pb2
 
 class Job:
 
-    def __init__(self, data_store, do_not_cache, action_digest, platform_requirements=None, priority=0,
+    def __init__(self, do_not_cache, action_digest, platform_requirements=None, priority=0,
                  name=None, operations=(), cancelled_operations=set(), lease=None,
                  stage=OperationStage.UNKNOWN.value, cancelled=False,
                  queued_timestamp=None, queued_time_duration=None,
@@ -80,8 +80,6 @@ class Job:
         self._done = done
         self.worker_name = worker_name
 
-        self.data_store = data_store
-
     def __lt__(self, other):
         try:
             return self.priority < other.priority
@@ -128,10 +126,9 @@ class Job:
     def priority(self):
         return self._priority
 
-    @priority.setter
-    def priority(self, new_priority):
+    def set_priority(self, new_priority, *, data_store):
         self._priority = new_priority
-        self.data_store.update_job(self.name, {'priority': new_priority})
+        data_store.update_job(self.name, {'priority': new_priority})
 
     @property
     def done(self):
@@ -223,7 +220,8 @@ class Job:
         return len([peer for peer, names in operations_by_peer.items()
                     if any(name == operation_name for name in names)])
 
-    def register_new_operation_peer(self, peer, message_queue, operations_by_peer, peer_message_queues):
+    def register_new_operation_peer(self, peer, message_queue, operations_by_peer,
+                                    peer_message_queues, *, data_store):
         """Subscribes to a new job's :class:`Operation` stage changes.
 
         Args:
@@ -256,15 +254,17 @@ class Job:
         else:
             peer_message_queues[peer] = {new_operation.name: message_queue}
 
-        self.data_store.create_operation(new_operation, self._name)
+        data_store.create_operation(new_operation, self._name)
 
         self._send_operations_updates(peers=[peer],
                                       operations_by_peer=operations_by_peer,
-                                      peer_message_queues=peer_message_queues)
+                                      peer_message_queues=peer_message_queues,
+                                      data_store=data_store)
 
         return new_operation.name
 
-    def register_operation_peer(self, operation_name, peer, message_queue, operations_by_peer, peer_message_queues):
+    def register_operation_peer(self, operation_name, peer, message_queue, operations_by_peer,
+                                peer_message_queues, *, data_store):
         """Subscribes to one of the job's :class:`Operation` stage changes.
 
         Args:
@@ -294,7 +294,8 @@ class Job:
 
         self._send_operations_updates(peers=[peer],
                                       operations_by_peer=operations_by_peer,
-                                      peer_message_queues=peer_message_queues)
+                                      peer_message_queues=peer_message_queues,
+                                      data_store=data_store)
 
     def unregister_operation_peer(self, operation_name, peer):
         """Unsubscribes to the job's :class:`Operation` stage change.
@@ -336,7 +337,7 @@ class Job:
 
         return self._copy_operation(operation)
 
-    def update_operation_stage(self, stage, operations_by_peer, peer_message_queues):
+    def update_operation_stage(self, stage, operations_by_peer, peer_message_queues, *, data_store):
         """Operates a stage transition for the job's :class:`Operation`.
 
         Args:
@@ -368,12 +369,13 @@ class Job:
         elif self.__operation_metadata.stage == OperationStage.COMPLETED.value:
             self._done = True
 
-        self.data_store.update_job(self.name, changes)
+        data_store.update_job(self.name, changes)
 
         self._send_operations_updates(operations_by_peer=operations_by_peer,
-                                      peer_message_queues=peer_message_queues)
+                                      peer_message_queues=peer_message_queues,
+                                      data_store=data_store)
 
-    def cancel_operation(self, operation_name, operations_by_peer, peer_message_queues):
+    def cancel_operation(self, operation_name, operations_by_peer, peer_message_queues, *, data_store):
         """Triggers a job's :class:`Operation` cancellation.
 
         This may cancel any job's :class:`Lease` that may have been issued.
@@ -406,9 +408,9 @@ class Job:
                 "stage": OperationStage.COMPLETED.value,
                 "cancelled": True
             }
-            self.data_store.update_job(self.name, changes)
+            data_store.update_job(self.name, changes)
             if self._lease is not None:
-                self.cancel_lease()
+                self.cancel_lease(data_store=data_store)
 
         peers_to_notify = set()
         # If the job is not cancelled, notify all the peers watching the given
@@ -429,7 +431,8 @@ class Job:
         self._send_operations_updates(peers=peers_to_notify,
                                       notify_cancelled=True,
                                       operations_by_peer=operations_by_peer,
-                                      peer_message_queues=peer_message_queues)
+                                      peer_message_queues=peer_message_queues,
+                                      data_store=data_store)
 
     # --- Public API: RWAPI ---
 
@@ -452,7 +455,7 @@ class Job:
     def n_tries(self):
         return self._n_tries
 
-    def create_lease(self, worker_name, bot_id=None):
+    def create_lease(self, worker_name, bot_id=None, *, data_store):
         """Emits a new :class:`Lease` for the job.
 
         Only one :class:`Lease` can be emitted for a given job. This method
@@ -477,13 +480,14 @@ class Job:
         self.__logger.debug("Lease created for job [%s]: [%s] (assigned to bot [%s])",
                             self._name, self._lease.id, bot_id)
 
-        self.update_lease_state(LeaseState.PENDING, skip_lease_persistence=True)
+        self.update_lease_state(LeaseState.PENDING, skip_lease_persistence=True, data_store=data_store)
 
         self.worker_name = worker_name
 
         return self._lease
 
-    def update_lease_state(self, state, status=None, result=None, skip_lease_persistence=False):
+    def update_lease_state(self, state, status=None, result=None,
+                           skip_lease_persistence=False, *, data_store):
         """Operates a state transition for the job's current :class:`Lease`.
 
         Args:
@@ -540,11 +544,11 @@ class Job:
             self.__execute_response.cached_result = False
             self.__execute_response.status.CopyFrom(status)
 
-        self.data_store.update_job(self.name, job_changes)
+        data_store.update_job(self.name, job_changes)
         if not skip_lease_persistence:
-            self.data_store.update_lease(self.name, lease_changes)
+            data_store.update_lease(self.name, lease_changes)
 
-    def cancel_lease(self):
+    def cancel_lease(self, *, data_store):
         """Triggers a job's :class:`Lease` cancellation.
 
         Note:
@@ -556,7 +560,7 @@ class Job:
                             self._name, self._lease.id)
 
         if self._lease is not None:
-            self.update_lease_state(LeaseState.CANCELLED)
+            self.update_lease_state(LeaseState.CANCELLED, data_store=data_store)
 
     def delete_lease(self):
         """Discard the job's :class:`Lease`.
@@ -593,7 +597,8 @@ class Job:
 
         return new_operation
 
-    def _update_operation(self, operation, operation_metadata, execute_response=None, done=False):
+    def _update_operation(self, operation, operation_metadata,
+                          execute_response=None, done=False, *, data_store):
         """Forges a :class:`Operation` message given input data."""
         operation.metadata.Pack(operation_metadata)
 
@@ -602,9 +607,10 @@ class Job:
 
         operation.done = done
         changes = {"done": done}
-        self.data_store.update_operation(operation.name, changes)
+        data_store.update_operation(operation.name, changes)
 
-    def _update_cancelled_operation(self, operation, operation_metadata, execute_response=None):
+    def _update_cancelled_operation(self, operation, operation_metadata,
+                                    execute_response=None, *, data_store):
         """Forges a cancelled :class:`Operation` message given input data."""
         cancelled_operation_metadata = remote_execution_pb2.ExecuteOperationMetadata()
         cancelled_operation_metadata.CopyFrom(operation_metadata)
@@ -622,10 +628,10 @@ class Job:
 
         operation.done = True
         changes = {"done": True, "cancelled": True}
-        self.data_store.update_operation(operation.name, changes)
+        data_store.update_operation(operation.name, changes)
 
     def _send_operations_updates(self, peers=None, notify_cancelled=False,
-                                 operations_by_peer=None, peer_message_queues=None):
+                                 operations_by_peer=None, peer_message_queues=None, *, data_store):
         """Sends :class:`Operation` stage change messages to watchers."""
         if operations_by_peer is None:
             operations_by_peer = {}
@@ -635,12 +641,13 @@ class Job:
         for operation in self.__operations_by_name.values():
             if operation.name in self.__operations_cancelled:
                 self._update_cancelled_operation(operation, self.__operation_metadata,
-                                                 execute_response=self.__execute_response)
+                                                 execute_response=self.__execute_response,
+                                                 data_store=data_store)
 
             else:
                 self._update_operation(operation, self.__operation_metadata,
                                        execute_response=self.__execute_response,
-                                       done=self._done)
+                                       done=self._done, data_store=data_store)
 
         relevant_queues = {peer: mqs for peer, mqs in peer_message_queues.items()
                            if any(name in self.__operations_by_name

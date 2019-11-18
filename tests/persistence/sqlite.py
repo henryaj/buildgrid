@@ -297,8 +297,7 @@ def test_get_all_jobs(database):
 
 def test_create_job(database):
     job_name = "test-job"
-    job = Job(database,
-              do_not_cache=False,
+    job = Job(do_not_cache=False,
               action_digest=models.string_to_digest("test-action-digest/144"),
               priority=10,
               name=job_name)

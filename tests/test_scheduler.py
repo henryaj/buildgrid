@@ -128,7 +128,7 @@ def test_update_lease_state(controller, context, monitoring):
     job_name = scheduler.queue_job_action(action, action_digest, skip_cache_lookup=True)
 
     job = scheduler.data_store.get_job_by_name(job_name)
-    job_lease = job.create_lease("test-suite")
+    job_lease = job.create_lease("test-suite", data_store=scheduler.data_store)
     if isinstance(scheduler.data_store, SQLDataStore):
         scheduler.data_store.create_lease(job_lease)
 
@@ -162,7 +162,7 @@ def test_retry_job_lease(controller, context):
 
     job = scheduler.data_store.get_job_by_name(job_name)
 
-    job_lease = job.create_lease("test-suite")
+    job_lease = job.create_lease("test-suite", data_store=scheduler.data_store)
     if isinstance(scheduler.data_store, SQLDataStore):
         scheduler.data_store.create_lease(job_lease)
 
@@ -185,7 +185,7 @@ def test_requeue_queued_job(controller, context):
 
     job = scheduler.data_store.get_job_by_name(job_name)
 
-    job_lease = job.create_lease("test-suite")
+    job_lease = job.create_lease("test-suite", data_store=scheduler.data_store)
     if isinstance(scheduler.data_store, SQLDataStore):
         scheduler.data_store.create_lease(job_lease)
 
