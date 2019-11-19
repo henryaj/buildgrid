@@ -96,7 +96,13 @@ class Server:
 
             AuthContext.interceptor = self.__grpc_auth_interceptor
 
-        self.__grpc_executor = futures.ThreadPoolExecutor(max_workers)
+        try:
+            self.__grpc_executor = futures.ThreadPoolExecutor(
+                max_workers, thread_name_prefix="gRPC_Executor")
+        except TypeError:
+            # We need python >= 3.6 to support `thread_name_prefix`, so fallback
+            # to ugly thread names if that didn't work
+            self.__grpc_executor = futures.ThreadPoolExecutor(max_workers)
         self.__grpc_server = grpc.server(self.__grpc_executor,
                                          options=(('grpc.so_reuseport', 0),),
                                          maximum_concurrent_rpcs=max_workers)
