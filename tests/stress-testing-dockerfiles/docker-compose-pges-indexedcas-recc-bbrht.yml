@@ -1,0 +1,80 @@
+# Docker compose to benchmark and test with multiple
+# recc clients and bbrht
+version: "3.2"
+
+services:
+  database:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: bgd
+      POSTGRES_PASSWORD: insecure
+      POSTGRES_DB: bgd
+#    volumes:
+#      - type: volume
+#        source: db
+#        target: /var/lib/postgresql/data
+    networks:
+      - backend
+    ports:
+      - "5432:5432"
+
+  buildgrid:
+    build:
+      context: ../../
+    image: buildgrid:local
+    command: [
+      "server", "start", "-vv",
+      "/app/config/bgd.yml"]
+    volumes:
+      - type: bind
+        source: ./configs/bgd-pges-indexedcas.yml
+        target: /app/config/bgd.yml
+    ports:
+      - "50051:50051"
+    networks:
+      - backend
+      - client_network
+    depends_on:
+      - database
+
+  bots:  # To be scaled horizontaly
+    build: https://gitlab.com/BuildGrid/buildbox/buildbox-run-hosttools.git
+    image: buildbox-run-hosttools:upstream
+#    deploy:
+#      replicas: 100
+    command: [
+      "buildbox-worker", "--verbose",
+      "--buildbox-run=buildbox-run-hosttools",
+      "--bots-remote=http://buildgrid:50051",
+      "--cas-remote=http://buildgrid:50051",
+      "--request-timeout=10"
+    ]
+    depends_on:
+      - buildgrid
+    networks:
+      - backend
+
+  clients: # To be scaled horizontally
+    build: https://gitlab.com/bloomberg/recc.git
+    image: recc:upstream
+#    deploy:
+#      replicas: 100
+    environment:
+      - RECC_VERBOSE=1
+      - RECC_SERVER=buildgrid:50051
+      - RECC_FORCE_REMOTE=1
+    volumes:
+     - type: bind
+       source: ./configs/recc-test-command.sh
+       target: /app/configs/recc-test-command.sh
+    command: ["/bin/bash",
+              "/app/configs/recc-test-command.sh"]
+    networks:
+      - client_network
+    depends_on:
+      - buildgrid
+
+networks:
+  backend:
+  client_network:
+

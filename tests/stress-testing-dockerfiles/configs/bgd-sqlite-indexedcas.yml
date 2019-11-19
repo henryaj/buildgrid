@@ -1,0 +1,47 @@
+server:
+  - !channel
+    port: 50051
+    insecure-mode: true
+
+authorization:
+  method: none
+
+monitoring:
+  enabled: false
+
+instances:
+  - name: ''
+
+    storages:
+      - !lru-storage &cas-storage
+        size: 2048M
+      - !sql-index &indexed-storage
+        storage: *cas-storage
+        connection_string: sqlite:///./indexed-cas.db
+        automigrate: yes
+
+    data-stores:
+      - !sql-data-store &state-database
+        storage: *indexed-storage
+        connection_string: sqlite:///./data-store.db
+        automigrate: yes
+
+    services:
+      - !action-cache &build-cache
+        storage: *indexed-storage
+        max-cached-refs: 256
+        cache-failed-actions: true
+        allow-updates: true
+
+      - !execution
+        storage: *indexed-storage
+        action-cache: *build-cache
+        data-store: *state-database
+
+      - !cas
+        storage: *indexed-storage
+
+      - !bytestream
+        storage: *indexed-storage
+
+thread-pool-size: 200
