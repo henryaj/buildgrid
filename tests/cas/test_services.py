@@ -44,6 +44,7 @@ class SimpleStorage(StorageABC):
 
     def __init__(self, existing_data=None):
         self.data = {}
+        self.map_data = existing_data
         if existing_data:
             for datum in existing_data:
                 self.data[(HASH(datum).hexdigest(), len(datum))] = datum
@@ -70,6 +71,12 @@ class SimpleStorage(StorageABC):
         assert HASH(data).hexdigest() == digest.hash
         assert len(data) == digest.size_bytes
         self.data[(digest.hash, digest.size_bytes)] = data
+
+    def get_message(self, digest, message_type):
+        datum = self.data[(digest.hash, digest.size_bytes)]
+        message = re_pb2.Directory()
+        message.directories.extend(self.map_data[datum])
+        return message
 
 
 test_strings = [b"", b"hij"]
@@ -267,3 +274,44 @@ def test_cas_batch_read_blobs(mocked, instance):
                 assert response.data == blob
             else:
                 assert response.status.code == code_pb2.NOT_FOUND
+
+
+@pytest.mark.parametrize("instance", instances)
+@mock.patch.object(service, 'remote_execution_pb2_grpc', autospec=True)
+def test_cas_get_tree(mocked, instance):
+    '''Directory Structure:
+        |--root
+           |--subEmptyDir
+           |--subParentDir
+              |--subChildDir
+    '''
+    root = re_pb2.Digest(hash=HASH(b'abc').hexdigest(), size_bytes=3)
+    rootDir = re_pb2.DirectoryNode(name=b'abc', digest=root)
+    digest1 = re_pb2.Digest(hash=HASH(b'def').hexdigest(), size_bytes=3)
+    subEmptyDir = re_pb2.DirectoryNode(name=b'def', digest=digest1)
+    digest2 = re_pb2.Digest(hash=HASH(b'ghi').hexdigest(), size_bytes=3)
+    subParentDir = re_pb2.DirectoryNode(name=b'ghi', digest=digest2)
+    digest3 = re_pb2.Digest(hash=HASH(b'xyz').hexdigest(), size_bytes=3)
+    subChildDir = re_pb2.DirectoryNode(name=b'xyz', digest=digest3)
+
+    storage = SimpleStorage({b'abc': [subEmptyDir, subParentDir], b'def': [],
+                            b'ghi': [subChildDir], b'xyz': []})
+    cas_instance = ContentAddressableStorageInstance(storage)
+    servicer = ContentAddressableStorageService(server)
+    servicer.add_instance(instance, cas_instance)
+
+    request = re_pb2.GetTreeRequest(
+        instance_name=instance, root_digest=root)
+    result = []
+    for response in servicer.GetTree(request, context):
+        result.extend(response.directories)
+
+    expectedRoot = re_pb2.Directory()
+    expectedRoot.directories.extend([subEmptyDir, subParentDir])
+    expectedEmpty = re_pb2.Directory()
+    expectedParent = re_pb2.Directory()
+    expectedParent.directories.extend([subChildDir])
+    expectedChild = re_pb2.Directory()
+
+    expected = [expectedRoot, expectedEmpty, expectedParent, expectedChild]
+    assert result == expected

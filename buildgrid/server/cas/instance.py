@@ -149,6 +149,7 @@ class ContentAddressableStorageInstance:
                 yield from __get_tree(directory.digest)
 
             yield response
+            response = re_pb2.GetTreeResponse()
 
         return __get_tree(root_digest)
 
