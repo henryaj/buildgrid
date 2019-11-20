@@ -32,6 +32,7 @@ from buildgrid.server.cas.storage.disk import DiskStorage
 from buildgrid.server.cas.storage.lru_memory_cache import LRUMemoryCache
 from buildgrid.server.cas.storage.remote import RemoteStorage
 from buildgrid.server.cas.storage.s3 import S3Storage
+from buildgrid.server.cas.storage.gcs import GCSStorage
 from buildgrid.server.cas.storage.with_cache import WithCacheStorage
 from buildgrid.server.cas.storage.index.sql import SQLIndex
 from buildgrid.server.persistence.mem.impl import MemoryDataStore
@@ -188,6 +189,18 @@ class S3(YamlFactory):
 
     def __new__(cls, bucket, endpoint, access_key, secret_key):
         return S3Storage(bucket, endpoint_url=endpoint, aws_access_key_id=access_key, aws_secret_access_key=secret_key)
+
+
+class GCS(YamlFactory):
+    """
+    Generates :class:`buildgrid.server.cas.storage.gcs.GCSStorage` using the
+    tag ``!gcs-storage``.
+    """
+
+    yaml_tag = u'!gcs-storage'
+
+    def __new__(cls, bucket):
+        return GCSStorage(bucket)
 
 
 class Redis(YamlFactory):
@@ -525,6 +538,7 @@ def get_parser():
     yaml.SafeLoader.add_constructor(Disk.yaml_tag, Disk.from_yaml)
     yaml.SafeLoader.add_constructor(LRU.yaml_tag, LRU.from_yaml)
     yaml.SafeLoader.add_constructor(S3.yaml_tag, S3.from_yaml)
+    yaml.SafeLoader.add_constructor(GCS.yaml_tag, GCS.from_yaml)
     yaml.SafeLoader.add_constructor(Redis.yaml_tag, Redis.from_yaml)
     yaml.SafeLoader.add_constructor(Remote.yaml_tag, Remote.from_yaml)
     yaml.SafeLoader.add_constructor(WithCache.yaml_tag, WithCache.from_yaml)

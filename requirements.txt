@@ -1,5 +1,6 @@
 boto3 < 1.8.0  # For moto compatibility (BuildGrid/buildgrid#65)
 botocore < 1.11.0  # For moto compatibility (BuildGrid/buildgrid#65)
+google-cloud-storage
 click
 grpcio
 janus
