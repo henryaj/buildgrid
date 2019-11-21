@@ -37,6 +37,7 @@ from buildgrid.server.cas.storage.with_cache import WithCacheStorage
 from buildgrid.server.cas.storage.index.sql import SQLIndex
 from buildgrid.server.persistence.mem.impl import MemoryDataStore
 from buildgrid.server.persistence.sql.impl import SQLDataStore
+from buildgrid.settings import MAX_REQUEST_SIZE
 
 from ..cli import Context
 from ..._enums import DataStoreType
@@ -248,7 +249,10 @@ class Remote(YamlFactory):
 
         channel = None
         if url.scheme == 'http':
-            channel = grpc.insecure_channel(remote)
+            channel = grpc.insecure_channel(remote, options=[
+                ('grpc.max_send_message_length', MAX_REQUEST_SIZE),
+                ('grpc.max_receive_message_length', MAX_REQUEST_SIZE),
+            ])
 
         else:
             if not credentials:
@@ -443,7 +447,10 @@ class RemoteAction(YamlFactory):
 
         channel = None
         if url.scheme == 'http':
-            channel = grpc.insecure_channel(remote)
+            channel = grpc.insecure_channel(remote, options=[
+                ('grpc.max_send_message_length', MAX_REQUEST_SIZE),
+                ('grpc.max_receive_message_length', MAX_REQUEST_SIZE),
+            ])
 
         else:
             if not credentials:

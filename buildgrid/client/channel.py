@@ -21,7 +21,7 @@ from buildgrid.client.authentication import load_channel_authorization_token
 from buildgrid.client.authentication import load_tls_channel_credentials
 from buildgrid._exceptions import InvalidArgumentError
 from buildgrid._protos.build.bazel.remote.execution.v2 import remote_execution_pb2
-from buildgrid.settings import REQUEST_METADATA_HEADER_NAME
+from buildgrid.settings import MAX_REQUEST_SIZE, REQUEST_METADATA_HEADER_NAME
 from buildgrid.settings import REQUEST_METADATA_TOOL_NAME, REQUEST_METADATA_TOOL_VERSION
 
 
@@ -55,7 +55,10 @@ def setup_channel(remote_url, auth_token=None,
     details = None, None, None
 
     if url.scheme == 'http':
-        channel = grpc.insecure_channel(remote)
+        channel = grpc.insecure_channel(remote, options=[
+            ('grpc.max_send_message_length', MAX_REQUEST_SIZE),
+            ('grpc.max_receive_message_length', MAX_REQUEST_SIZE),
+        ])
 
     elif url.scheme == 'https':
         credentials, details = load_tls_channel_credentials(client_key, client_cert, server_cert)
