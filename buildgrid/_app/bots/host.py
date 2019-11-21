@@ -63,7 +63,7 @@ def work_host_tools(lease, context, event):
 
         environment = os.environ.copy()
         for variable in command.environment_variables:
-            if variable.name not in ['PATH', 'PWD']:
+            if variable.name not in ['PWD']:
                 environment[variable.name] = variable.value
 
         command_line = []
@@ -107,39 +107,27 @@ def work_host_tools(lease, context, event):
         action_result.execution_metadata.output_upload_start_timestamp.GetCurrentTime()
 
         with upload(context.cas_channel, instance=instance_name) as uploader:
-            output_files, output_directories = [], []
 
-            for output_path in command.output_files:
+            for output_path in itertools.chain(command.output_files, command.output_directories):
                 file_path = os.path.join(working_directory, output_path)
                 # Missing outputs should simply be omitted in ActionResult:
-                if not os.path.isfile(file_path):
+                if not os.path.exists(file_path):
                     continue
 
-                file_digest = uploader.upload_file(file_path, queue=True)
-                output_file = output_file_maker(file_path, working_directory,
-                                                file_digest)
-                output_files.append(output_file)
-
-                logger.debug("Output file digest: [{}/{}]"
-                             .format(file_digest.hash, file_digest.size_bytes))
-
-            action_result.output_files.extend(output_files)
-
-            for output_path in command.output_directories:
-                directory_path = os.path.join(working_directory, output_path)
-                # Missing outputs should simply be omitted in ActionResult:
-                if not os.path.isdir(directory_path):
-                    continue
-
-                tree_digest = uploader.upload_tree(directory_path, queue=True)
-                output_directory = output_directory_maker(directory_path, working_directory,
-                                                          tree_digest)
-                output_directories.append(output_directory)
-
-                logger.debug("Output tree digest: [{}/{}]"
-                             .format(tree_digest.hash, tree_digest.size_bytes))
-
-            action_result.output_directories.extend(output_directories)
+                if os.path.isdir(file_path):
+                    tree_digest = uploader.upload_tree(file_path, queue=True)
+                    output_directory = output_directory_maker(file_path, working_directory,
+                                                              tree_digest)
+                    action_result.output_directories.append(output_directory)
+                    logger.debug("Output tree digest: [{}/{}]"
+                                 .format(tree_digest.hash, tree_digest.size_bytes))
+                else:
+                    file_digest = uploader.upload_file(file_path, queue=True)
+                    output_file = output_file_maker(file_path, working_directory,
+                                                    file_digest)
+                    action_result.output_files.append(output_file)
+                    logger.debug("Output file digest: [{}/{}]"
+                                 .format(file_digest.hash, file_digest.size_bytes))
 
             if action_result.ByteSize() + len(stdout) > MAX_REQUEST_SIZE:
                 stdout_digest = uploader.put_blob(stdout)
