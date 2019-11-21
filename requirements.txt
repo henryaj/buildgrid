@@ -8,3 +8,4 @@ protobuf >= 3.6.1
 pyyaml
 sqlalchemy
 alembic
+setuptools>=40.3.0 # for google-cloud-storage
