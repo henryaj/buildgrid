@@ -41,7 +41,7 @@ from buildgrid.server._monitoring import MonitoringBus, MonitoringOutputType, Mo
 from buildgrid.server.operations.service import OperationsService
 from buildgrid.server.referencestorage.service import ReferenceStorageService
 from buildgrid.server._resources import ExecContext
-from buildgrid.settings import LOG_RECORD_FORMAT, MIN_THREAD_POOL_SIZE, MONITORING_PERIOD
+from buildgrid.settings import LOG_RECORD_FORMAT, MAX_REQUEST_SIZE, MIN_THREAD_POOL_SIZE, MONITORING_PERIOD
 
 
 class Server:
@@ -104,7 +104,11 @@ class Server:
             # to ugly thread names if that didn't work
             self.__grpc_executor = futures.ThreadPoolExecutor(max_workers)
         self.__grpc_server = grpc.server(self.__grpc_executor,
-                                         options=(('grpc.so_reuseport', 0),),
+                                         options=(
+                                             ('grpc.so_reuseport', 0),
+                                             ('grpc.max_send_message_length', MAX_REQUEST_SIZE),
+                                             ('grpc.max_receive_message_length', MAX_REQUEST_SIZE),
+                                         ),
                                          maximum_concurrent_rpcs=max_workers)
 
         self.__logger.debug("Setting up gRPC server with thread-limit=[%s]", max_workers)
