@@ -12,7 +12,7 @@ RUN  [ \
 "apt-get", "update" ]
 RUN  [ \
 "apt-get", "install", "-y", \
-"python3", "python3-venv", "python3-pip", \
+"python3", "python3-venv", "python3-pip", "graphviz", \
 "bubblewrap", "fuse3" \
 ]
 

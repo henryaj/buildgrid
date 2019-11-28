@@ -133,10 +133,14 @@ def run_host_tools(context):
     Downloads inputs from CAS, runs build commands using host-tools and uploads
     result back to CAS.
     """
-    bot_session = session.BotSession(context.parent, context.bot_interface, context.hardware_interface,
-                                     host.work_host_tools, context)
-    b = bot.Bot(bot_session)
-    b.session()
+    from pycallgraph import PyCallGraph
+    from pycallgraph.output import GraphvizOutput
+
+    with PyCallGraph(output=GraphvizOutput()):
+        bot_session = session.BotSession(context.parent, context.bot_interface, context.hardware_interface,
+                                         host.work_host_tools, context)
+        b = bot.Bot(bot_session)
+        b.session()
 
 
 @cli.command('buildbox', short_help="Run commands using the BuildBox tool.")
