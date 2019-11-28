@@ -142,6 +142,9 @@ def run_host_tools(context):
         b = bot.Bot(bot_session)
         b.session()
 
+    with open('/tmp/profile', 'w') as dotfile:
+        dotfile.write(graphviz.generate())
+
 
 @cli.command('buildbox', short_help="Run commands using the BuildBox tool.")
 @click.option('--fuse-dir', type=click.Path(readable=False), default=str(PurePath(Path.home(), 'fuse')),
