@@ -9,8 +9,8 @@ from .storage_abc import StorageABC
 
 class GCSStorage(StorageABC):
     def __init__(self, bucket, **kwargs):
-        self.__logger.info("Initialised GCS backend")
         self.__logger = logging.getLogger(__name__)
+        self.__logger.info("Initialised GCS backend")
 
         self._client = storage.Client()
         self._bucket = self._client.get_bucket(bucket)
@@ -43,6 +43,7 @@ class GCSStorage(StorageABC):
         return io.BytesIO()
 
     def commit_write(self, digest, write_session):
+        self.__logger.debug("Writing blob: [{}]".format(digest))
         write_session.seek(0)
         name = _name_from_digest(digest)
         blob = self._bucket.blob(name)
